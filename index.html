@@ -170,7 +170,7 @@
     }
     .hero-copy { position: relative; z-index: 2; max-width: 620px; padding-right: 140px; }
     .hero h2 { margin: 24px 0 11px; max-width: 560px; color: white; font-size: clamp(28px,4vw,43px); letter-spacing: -1.25px; }
-    .hero p { max-width: 560px; color: #c9dce0; font-size: 15px; }
+    .hero p { max-width: 560px; color: var(--muted); font-size: 15px; }
     .hero-orbit {
       position: absolute; right: 61px; top: 64px; z-index: 2; width: 155px; height: 155px; border-radius: 50%;
       display: grid; place-items: center; border: 1px solid rgba(216,185,104,.44); box-shadow: inset 0 0 35px rgba(216,185,104,.08);
@@ -528,7 +528,7 @@
     .twin-delta { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:22px; }
     .twin-delta > div { padding:14px; border:1px solid var(--line); border-radius:15px; background:rgba(255,255,255,.025); }
     .twin-delta span { display:block; color:#708a90; font-size:10px; text-transform:uppercase; letter-spacing:.7px; }
-    .twin-delta strong { display:block; margin-top:4px; color:#f0faf8; font-size:19px; }
+    .twin-delta strong { display:block; margin-top:4px; color:var(--ink); font-size:19px; }
     .signature-code { margin:15px 0 4px; color:var(--gold-soft); font:500 clamp(28px,4vw,48px)/1.05 Georgia,serif; }
 
     /* Calm palette: warm pearl, dusty sage and moonlit lavender */
@@ -603,7 +603,7 @@
     .night-console::before { opacity:.2; background-image:radial-gradient(circle,#e7eceb 0 1px,transparent 1.4px); }
     .live-signal { color:#b4c0c1; }
     .live-signal::before { background:#a6c0ba; box-shadow:0 0 10px rgba(166,192,186,.45); }
-    .console-date { color:#9aa6ab; }
+    .console-date { color:var(--muted); }
     .sabat-sphere { background:conic-gradient(from -40deg,#9a9bb8 0 var(--gap-angle),rgba(235,237,239,.08) var(--gap-angle) 360deg); box-shadow:0 0 0 1px rgba(224,229,230,.1),0 0 60px rgba(154,155,184,.1); }
     .sabat-sphere::before { background:radial-gradient(circle at 35% 28%,#465660,#2b3641 57%,#202934); box-shadow:inset -30px -30px 55px rgba(20,27,34,.36); }
     .sabat-sphere::after { border-color:rgba(197,170,123,.2); }
@@ -617,19 +617,19 @@
     .console-metric span { color:#9eaaae; }
     .console-metric strong { color:#f1f2ef; }
     .twin-visual { background:linear-gradient(145deg,#3b4650,#29343e); box-shadow:0 18px 50px rgba(45,55,64,.13); }
-    .twin-track-head { color:#c1c9ca; }
+    .twin-track-head { color:var(--muted); }
     .twin-line { background:rgba(255,255,255,.09); }
     .twin-line.plan span { background:linear-gradient(90deg,#b99d70,#e5d5b2); }
     .twin-line.actual span { background:linear-gradient(90deg,#7f94aa,#9fb9b3); }
     .twin-delta > div { background:rgba(255,255,255,.05); border-color:rgba(255,255,255,.1); }
-    .twin-delta span { color:#aeb8bb; }
-    .twin-delta strong { color:#f2f3f0; }
+    .twin-delta span { color:var(--muted); }
+    .twin-delta strong { color:var(--ink); }
     .bio-stage { color:#edf0ee; background:linear-gradient(145deg,#3a4551,#313c48 60%,#40504f); border-color:rgba(226,231,232,.13); box-shadow:0 18px 50px rgba(45,55,64,.14); }
     .bio-stage::before { background:radial-gradient(circle,rgba(154,155,184,.18),transparent 66%); }
     .bio-orbit { background:conic-gradient(from 220deg,#9fb9b3 calc(var(--harmony) * 1%),rgba(255,255,255,.09) 0); box-shadow:0 0 48px rgba(159,185,179,.1); }
     .bio-orbit::before { background:radial-gradient(circle at 35% 30%,#526064,#313c47 66%); }
     .bio-orbit::after { border-color:rgba(225,229,230,.18); }
-    .bio-reading span, .bio-stage .helper { color:#c1c9ca !important; }
+    .bio-reading span, .bio-stage .helper { color:var(--muted) !important; }
     .bio-signal { background:rgba(255,255,255,.58); }
     .gap-banner { background:linear-gradient(135deg,#55616d,#687080); }
     .gap-banner strong { color:#f3e6c9; }
@@ -1178,40 +1178,50 @@
        phase; the colour is spent low, at the horizon, where nothing has
        to be read over it.
        ================================================================== */
+    /* --sun-at is where the light actually is: rising low in the east,
+       climbing overhead by midday, setting opposite, the moon high at
+       night. The halo and the directional wash both come from that point,
+       so the leak across the screen matches the hour outside. */
     :root[data-sky="night"] {
       --sky-top:#05070f; --sky-mid:#080d1a; --sky-low:#0f1a2e;
-      --glow-1:rgba(150,175,225,.10); --glow-1-at:78% 6%;
-      --glow-2:rgba(116,136,196,.07); --glow-2-at:22% 98%;
+      --sun-at:72% 9%;  --sun-halo:rgba(214,224,255,.13);
+      --glow-1:rgba(150,175,225,.09);
+      --glow-2:rgba(116,136,196,.06); --glow-2-at:20% 98%;
       --stars:.6; --orb:#e8e2d6;
     }
     :root[data-sky="dawn"] {
       --sky-top:#0d1030; --sky-mid:#231a3f; --sky-low:#4a2a48;
-      --glow-1:rgba(226,124,92,.22); --glow-1-at:46% 104%;
-      --glow-2:rgba(255,186,130,.11); --glow-2-at:76% 90%;
+      --sun-at:14% 86%; --sun-halo:rgba(255,168,116,.26);
+      --glow-1:rgba(226,124,92,.20);
+      --glow-2:rgba(150,130,210,.09); --glow-2-at:82% 10%;
       --stars:.26; --orb:#ffcf9a;
     }
     :root[data-sky="morning"] {
       --sky-top:#0d2440; --sky-mid:#164059; --sky-low:#256b83;
-      --glow-1:rgba(255,212,148,.17); --glow-1-at:26% 100%;
-      --glow-2:rgba(150,215,235,.10); --glow-2-at:82% 8%;
+      --sun-at:22% 40%; --sun-halo:rgba(255,224,164,.20);
+      --glow-1:rgba(255,212,148,.14);
+      --glow-2:rgba(150,215,235,.09); --glow-2-at:84% 92%;
       --stars:0; --orb:#ffe8b4;
     }
     :root[data-sky="day"] {
       --sky-top:#12395c; --sky-mid:#1a5578; --sky-low:#2b7a97;
-      --glow-1:rgba(180,222,248,.14); --glow-1-at:70% 2%;
-      --glow-2:rgba(255,240,205,.09); --glow-2-at:32% 102%;
+      --sun-at:52% 2%;  --sun-halo:rgba(255,247,214,.22);
+      --glow-1:rgba(196,230,250,.13);
+      --glow-2:rgba(255,240,205,.07); --glow-2-at:30% 104%;
       --stars:0; --orb:#fff6d6;
     }
     :root[data-sky="evening"] {
       --sky-top:#1a1020; --sky-mid:#3a1e2c; --sky-low:#6b3430;
-      --glow-1:rgba(240,146,74,.21); --glow-1-at:34% 102%;
-      --glow-2:rgba(196,110,150,.11); --glow-2-at:80% 86%;
+      --sun-at:84% 52%; --sun-halo:rgba(255,158,84,.26);
+      --glow-1:rgba(240,146,74,.19);
+      --glow-2:rgba(120,96,170,.09); --glow-2-at:12% 8%;
       --stars:.14; --orb:#ffb46e;
     }
     :root[data-sky="dusk"] {
       --sky-top:#090b22; --sky-mid:#141438; --sky-low:#2a2450;
-      --glow-1:rgba(138,110,196,.16); --glow-1-at:58% 100%;
-      --glow-2:rgba(88,108,178,.09); --glow-2-at:16% 10%;
+      --sun-at:88% 94%; --sun-halo:rgba(206,132,150,.16);
+      --glow-1:rgba(138,110,196,.15);
+      --glow-2:rgba(88,108,178,.08); --glow-2-at:18% 12%;
       --stars:.74; --orb:#d6cee9;
     }
 
@@ -1245,12 +1255,146 @@
         linear-gradient(158deg, rgba(14,20,31,.68), rgba(7,11,18,.78));
     }
 
+    /* ==================================================================
+       LIGHT MODE — neutral, never white. Warm stone and paper, with the
+       same six skies washing over it, so the hour still reads.
+       ================================================================== */
+    :root[data-mode="light"] {
+      /* Measured, not picked: #645d50 read 3.9:1 on the stone ground. */
+      --ink:#26231c; --muted:#524b40;
+      --card:rgba(252,250,244,.66);
+      --line:rgba(56,50,38,.14);
+      --moon:#26231c; --moon-dim:#3b362c; --aqua:#37322a;  /* actions invert */
+      --night:#f7f4ec;                                     /* type on those actions */
+      --gold:#8a6a30; --gold-soft:#6f5525; --brass-dim:#b39a68;
+      --shadow:0 16px 40px rgba(58,52,40,.13);
+      --sky-top:#dcd7cb; --sky-mid:#d3cec1; --sky-low:#c7c1b3;
+      --sun-halo:rgba(255,238,196,.5); --glow-1:rgba(214,196,160,.4);
+      --glow-2:rgba(186,190,204,.3); --stars:0;
+    }
+    :root[data-mode="light"][data-sky="dawn"] {
+      --sky-top:#dcd2cd; --sky-mid:#d8c9c2; --sky-low:#d0bab2;
+      --sun-halo:rgba(255,200,158,.55); --glow-1:rgba(226,168,140,.34);
+    }
+    :root[data-mode="light"][data-sky="morning"] {
+      --sky-top:#dcdbd3; --sky-mid:#d4d6d0; --sky-low:#c8cec9;
+      --sun-halo:rgba(255,242,198,.55); --glow-1:rgba(206,206,176,.3);
+    }
+    :root[data-mode="light"][data-sky="day"] {
+      --sky-top:#d9dcdb; --sky-mid:#d0d5d6; --sky-low:#c4cbcd;
+      --sun-halo:rgba(255,250,226,.6); --glow-1:rgba(190,206,214,.32);
+    }
+    :root[data-mode="light"][data-sky="evening"] {
+      --sky-top:#dcd3cb; --sky-mid:#d7c8ba; --sky-low:#cdb5a4;
+      --sun-halo:rgba(255,196,140,.55); --glow-1:rgba(220,160,116,.32);
+    }
+    :root[data-mode="light"][data-sky="dusk"] {
+      --sky-top:#d4d1d2; --sky-mid:#cbc7cf; --sky-low:#bdb8c6;
+      --sun-halo:rgba(206,168,190,.4); --glow-1:rgba(158,150,190,.3);
+    }
+    :root[data-mode="light"][data-sky="night"] {
+      --sky-top:#d2cfca; --sky-mid:#c9c6c1; --sky-low:#bcb9b5;
+      --sun-halo:rgba(214,220,238,.42); --glow-1:rgba(160,168,190,.28);
+    }
+    :root[data-mode="light"] .night-console,
+    :root[data-mode="light"] .bio-stage, :root[data-mode="light"] .twin-visual,
+    :root[data-mode="light"] .hero, :root[data-mode="light"] .gap-banner,
+    :root[data-mode="light"] .reveal-move, :root[data-mode="light"] .flow {
+      background:
+        radial-gradient(ellipse 62% 50% at 82% 3%, rgba(160,132,72,.09), transparent 70%),
+        linear-gradient(158deg, rgba(253,251,246,.78), rgba(240,236,227,.86));
+      color:var(--ink);
+    }
+    :root[data-mode="light"] .console-copy h2,
+    :root[data-mode="light"] .reveal h2,
+    :root[data-mode="light"] .reveal-num strong,
+    :root[data-mode="light"] .welcome-card h2 { color:var(--ink); }
+    :root[data-mode="light"] .console-copy > p,
+    :root[data-mode="light"] .reveal-move p,
+    :root[data-mode="light"] .gap-banner span,
+    :root[data-mode="light"] .sphere-reading span { color:var(--muted); }
+    /* Nearly flat: a strong radial here rendered as a chrome ball. */
+    :root[data-mode="light"] .sabat-sphere::before {
+      background:linear-gradient(158deg, #f4f1e9, #ebe7dc);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.7);
+    }
+    :root[data-mode="light"] .bio-orbit,
+    :root[data-mode="light"] .sabat-sphere { box-shadow:0 0 0 1px rgba(56,50,38,.08); }
+    :root[data-mode="light"] .guide-step.complete { background:rgba(138,106,48,.1); border-color:rgba(138,106,48,.3); }
+    :root[data-mode="light"] .guide-number { color:#f7f4ec; background:var(--ink); }
+    :root[data-mode="light"] .guide-step.complete .guide-number { background:var(--gold); }
+    :root[data-mode="light"] .loop-number, :root[data-mode="light"] .welcome-step b { color:#f7f4ec; background:var(--ink); }
+    :root[data-mode="light"] .toast { color:#f7f4ec; background:var(--ink); }
+    :root[data-mode="light"] .qc-icon { color:var(--gold-soft); background:rgba(138,106,48,.1); }
+    :root[data-mode="light"] .qc.picked .qc-icon { color:#f7f4ec; background:var(--ink); }
+    :root[data-mode="light"] .loop-step .status { color:var(--gold-soft); background:rgba(138,106,48,.1); }
+    :root[data-mode="light"] .callout { color:#5c4620; background:rgba(138,106,48,.09); }
+    :root[data-mode="light"] .callout.teal { color:#3f4468; background:rgba(90,96,140,.1); }
+    :root[data-mode="light"] .callout.safety { color:#7a3d42; background:rgba(150,80,86,.09); }
+    :root[data-mode="light"] .console-metric { background:rgba(255,253,247,.72); }
+    :root[data-mode="light"] .console-metrics { background:var(--line); }
+    :root[data-mode="light"] .source-card a, :root[data-mode="light"] .history-item a { color:var(--gold-soft); }
+    :root[data-mode="light"] .live-signal::before { background:var(--gold); }
+    /* The brass that reads on ink is too pale on stone. Fills keep the
+       lighter brass; text takes a darker one. */
+    :root[data-mode="light"] .eyebrow,
+    :root[data-mode="light"] .card-label,
+    :root[data-mode="light"] .live-signal,
+    :root[data-mode="light"] .flow-count,
+    :root[data-mode="light"] .welcome-badge { color:#5c4517; }
+    :root[data-mode="light"] .btn.ghost {
+      color:var(--ink); border-color:rgba(56,50,38,.24); background:rgba(255,253,247,.5);
+    }
+    :root[data-mode="light"] .btn.ghost:hover { border-color:var(--ink); background:rgba(255,253,247,.8); }
+    :root[data-mode="light"] .flow-link { color:var(--muted); }
+    :root[data-mode="light"] .flow-close { color:var(--ink); background:rgba(56,50,38,.08); }
+    :root[data-mode="light"] .flow-repeat { color:var(--ink); border-color:rgba(56,50,38,.26); }
+    :root[data-mode="light"] .nav button.active { color:#f7f4ec; background:var(--ink); }
+    :root[data-mode="light"] .nav button.active .nav-icon { color:#f7f4ec; }
+    :root[data-mode="light"] .sphere-reading strong,
+    :root[data-mode="light"] .gap-banner strong { color:var(--gold-soft); }
+    :root[data-mode="light"] .reveal-ring::after { background:var(--sky-mid); }
+    :root[data-mode="light"] .sidebar { background:rgba(250,248,242,.72); }
+    :root[data-mode="light"] .nav button { color:#6b6558; }
+    :root[data-mode="light"] .privacy-pill,
+    :root[data-mode="light"] .icon-button,
+    :root[data-mode="light"] .share-button { color:#4a4437; background:rgba(255,253,247,.7); }
+    :root[data-mode="light"] .metric-tile, :root[data-mode="light"] .scan-item,
+    :root[data-mode="light"] .experiment-card, :root[data-mode="light"] .source-card,
+    :root[data-mode="light"] .thought-item, :root[data-mode="light"] .pattern-item,
+    :root[data-mode="light"] .history-item, :root[data-mode="light"] .loop-step,
+    :root[data-mode="light"] .soft-panel, :root[data-mode="light"] .empty,
+    :root[data-mode="light"] .timeline-stop, :root[data-mode="light"] .bio-signal,
+    :root[data-mode="light"] .result-panel, :root[data-mode="light"] .qc,
+    :root[data-mode="light"] input, :root[data-mode="light"] select,
+    :root[data-mode="light"] textarea, :root[data-mode="light"] .option-label,
+    :root[data-mode="light"] .chip, :root[data-mode="light"] .scale button,
+    :root[data-mode="light"] .mini-scale button, :root[data-mode="light"] .flow-note,
+    :root[data-mode="light"] .flow-time, :root[data-mode="light"] .reveal-signal,
+    :root[data-mode="light"] .welcome-step, :root[data-mode="light"] .guide-step,
+    :root[data-mode="light"] .console-metric, :root[data-mode="light"] .intent-pill,
+    :root[data-mode="light"] .twin-delta > div, :root[data-mode="light"] .flow-repeat {
+      color:var(--ink); background:rgba(255,253,247,.6); border-color:var(--line);
+    }
+    :root[data-mode="light"] input, :root[data-mode="light"] select,
+    :root[data-mode="light"] textarea { color-scheme:light; }
+    :root[data-mode="light"] .qc.picked {
+      background:rgba(38,35,28,.07); border-color:var(--moon-dim);
+    }
+    :root[data-mode="light"] .progress-track { background:rgba(56,50,38,.12); }
+    :root[data-mode="light"] .flow-bar { background:rgba(56,50,38,.13); }
+    :root[data-mode="light"] .twin-line { background:rgba(56,50,38,.1); }
+    :root[data-mode="light"] .segmented { background:rgba(56,50,38,.08); }
+    :root[data-mode="light"] .welcome-overlay { background:rgba(214,209,198,.7); }
+    :root[data-mode="light"] body::after { opacity:.03; }
+
     html, body { background:var(--sky-top); }
     body {
       color:var(--ink);
       background:
+        radial-gradient(circle 20vmax at var(--sun-at), var(--sun-halo), transparent 66%),
+        radial-gradient(ellipse 130% 88% at var(--sun-at), var(--glow-1), transparent 78%),
         radial-gradient(ellipse 58% 40% at var(--glow-2-at), var(--glow-2), transparent 70%),
-        radial-gradient(ellipse 96% 52% at var(--glow-1-at), var(--glow-1), transparent 74%),
         linear-gradient(179deg, var(--sky-top) 0%, var(--sky-mid) 56%, var(--sky-low) 100%);
       background-attachment:fixed;
     }
@@ -1343,9 +1487,48 @@
     .qc { box-shadow:0 3px 14px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.04); }
     .qc.picked { box-shadow:0 6px 22px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.09); }
 
+    /* On Tonight the hero is the page heading, so the topbar title is a
+       second title saying the same thing. Hide it there only. */
+    :root[data-view="today"] .page-heading { display:none; }
+    :root[data-view="today"] .topbar { justify-content:flex-end; padding-top:20px; }
+
+    /* One tap for a night like the last one. */
+    .flow-repeat {
+      display:grid; grid-template-columns:38px 1fr; align-items:center; gap:12px;
+      width:100%; margin:0 0 18px; padding:12px 14px; text-align:left;
+      border:1px dashed rgba(223,214,196,.28); border-radius:16px;
+      color:var(--ink); background:rgba(233,228,217,.04);
+    }
+    .flow-repeat:hover { border-style:solid; border-color:var(--moon-dim); background:rgba(233,228,217,.08); }
+    .flow-repeat-icon {
+      width:38px; height:38px; display:grid; place-items:center; border-radius:50%;
+      color:var(--gold); background:rgba(195,160,104,.12); font-size:17px;
+    }
+    .flow-repeat strong { display:block; font-size:15.5px; }
+    .flow-repeat span span, .flow-repeat > span > span { color:var(--muted); font-size:12.5px; }
+
+    /* The three steps are a progress strip, not three more cards. */
+    .guide-strip { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+    .guide-step {
+      display:grid; grid-template-columns:1fr; gap:2px; padding:10px 11px;
+      border-radius:13px; text-align:left;
+    }
+    .guide-step .guide-number {
+      width:20px; height:20px; margin-bottom:3px; font-size:10.5px;
+    }
+    /* These carried hardcoded near-white from an earlier palette, which
+       disappeared entirely against light mode. */
+    .guide-step strong { color:var(--ink); font-size:12.5px; line-height:1.2; }
+    .guide-step span:last-child { color:var(--muted); }
+    .guide-step span { font-size:11px; line-height:1.25; }
+
     @media (max-width:760px) {
       .console-copy h2 { font-size:33px; letter-spacing:-.024em; }
       .topbar h1 { font-size:27px; }
+      .guide-strip { grid-template-columns:repeat(3,1fr); gap:6px; }
+      .guide-step { padding:9px 8px; }
+      .guide-step strong { font-size:11.5px; }
+      .guide-step span { font-size:10px; }
     }
   </style>
 </head>
@@ -1372,7 +1555,7 @@
 
     <div class="workspace">
       <header class="topbar">
-        <div><div class="eyebrow" id="pageEyebrow">The Sabat Loop</div><h1 id="pageTitle">Rest is more than hours.</h1><p class="subtitle" id="pageSubtitle">Notice the gap. Test one change. Learn what restoration means for you.</p></div>
+        <div class="page-heading"><div class="eyebrow" id="pageEyebrow">The Sabat Loop</div><h1 id="pageTitle">Rest is more than hours.</h1><p class="subtitle" id="pageSubtitle">Notice the gap. Test one change. Learn what restoration means for you.</p></div>
         <div class="top-actions"><span class="privacy-pill">V5 • TEST PROTOTYPE</span><button class="share-button" type="button" data-share-prototype>Share prototype</button><button class="icon-button" id="dimToggle" aria-label="Toggle low-light mode" title="Low-light mode">◒</button></div>
       </header>
 
@@ -1386,23 +1569,14 @@
                 <div class="sphere-reading"><strong id="heroGap">—</strong><span id="heroGapLabel">Three mornings reveal the distance between sleep opportunity and restoration.</span></div>
               </div>
               <div class="console-copy">
-                <div class="eyebrow">SleepSphere V5 • Private prototype</div>
-                <h2>Understand tonight.<br />Learn from tomorrow.</h2>
-                <p>Three short moments — a quick check-in, a realistic plan, one morning note — become a pattern you can actually read.</p>
-                <div class="console-actions"><button class="btn primary" id="guideNext" data-go="flow">Start tonight’s check-in</button><button class="btn ghost" data-go="twin">See what this creates</button></div>
+                <h2 id="heroStatus">Ready when you are</h2>
+                <p id="heroSub">Take tonight’s check-in to see where your body actually is.</p>
+                <div class="console-actions"><button class="btn primary" id="guideNext" data-go="flow">Start tonight’s check-in</button></div>
                 <div class="guide-strip" aria-label="Your SleepSphere progress">
                   <div class="guide-step" id="guideBio"><span class="guide-number">1</span><div><strong>Check today</strong><span id="guideBioText">Not started</span></div></div>
                   <div class="guide-step" id="guidePlan"><span class="guide-number">2</span><div><strong>Plan tonight</strong><span id="guidePlanText">Waiting</span></div></div>
                   <div class="guide-step" id="guideMorning"><span class="guide-number">3</span><div><strong>Record tomorrow</strong><span id="guideMorningText">Waiting</span></div></div>
                 </div>
-                <div class="intent-label">What matters most tomorrow?</div>
-                <div class="intent-row" id="intentRow">
-                  <button type="button" class="intent-pill" data-intent="restore">Feel restored</button>
-                  <button type="button" class="intent-pill" data-intent="focus">Think clearly</button>
-                  <button type="button" class="intent-pill" data-intent="fajr">Be ready for Fajr</button>
-                  <button type="button" class="intent-pill" data-intent="calm">Carry less into bed</button>
-                </div>
-                <div class="intent-result" id="intentResult" aria-live="polite">Choose tomorrow’s priority. SleepSphere will keep that outcome visible.</div>
               </div>
             </div>
             <div class="console-metrics">
@@ -1413,6 +1587,17 @@
             </div>
           </article>
           <div class="grid">
+
+            <article class="card span-12">
+              <div class="card-label">Tomorrow’s priority</div>
+                <div class="intent-row" id="intentRow">
+                  <button type="button" class="intent-pill" data-intent="restore">Feel restored</button>
+                  <button type="button" class="intent-pill" data-intent="focus">Think clearly</button>
+                  <button type="button" class="intent-pill" data-intent="fajr">Be ready for Fajr</button>
+                  <button type="button" class="intent-pill" data-intent="calm">Carry less into bed</button>
+                </div>
+                <div class="intent-result" id="intentResult" aria-live="polite">Choose tomorrow’s priority. SleepSphere will keep that outcome visible.</div>
+            </article>
 
             <article class="card span-12">
               <div class="card-label">Active experiment</div>
@@ -1703,7 +1888,7 @@
                   <p class="helper" style="text-align:center" id="compassDataNote">Add three morning records to activate the compass.</p>
                 </div>
                 <div>
-                  <div class="gap-banner"><div class="card-label" style="color:#9edbd2">Restoration gap</div><strong id="gapTitle">Waiting for three mornings</strong><span id="gapText">The gap compares estimated sleep opportunity with how restored you report feeling.</span></div>
+                  <div class="gap-banner"><div class="card-label">Restoration gap</div><strong id="gapTitle">Waiting for three mornings</strong><span id="gapText">The gap compares estimated sleep opportunity with how restored you report feeling.</span></div>
                   <div class="bar-list" id="compassBars"></div>
                 </div>
               </div>
@@ -1784,7 +1969,7 @@
           <div class="section-head"><div><div class="eyebrow">Evidence & boundaries</div><h2>Understand without becoming afraid of sleep</h2></div><p>Short explanations connect the app to research while keeping public-facing articles, personal reflection and clinical evidence in their proper places.</p></div>
           <div class="grid">
             <article class="card hero span-12" style="min-height:270px">
-              <div class="hero-copy" style="padding-right:0;max-width:760px"><div class="eyebrow" style="color:#9edbd2">Central idea</div><h2 style="font-family:Georgia,serif;font-weight:500">﴿وَجَعَلْنَا نَوْمَكُمْ سُبَاتًا﴾</h2><p>Sleep as <em>sabat</em> frames rest as purposeful restoration. SleepSphere uses Fajr and other responsibilities as real planning anchors, while refusing to turn faith, study or productivity into a reason to celebrate chronic sleep restriction.</p></div>
+              <div class="hero-copy" style="padding-right:0;max-width:760px"><div class="eyebrow">Central idea</div><h2 style="font-family:Georgia,serif;font-weight:500">﴿وَجَعَلْنَا نَوْمَكُمْ سُبَاتًا﴾</h2><p>Sleep as <em>sabat</em> frames rest as purposeful restoration. SleepSphere uses Fajr and other responsibilities as real planning anchors, while refusing to turn faith, study or productivity into a reason to celebrate chronic sleep restriction.</p></div>
             </article>
             <article class="card span-12">
               <div class="card-label">One connected loop</div>
@@ -1947,7 +2132,7 @@
   </div>
 
   <div class="offline-overlay" id="offlineOverlay" role="dialog" aria-modal="true" aria-labelledby="offlineTitle">
-    <div><div class="offline-orbit"></div><div class="eyebrow" style="color:#9edbd2">The app can stop now</div><h2 id="offlineTitle">Continue the ritual offline.</h2><p id="offlineText">Place the phone away from the pillow. SleepSphere will still be here in the morning.</p><button class="btn ghost" id="closeOffline" style="color:#d7e6e2;border-color:#35515a;margin-top:18px">Return to the app</button></div>
+    <div><div class="offline-orbit"></div><div class="eyebrow">The app can stop now</div><h2 id="offlineTitle">Continue the ritual offline.</h2><p id="offlineText">Place the phone away from the pillow. SleepSphere will still be here in the morning.</p><button class="btn ghost" id="closeOffline" style="margin-top:18px">Return to the app</button></div>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite">Saved</div>
   <script>
@@ -2060,6 +2245,7 @@
       if (!pageMeta[id]) return;
       $$('.view').forEach(view => view.classList.toggle('active', view.id === id));
       $$('.nav button[data-view]').forEach(button => button.classList.toggle('active', button.dataset.view === id));
+      document.documentElement.dataset.view = id;
       $('#pageEyebrow').textContent = pageMeta[id][0];
       $('#pageTitle').textContent = pageMeta[id][1];
       $('#pageSubtitle').textContent = pageMeta[id][2];
@@ -2087,7 +2273,21 @@
       else navigate(target);
     }));
     $$('[data-scroll]').forEach(button => button.addEventListener('click', () => { navigate('today'); window.setTimeout(() => document.getElementById(button.dataset.scroll)?.scrollIntoView({behavior:'smooth',block:'start'}), 180); }));
-    $('#dimToggle').addEventListener('click', () => { state.settings.dim = !state.settings.dim; document.body.classList.toggle('dim', state.settings.dim); saveState(); });
+    function applyMode() {
+      const mode = state.settings.mode === 'light' ? 'light' : 'dark';
+      document.documentElement.dataset.mode = mode;
+      const button = $('#dimToggle');
+      button.textContent = mode === 'light' ? '☾' : '☀';
+      button.setAttribute('aria-label', mode === 'light' ? 'Switch to dark mode' : 'Switch to light mode');
+      button.title = mode === 'light' ? 'Dark mode' : 'Light mode';
+      document.querySelector('meta[name="theme-color"]')
+        ?.setAttribute('content', mode === 'light' ? '#d3cec1' : '#07080c');
+    }
+    $('#dimToggle').addEventListener('click', () => {
+      state.settings.mode = state.settings.mode === 'light' ? 'dark' : 'light';
+      saveState();
+      applyMode();
+    });
 
     async function sharePrototype() {
       if (!/^https?:$/.test(location.protocol)) {
@@ -2528,6 +2728,8 @@
         $('#sabatSphere').style.setProperty('--gap-angle','64deg');
       }
 
+      renderHeroStatus();
+
       const hasBio = state.bioCheckins.some(item => item.date === today);
       const hasPlan = Boolean(state.plan && state.plan.savedDate === today);
       const hasMorning = state.mornings.some(item => !item.demo && item.date === today);
@@ -2545,6 +2747,61 @@
       else if (!hasPlan) { next.textContent = 'Plan tonight'; next.dataset.go = 'plan'; }
       else if (!hasMorning) { next.textContent = 'Record this morning'; next.dataset.go = 'morningFlow'; }
       else { next.textContent = 'See my pattern'; next.dataset.go = 'twin'; }
+    }
+
+    /* The one line on the home screen is about tonight, not about the app.
+       It moves through the day on its own, so opening SleepSphere always
+       shows something live without asking for anything. */
+    function renderHeroStatus() {
+      const status = $('#heroStatus');
+      const sub = $('#heroSub');
+      if (!status || !sub) return;
+      const today = new Date().toISOString().slice(0,10);
+      const now = new Date().getHours() * 60 + new Date().getMinutes();
+      const plan = state.plan;
+      const bio = state.bioCheckins.find(item => item.date === today);
+      const recordedThisMorning = state.mornings.some(item => !item.demo && item.date === today);
+
+      const until = target => {
+        let gap = normalizeMinutes(target) - now;
+        if (gap < -720) gap += 1440;
+        return gap;
+      };
+
+      if (plan && Number.isFinite(Number(plan.windStart))) {
+        const toWind = until(Number(plan.windStart));
+        const toSleep = until(Number(plan.sleepStart));
+        const wakeAt = toMinutes(plan.mode === 'fajr' ? plan.fajr : plan.wake);
+        const toWake = until(wakeAt);
+        if (toWind > 0 && toWind <= 600) {
+          status.textContent = `${formatDuration(toWind)} until wind-down`;
+          sub.textContent = `Settling by ${formatTime(plan.sleepStart)}, up at ${formatTime(wakeAt)}.`;
+          return;
+        }
+        if (toWind <= 0 && toSleep > 0) {
+          status.textContent = 'Wind down now';
+          sub.textContent = `Aim to be settled by ${formatTime(plan.sleepStart)}. Put the phone somewhere else.`;
+          return;
+        }
+        if (toSleep <= 0 && toWake > 0) {
+          status.textContent = `${formatDuration(toWake)} until your wake anchor`;
+          sub.textContent = 'You should be asleep. This will still be here in the morning.';
+          return;
+        }
+        if (!recordedThisMorning) {
+          status.textContent = 'How did that land?';
+          sub.textContent = 'Record this morning and your Restoration Twin appears.';
+          return;
+        }
+      }
+
+      if (bio) {
+        status.textContent = `Tonight reads ${bio.harmony}`;
+        sub.textContent = `${bioStatus(bio.harmony)[0]}. Build a night plan around it.`;
+        return;
+      }
+      status.textContent = 'Ready when you are';
+      sub.textContent = 'Take tonight’s check-in to see where your body actually is.';
     }
 
     function renderSignature(records) {
@@ -2944,7 +3201,7 @@
     };
 
     function applySettings() {
-      document.body.classList.toggle('dim',Boolean(state.settings.dim));
+      applyMode();
       $('#settingsName').value = state.settings.name || '';
       $('#settingsAge').value = state.settings.age || 'adult';
       $('#settingsTarget').value = String(state.settings.target || 480);
@@ -3122,6 +3379,54 @@
     const flowPicks = {};
     const flowSteps = () => flows[flowKind].steps;
 
+    /* Most nights are the same night. Carrying yesterday's answers forward
+       turns a ten-question flow into a skim, and makes the one-tap repeat
+       below honest rather than a guess. */
+    function prefillEvening() {
+      const last = [...state.bioCheckins].sort((a,b) => String(a.date).localeCompare(String(b.date))).at(-1);
+      if (!last || !last.inputs) return false;
+      const map = { bioLight:'light', bioCaffeine:'caffeine', bioMovement:'movement',
+                    bioMeal:'meal', bioStress:'stress', bioBody:'body', bioEnvironment:'environment' };
+      Object.entries(map).forEach(([key,source]) => {
+        if (last.inputs[source] != null) flowPicks[key] = String(last.inputs[source]);
+      });
+      return true;
+    }
+
+    function prefillMorning() {
+      const plan = state.plan;
+      const last = [...state.mornings].filter(item => !item.demo)
+        .sort((a,b) => String(a.date).localeCompare(String(b.date))).at(-1);
+      // Times come from the plan you actually saved, so you only correct
+      // what the night did differently.
+      if (plan) {
+        const bed = Number.isFinite(Number(plan.settleStart)) ? Number(plan.settleStart) : null;
+        const wake = plan.mode === 'fajr' ? plan.fajr : plan.wake;
+        if (bed != null) {
+          $('#actualBed').value = clockValue(bed);
+          $('#actualSleep').value = clockValue(bed + Number(plan.settle || 15));
+        }
+        if (wake) $('#actualWake').value = wake;
+      } else if (last) {
+        $('#actualBed').value = last.bedTime; $('#actualSleep').value = last.sleepTime;
+        $('#actualWake').value = last.wakeTime;
+      }
+      if (!last) return false;
+      flowPicks.awake = String(last.awakeMinutes ?? 0);
+      flowPicks.nap = String(last.napMinutes ?? 0);
+      ['rest','energy','focus','calm'].forEach(key => { if (last[key]) flowPicks[key] = String(last[key]); });
+      if (last.fajr) flowPicks.fajrStatus = last.fajr;
+      flowPicks.factors = [...(last.factors || [])];
+      return true;
+    }
+
+    function clockValue(minutes) {
+      const value = normalizeMinutes(minutes);
+      return `${String(Math.floor(value/60)).padStart(2,'0')}:${String(value%60).padStart(2,'0')}`;
+    }
+
+    let flowCanRepeat = false;
+
     function openFlow(kind) {
       flowKind = flows[kind] ? kind : 'evening';
       flowIndex = 0;
@@ -3130,8 +3435,10 @@
       if (flowKind === 'evening') {
         flowPicks.intent = state.settings.intent || 'restore';
         $('#bioDate').value = today;
+        flowCanRepeat = prefillEvening();
       } else {
         $('#logDate').value = today;
+        flowCanRepeat = prefillMorning();
       }
       $('#flow').classList.add('active');
       document.body.style.overflow = 'hidden';
@@ -3161,9 +3468,19 @@
       $('#flowSkip').hidden = !step.optional;
       $('#flowSkip').textContent = 'Skip';
 
+      // One tap for a night that was like the last one. Offered only on the
+      // first step, and only when there is a real previous entry to repeat.
+      const repeat = (flowIndex === 0 && flowCanRepeat)
+        ? `<button type="button" class="flow-repeat" id="flowRepeat">
+             <span class="flow-repeat-icon" aria-hidden="true">⟲</span>
+             <span><strong>Same as ${flowKind === 'evening' ? 'last night' : 'yesterday'}</strong>
+             <span>Reuse every answer and go straight to the result.</span></span>
+           </button>`
+        : '';
+
       const heading = `<div class="flow-count">Step ${flowIndex+1} of ${steps.length}</div>
         <h2 class="flow-q">${escapeHtml(step.question)}</h2>
-        <p class="flow-hint">${escapeHtml(step.hint)}</p>`;
+        <p class="flow-hint">${escapeHtml(step.hint)}</p>${repeat}`;
       const cta = label => `<div class="reveal-actions" style="margin-top:15px"><button type="button" class="btn primary" id="flowNext">${label}</button></div>`;
       const onNext = handler => $('#flowNext').addEventListener('click', () => { handler(); last ? finishFlow() : advanceFlow(); });
 
@@ -3409,6 +3726,12 @@
       $('#revealMorningDetail').addEventListener('click', () => { closeFlow(); navigate('morning'); });
     }
 
+    // Delegated, because the repeat button is re-rendered with every step.
+    $('#flowInner').addEventListener('click', event => {
+      if (!event.target.closest('#flowRepeat')) return;
+      flowIndex = flowSteps().length - 1;
+      finishFlow();
+    });
     $('#flowClose').addEventListener('click', closeFlow);
     $('#flowBack').addEventListener('click', () => { if (flowIndex > 0) { flowIndex -= 1; renderFlowStep(); } });
     $('#flowSkip').addEventListener('click', () => {
@@ -3451,7 +3774,11 @@
     }
 
     applySky();
+    // navigate() keeps this current; Tonight is active before it first runs.
+    document.documentElement.dataset.view = document.querySelector('.view.active')?.id || 'today';
     window.setInterval(applySky, 60000);
+    // The hero is a countdown, so it has to keep up with the clock.
+    window.setInterval(() => { if (!document.hidden) renderHeroStatus(); }, 60000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) applySky(); });
 
     function closeWelcome(destination) {
