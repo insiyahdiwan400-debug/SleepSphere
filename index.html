@@ -675,13 +675,13 @@
       .night-console { min-height:820px; }
     }
     @media (max-width: 760px) {
-      .sidebar { top:auto; bottom:12px; left:10px; right:10px; height:70px; padding:8px 9px; border-radius:20px; }
+      .sidebar { top:auto; bottom:calc(12px + env(safe-area-inset-bottom)); left:10px; right:10px; height:70px; padding:8px 9px; border-radius:20px; }
       .brand { display:none; }
       .nav { width:100%; margin:0; justify-content:flex-start; }
       .nav button { min-width:66px; display:grid; justify-items:center; gap:2px; padding:6px 8px; font-size:10px; }
       .nav-icon { display:block; font-size:16px; }
       .topbar { padding:28px 20px 20px; }
-      main { padding:6px 14px 106px; }
+      main { padding:6px 14px calc(106px + env(safe-area-inset-bottom)); }
       .night-console { min-height:760px; padding:22px 18px; border-radius:25px; }
       .console-main { min-height:550px; gap:18px; }
       .sabat-sphere { width:min(280px,74vw); }
@@ -1359,11 +1359,11 @@
 
   <div class="welcome-overlay" id="welcomeOverlay" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
     <div class="welcome-card">
-      <span class="welcome-badge">Private prototype • about 3 minutes tonight</span>
+      <span class="welcome-badge">Private prototype • about 30 seconds to start</span>
       <h2 id="welcomeTitle">Meet SleepSphere.</h2>
       <p>A calmer way to notice what affects your sleep—without judgement, hidden tracking or pretending one score knows your body.</p>
       <div class="welcome-steps">
-        <div class="welcome-step"><b>1</b><div><strong>Check today</strong><span>Record a few body and routine signals through Bio Harmony.</span></div></div>
+        <div class="welcome-step"><b>1</b><div><strong>Check today</strong><span>A few quick taps, then your Bio Harmony result straight away.</span></div></div>
         <div class="welcome-step"><b>2</b><div><strong>Plan tonight</strong><span>Choose a realistic sleep window around your actual responsibilities.</span></div></div>
         <div class="welcome-step"><b>3</b><div><strong>Return tomorrow</strong><span>Record how restored you felt and begin seeing your pattern.</span></div></div>
       </div>
