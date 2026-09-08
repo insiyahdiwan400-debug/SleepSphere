@@ -8,6 +8,15 @@
   <meta property="og:title" content="SleepSphere — Private Sleep Prototype" />
   <meta property="og:description" content="Check today, plan tonight and learn from tomorrow—without judgement or hidden tracking." />
   <meta name="twitter:card" content="summary" />
+  <!-- iOS standalone behaviour. These are the parts of "feels native" a
+       web app can actually claim; Dynamic Island, Live Activities, the
+       layered icon system and HealthKit all require a native bundle. -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="SleepSphere" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="color-scheme" content="dark light" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="./sleepsphere-icon-192.png" />
@@ -1432,6 +1441,19 @@
     :root[data-view="today"] .page-heading { display:none; }
     :root[data-view="today"] .topbar { justify-content:flex-end; padding-top:20px; }
 
+    /* Restoration need: the arithmetic is the feature, so it is laid out
+       to be read line by line rather than hidden behind a single number. */
+    #needTotal { font-family:var(--font-display); font-size:clamp(34px,8vw,46px); line-height:1; letter-spacing:-.03em; margin:6px 0 4px; }
+    .need-parts { display:grid; gap:9px; }
+    .need-part { padding:12px 14px; border:1px solid var(--line); border-radius:15px; background:rgba(233,228,217,.035); }
+    .need-part-head { display:flex; align-items:baseline; gap:10px; }
+    .need-part-head strong { font-family:var(--font-display); font-size:17px; color:var(--gold-soft); font-variant-numeric:tabular-nums; }
+    .need-part-head span { font-size:13.5px; font-weight:700; }
+    .need-part p { margin:5px 0 0; color:var(--muted); font-size:12.5px; line-height:1.45; }
+    .need-optin { display:flex; gap:10px; align-items:flex-start; margin-top:14px; color:var(--muted); font-size:12.5px; line-height:1.45; }
+    .need-optin input { width:18px; height:18px; margin:1px 0 0; flex:0 0 auto; accent-color:var(--gold); }
+    :root[data-mode="light"] .need-part { background:rgba(255,253,247,.6); }
+
     /* Travel: light windows read as a schedule, so they are laid out like one. */
     .trip-days { display:grid; gap:10px; }
     .trip-day { padding:14px 15px; border:1px solid var(--line); border-radius:17px; background:rgba(233,228,217,.035); }
@@ -1550,6 +1572,16 @@
             </div>
           </article>
           <div class="grid">
+
+            <article class="card span-12" id="restorationCard">
+              <div class="section-head" style="margin-bottom:12px">
+                <div><div class="card-label">Restoration need</div><h3 id="needTotal">—</h3><p class="helper" id="needBaseline"></p></div>
+                <p>How much sleep opportunity tonight owes you, and why. Every term is visible and capped.</p>
+              </div>
+              <div class="need-parts" id="needParts"></div>
+              <div class="button-row" style="margin-top:15px"><button class="btn primary" id="needApply">Plan tonight around this</button></div>
+              <label class="need-optin"><input type="checkbox" id="needCycle" /><span>Count my body-cycle context in this estimate. Off by default — cycle context is recorded, never scored, unless you ask.</span></label>
+            </article>
 
             <article class="card span-12">
               <div class="card-label">Tomorrow’s priority</div>
@@ -2146,7 +2178,7 @@
     const STORAGE_KEY = 'sleepsphere_state_v2';
     const defaults = {
       version: 2,
-      settings: { name: '', age: 'adult', target: 480, faith: 'on', dim: false, intent: 'restore', welcomeSeen: false },
+      settings: { name: '', age: 'adult', target: 480, faith: 'on', dim: false, intent: 'restore', welcomeSeen: false, mode: 'dark', useCycle: false },
       plan: null,
       scans: [],
       thoughts: [],
@@ -2739,6 +2771,7 @@
       }
 
       renderHeroStatus();
+      renderRestoration();
 
       const hasBio = state.bioCheckins.some(item => item.date === today);
       const hasPlan = Boolean(state.plan && state.plan.savedDate === today);
@@ -3302,7 +3335,7 @@
     }
 
     function renderAll() {
-      renderToday(); renderTwin(); renderBioHarmony(); renderActiveExperiment(); renderThoughts(); renderExperiment(); renderCompass(); renderDataSummary(); renderFeedbackCount(); renderTravel(); applySettings();
+      renderToday(); renderTwin(); renderBioHarmony(); renderActiveExperiment(); renderThoughts(); renderExperiment(); renderCompass(); renderDataSummary(); renderFeedbackCount(); renderTravel(); renderRestoration(); applySettings();
     }
 
     /* ------------------------------------------------------------------
@@ -4082,6 +4115,102 @@
                remaining: Math.max(0, trip.hours - shifted) };
     }
 
+    /* ------------------------------------------------------------------
+       Restoration need.
+
+       The question the app exists to answer is not "how did you sleep" but
+       "how much repair does tonight owe you". That is a baseline for your
+       age band plus the things that genuinely raise it: a hard physical
+       day, sleep already missed, and a body clock still being dragged
+       across time zones. Every term is shown, and every term is capped,
+       because a number that can run away is a number nobody trusts.
+
+       This is also where travel stops being a timetable and starts being
+       about restoration: unfinished circadian shift is sleep debt you have
+       not paid yet.
+       ------------------------------------------------------------------ */
+    function restorationNeed() {
+      const today = new Date().toISOString().slice(0,10);
+      const baseline = Number(state.settings.target) || 480;
+      const bio = state.bioCheckins.find(item => item.date === today);
+      const parts = [];
+
+      if (bio?.inputs) {
+        const movement = Number(bio.inputs.movement);
+        const load = movement >= 100 ? 25 : movement >= 80 ? 15 : movement >= 55 ? 5 : 0;
+        if (load) parts.push({ label:'Physical load today', minutes:load,
+          why:'Training and heavy activity raise the repair the night has to do. The effect is real but modest.' });
+        if (Number(bio.inputs.body) <= 45) parts.push({ label:'Pain or illness', minutes:20,
+          why:'Discomfort fragments sleep, so the same rest takes longer to accumulate.' });
+      }
+
+      const recent = realMornings().slice(-4);
+      if (recent.length) {
+        const debt = recent.reduce((total,item) =>
+          total + Math.max(0, (Number(item.targetMinutes) || baseline) - (Number(item.sleepMinutes) || 0)), 0);
+        const repay = Math.min(45, Math.round(debt * 0.3 / 5) * 5);
+        if (repay >= 5) parts.push({ label:'Recent sleep debt', minutes:repay,
+          why:`${formatDuration(debt)} short across your last ${recent.length} night${recent.length === 1 ? '' : 's'}. Debt is not repaid in one night, so this adds back about a third.` });
+      }
+
+      const travel = tripProgress();
+      if (travel && travel.remaining > 0.25) {
+        const add = Math.min(45, Math.round(travel.remaining * 15 / 5) * 5);
+        if (add) parts.push({ label:'Body clock still shifting', minutes:add,
+          why:`${formatDuration(travel.remaining * 60)} of your ${travel.trip.hours}h shift is left. Sleeping out of phase is less restorative, so the opportunity has to be longer to return the same repair.` });
+      }
+
+      // Cycle context is only ever counted when explicitly asked for; the
+      // app's standing promise is that it is recorded, not scored.
+      if (state.settings.useCycle && bio?.cycle && !['not_tracking','other'].includes(bio.cycle)) {
+        const raised = ['luteal','menstrual','pregnancy','postpartum'].includes(bio.cycle);
+        if (raised) parts.push({ label:'Body-cycle context', minutes:15,
+          why:`You asked for ${escapeHtml(bio.cycle)} context to be counted. Sleep is commonly more broken in this phase, so the opportunity is widened a little.` });
+      }
+
+      const added = parts.reduce((total,part) => total + part.minutes, 0);
+      return { baseline, parts, added:Math.min(added, 120), total:Math.min(baseline + Math.min(added, 120), 720) };
+    }
+
+    function renderRestoration() {
+      const card = $('#restorationCard');
+      if (!card) return;
+      const need = restorationNeed();
+      $('#needTotal').textContent = formatDuration(need.total);
+      $('#needBaseline').textContent = `Baseline ${formatDuration(need.baseline)} for your age band`;
+      $('#needParts').innerHTML = need.parts.length
+        ? need.parts.map(part => `<div class="need-part">
+             <div class="need-part-head"><strong>+${formatDuration(part.minutes)}</strong><span>${escapeHtml(part.label)}</span></div>
+             <p>${part.why}</p></div>`).join('')
+        : '<div class="empty">Nothing today is asking for extra repair. Your baseline is the target.</div>';
+      $('#needApply').textContent = need.total === need.baseline
+        ? 'Plan tonight around this'
+        : `Use ${formatDuration(need.total)} as tonight’s target`;
+      $('#needCycle').checked = Boolean(state.settings.useCycle);
+    }
+
+    $('#needApply').addEventListener('click', () => {
+      const need = restorationNeed();
+      // The target control offers half-hour steps. Take the nearest one
+      // rather than always rounding up: a 9h10m need became a 10h plan,
+      // and an unrealistic plan is the thing this app is trying not to make.
+      const options = [...$('#targetHours').options].map(option => Number(option.value)).sort((a,b) => a-b);
+      const choice = options.reduce((best,value) =>
+        Math.abs(value - need.total) < Math.abs(best - need.total) ? value : best, options[0]);
+      $('#targetHours').value = String(choice);
+      renderPlanPreview();
+      navigate('plan');
+      toast(`Tonight’s plan set to ${formatDuration(choice)}`);
+    });
+    $('#needCycle').addEventListener('change', event => {
+      state.settings.useCycle = event.target.checked;
+      saveState();
+      renderRestoration();
+      toast(event.target.checked
+        ? 'Cycle context will be counted in your restoration need'
+        : 'Cycle context is recorded, not counted');
+    });
+
     function closeWelcome(destination) {
       state.settings.welcomeSeen = true;
       saveState();
@@ -4094,6 +4223,14 @@
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && $('#welcomeOverlay').classList.contains('active')) closeWelcome('today'); });
 
     populateForms(); renderTimer(); renderAll();
+    // Home-screen shortcuts deep-link straight into a flow or a view.
+    const launchTarget = new URLSearchParams(location.search).get('go');
+    if (launchTarget === 'flow' || launchTarget === 'morningFlow') {
+      window.setTimeout(() => openFlow(launchTarget === 'flow' ? 'evening' : 'morning'), 60);
+    } else if (launchTarget && pageMeta[launchTarget]) {
+      navigate(launchTarget);
+    }
+
     const testerMode = new URLSearchParams(location.search).get('tester') === '1';
     if (!state.settings.welcomeSeen || (testerMode && !sessionStorage.getItem('ss_tester_welcome_seen'))) $('#welcomeOverlay').classList.add('active');
     if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {

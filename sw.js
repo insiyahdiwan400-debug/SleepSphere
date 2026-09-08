@@ -1,4 +1,4 @@
-const CACHE = 'sleepsphere-v5-guided-prototype-20260908';
+const CACHE = 'sleepsphere-v5-guided-prototype-20260908c';
 const SHELL = ['./', './manifest.webmanifest', './favicon.svg', './sleepsphere-icon-192.png', './sleepsphere-icon-512.png'];
 
 self.addEventListener('install', event => {

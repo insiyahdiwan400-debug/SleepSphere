@@ -4,12 +4,22 @@
   "description": "A simple three-step Bio Harmony check-in, realistic night plan and morning reflection.",
   "start_url": "./",
   "scope": "./",
+  "id": "./",
   "display": "standalone",
-  "background_color": "#f2efea",
-  "theme_color": "#28323e",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "portrait",
+  "background_color": "#07080c",
+  "theme_color": "#07080c",
+  "categories": ["health", "lifestyle"],
   "icons": [
-    { "src": "./sleepsphere-icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "./sleepsphere-icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "./sleepsphere-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./sleepsphere-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./sleepsphere-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
     { "src": "./favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Tonight's check-in", "short_name": "Check in", "url": "./?go=flow" },
+    { "name": "Record this morning", "short_name": "Morning", "url": "./?go=morningFlow" },
+    { "name": "My pattern", "short_name": "Pattern", "url": "./?go=twin" }
   ]
 }
