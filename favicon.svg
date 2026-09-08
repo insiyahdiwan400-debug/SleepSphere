@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="SleepSphere crescent and orbit">
+  <defs>
+    <linearGradient id="bg" x1="80" y1="40" x2="430" y2="470" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#173A45"/>
+      <stop offset="1" stop-color="#07171D"/>
+    </linearGradient>
+    <radialGradient id="moon" cx="0" cy="0" r="1" gradientTransform="translate(196 164) rotate(55) scale(224)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF7CF"/>
+      <stop offset="1" stop-color="#D8B968"/>
+    </radialGradient>
+    <mask id="crescent"><rect width="512" height="512" fill="white"/><circle cx="306" cy="202" r="142" fill="black"/></mask>
+  </defs>
+  <rect width="512" height="512" rx="122" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="190" fill="none" stroke="#9EDBD2" stroke-opacity=".22" stroke-width="5"/>
+  <circle cx="256" cy="256" r="146" fill="none" stroke="#D8B968" stroke-opacity=".28" stroke-width="3" stroke-dasharray="8 15"/>
+  <circle cx="232" cy="252" r="142" fill="url(#moon)" mask="url(#crescent)"/>
+  <circle cx="391" cy="144" r="17" fill="#9EDBD2"/>
+  <circle cx="364" cy="343" r="10" fill="#FFF7CF" fill-opacity=".88"/>
+</svg>
