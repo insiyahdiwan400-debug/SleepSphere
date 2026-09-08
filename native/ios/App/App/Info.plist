@@ -30,6 +30,8 @@
 	<string>SleepSphere reads your activity, last night’s sleep and — only if you turn cycle context on — your cycle phase, so your check-ins arrive pre-filled and your restoration estimate reflects what your body actually did. It is read only, it stays on this device, and everything still works if you say no.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>SleepSphere does not write anything to Health.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>SleepSphere uses your rough location to calculate prayer times for where you are, so your night plan can be built around Fajr. The calculation happens on this device and your location is never sent anywhere. You can pick a city by hand instead.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>NSSupportsLiveActivitiesFrequentUpdates</key>

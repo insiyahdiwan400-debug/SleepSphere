@@ -1441,6 +1441,33 @@
     :root[data-view="today"] .page-heading { display:none; }
     :root[data-view="today"] .topbar { justify-content:flex-end; padding-top:20px; }
 
+    .city-results { display:grid; gap:7px; margin-top:10px; }
+    .city-hit {
+      display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+      width:100%; padding:11px 13px; text-align:left;
+      border:1px solid var(--line); border-radius:14px; color:var(--ink);
+      background:rgba(233,228,217,.035);
+    }
+    .city-hit:hover { border-color:var(--moon-dim); background:rgba(233,228,217,.07); }
+    .city-hit strong { font-size:15px; }
+    .city-hit span { color:var(--muted); font-size:12.5px; }
+    :root[data-mode="light"] .city-hit { background:rgba(255,253,247,.6); }
+
+    /* Prayer times read as a timetable, with the two that shape a night
+       — Fajr and Isha — carrying the brass. */
+    .prayer-times { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:16px; }
+    .prayer-time { padding:11px 12px; border:1px solid var(--line); border-radius:14px; background:rgba(233,228,217,.035); }
+    .prayer-time span { display:block; color:var(--muted); font-size:10px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; }
+    .prayer-time strong { display:block; margin-top:4px; font-family:var(--font-display); font-size:17px; font-weight:500; font-variant-numeric:tabular-nums; }
+    .prayer-time.fajr, .prayer-time.isha { border-color:rgba(195,160,104,.34); background:rgba(195,160,104,.08); }
+    .prayer-time.fajr strong, .prayer-time.isha strong { color:var(--gold-soft); }
+    .prayer-tomorrow { grid-column:1/-1; margin-top:2px; color:var(--muted); font-size:12.5px; }
+    .prayer-tomorrow strong { color:var(--gold-soft); font-family:var(--font-display); font-variant-numeric:tabular-nums; }
+    :root[data-mode="light"] .prayer-time { background:rgba(255,253,247,.6); }
+    :root[data-mode="light"] .prayer-time.fajr, :root[data-mode="light"] .prayer-time.isha { background:rgba(138,106,48,.1); }
+    #fajrSource { display:block; margin-top:5px; font-size:11.5px; }
+    @media (max-width:520px) { .prayer-times { grid-template-columns:repeat(2,1fr); } }
+
     /* The night, drawn. The sky band is painted from the same keyframes as
        the page background, so tonight's graphic and tonight's screen are
        literally the same colours. */
@@ -1720,6 +1747,50 @@
         <section class="view" id="plan">
           <div class="section-head"><div><div class="eyebrow">Signature planner</div><h2>Build a realistic sleep bridge</h2></div><p>Plan one continuous block or account honestly for a Fajr interruption and a second sleep block. The aim is adequate opportunity—not glorifying short sleep.</p></div>
           <div class="grid">
+            <article class="card span-12" id="prayerCard">
+              <div class="section-head" style="margin-bottom:12px">
+                <div><div class="card-label">Prayer times</div><h3 id="prayerHeadline">Set your location once</h3>
+                  <button type="button" class="btn ghost small" id="changePlace" hidden style="margin-top:9px">Change location</button></div>
+                <p>Worked out on this phone from the date and where you are. Nothing is sent anywhere.</p>
+              </div>
+              <div id="prayerSetup">
+                <div class="field"><label for="citySearch">Find your city</label><input id="citySearch" type="search" placeholder="Mumbai, Surat, Karachi, Nairobi, London…" autocomplete="off" /></div>
+                <div class="city-results" id="cityResults"></div>
+                <div class="button-row" style="margin-top:12px">
+                  <button class="btn primary" id="useLocation">Use my location instead</button>
+                  <button class="btn ghost" id="enterLocation">Enter coordinates</button>
+                </div>
+              </div>
+              <div class="form-grid three" id="prayerManual" hidden style="margin-top:14px">
+                <div class="field"><label for="placeLat">Latitude</label><input id="placeLat" type="number" step="0.0001" min="-90" max="90" placeholder="51.5074" /></div>
+                <div class="field"><label for="placeLon">Longitude</label><input id="placeLon" type="number" step="0.0001" min="-180" max="180" placeholder="-0.1278" /></div>
+                <div class="field"><label for="placeName">Name it (optional)</label><input id="placeName" type="text" placeholder="Home" /></div>
+              </div>
+              <div class="button-row" id="prayerManualActions" hidden><button class="btn primary" id="savePlace">Save location</button></div>
+
+              <div class="prayer-times" id="prayerTimes" hidden></div>
+
+              <div class="form-grid three" id="prayerOptions" hidden style="margin-top:16px">
+                <div class="field"><label for="prayerMethod">Calculation method</label><select id="prayerMethod"></select></div>
+                <div class="field"><label for="prayerTradition">Tradition</label><select id="prayerTradition"><option value="fatemi">Fatemi — Dawoodi Bohra</option><option value="standard">Sunni — standard Asr</option><option value="hanafi">Sunni — Hanafi Asr</option></select></div>
+                <div class="field"><label for="prayerHighLat">When the sun stays high</label><select id="prayerHighLat"><option value="seventh">One seventh of the night</option><option value="half">Middle of the night</option><option value="angle">Angle-based</option></select></div>
+              </div>
+              <details id="prayerOffsets" hidden style="margin-top:14px">
+                <summary style="cursor:pointer;color:var(--muted);font-size:14px;font-weight:650">Line these up with your Dawat timetable</summary>
+                <p class="helper" style="margin-top:10px">If a calculated time is a few minutes out from your official timetable, correct it once here and every night after will match.</p>
+                <div class="form-grid three" style="margin-top:12px">
+                  <div class="field"><label for="offFajr">Fajr / Sihori</label><input id="offFajr" type="number" step="1" min="-60" max="60" value="0" /></div>
+                  <div class="field"><label for="offSunrise">Sunrise</label><input id="offSunrise" type="number" step="1" min="-60" max="60" value="0" /></div>
+                  <div class="field"><label for="offDhuhr">Zohr</label><input id="offDhuhr" type="number" step="1" min="-60" max="60" value="0" /></div>
+                  <div class="field"><label for="offMaghrib">Maghrib</label><input id="offMaghrib" type="number" step="1" min="-60" max="60" value="0" /></div>
+                  <div class="field"><label for="offAsr">Asr</label><input id="offAsr" type="number" step="1" min="-60" max="60" value="0" /></div>
+                  <div class="field"><label for="offIsha">Isha</label><input id="offIsha" type="number" step="1" min="-60" max="60" value="0" /></div>
+                </div>
+                <p class="helper" style="margin-top:8px">Minutes. Negative is earlier.</p>
+              </details>
+              <div class="callout" style="margin-top:14px" id="prayerNote"><strong>These are calculated times.</strong> Communities differ, and your local mosque’s timetable is the authority. Use this for planning sleep, not for deciding when to pray.</div>
+            </article>
+
             <article class="card span-7">
               <div class="field"><label>Planning mode</label><div class="segmented" id="planMode"><button type="button" class="active" data-mode="continuous">One sleep block</button><button type="button" data-mode="fajr">Fajr Bridge</button></div></div>
 
@@ -1732,7 +1803,7 @@
 
               <div class="conditional" data-plan-panel="fajr">
                 <div class="form-grid three">
-                  <div class="field"><label for="fajrTime">Fajr wake time</label><input id="fajrTime" type="time" value="05:15" /></div>
+                  <div class="field"><label for="fajrTime">Fajr wake time</label><input id="fajrTime" type="time" value="05:15" /><span class="helper" id="fajrSource"></span></div>
                   <div class="field"><label for="returnSleep">Return to sleep around</label><input id="returnSleep" type="time" value="06:00" /></div>
                   <div class="field"><label for="finalWake">Final wake time</label><input id="finalWake" type="time" value="08:00" /></div>
                 </div>
@@ -2237,7 +2308,7 @@
     const STORAGE_KEY = 'sleepsphere_state_v2';
     const defaults = {
       version: 2,
-      settings: { name: '', age: 'adult', target: 480, faith: 'on', dim: false, intent: 'restore', welcomeSeen: false, mode: 'dark', useCycle: false, healthLinked: false },
+      settings: { name: '', age: 'adult', target: 480, faith: 'on', dim: false, intent: 'restore', welcomeSeen: false, mode: 'dark', useCycle: false, healthLinked: false, place: null, prayerMethod: 'mwl', madhab: 'standard', tradition: 'fatemi', prayerOffsets: {}, highLatRule: 'seventh', fajrEdited: false },
       plan: null,
       scans: [],
       thoughts: [],
@@ -2353,6 +2424,7 @@
       if (id === 'experiment') renderExperiment();
       if (id === 'data') renderDataSummary();
       if (id === 'travel') renderTravel();
+      if (id === 'plan') renderPrayer();
       if (window.innerWidth <= 900) {
         $('.nav').classList.remove('expanded');
         $('#navMore').setAttribute('aria-expanded','false');
@@ -3480,11 +3552,12 @@
       $('#logDate').value = new Date().toISOString().slice(0,10);
       resetBioForm();
       populateTripForm();
+      populatePrayerForm();
       morningEstimate();
     }
 
     function renderAll() {
-      renderToday(); renderTwin(); renderBioHarmony(); renderActiveExperiment(); renderThoughts(); renderExperiment(); renderCompass(); renderDataSummary(); renderFeedbackCount(); renderTravel(); renderRestoration(); applySettings();
+      renderToday(); renderTwin(); renderBioHarmony(); renderActiveExperiment(); renderThoughts(); renderExperiment(); renderCompass(); renderDataSummary(); renderFeedbackCount(); renderTravel(); renderRestoration(); renderPrayer(); applySettings();
       if (window.SleepSphereNative) { refreshHealthAvailability(); syncWindDownActivity(); }
     }
 
@@ -4473,6 +4546,437 @@
         sleepStart: nextOccurrence(Number(plan.sleepStart)),
         wakeAt: nextOccurrence(toMinutes(plan.mode === 'fajr' ? plan.fajr : plan.wake)),
         label: 'Tonight'
+      });
+    }
+
+    /* ------------------------------------------------------------------
+       Prayer times, calculated on the device.
+
+       Fajr moves every day and depends on where you are, so a typed-in time
+       was never going to survive real use. This works it out from your
+       latitude, longitude and the date using the standard solar equations —
+       no network call, nothing sent anywhere, which keeps the app's promise
+       that nothing leaves the phone.
+
+       These are calculated times. Communities differ, and a local mosque's
+       timetable is the authority. The app says so wherever it shows them.
+       ------------------------------------------------------------------ */
+    const PRAYER_METHODS = {
+      mwl:      { label:'Muslim World League', fajr:18,   isha:17 },
+      isna:     { label:'Islamic Society of North America', fajr:15, isha:15 },
+      egypt:    { label:'Egyptian General Authority', fajr:19.5, isha:17.5 },
+      karachi:  { label:'University of Islamic Sciences, Karachi', fajr:18, isha:18 },
+      makkah:   { label:'Umm al-Qura, Makkah', fajr:18.5, isha:null, ishaMinutes:90 },
+      dubai:    { label:'Dubai', fajr:18.2, isha:18.2 },
+      kuwait:   { label:'Kuwait', fajr:18, isha:17.5 },
+      singapore:{ label:'Singapore', fajr:20, isha:18 }
+    };
+
+    /* Places, with the calculation method each region's community usually
+       follows already attached — picking your city should not then require
+       knowing which convention your mosque uses. It stays changeable. */
+    const CITIES = [
+      // South Asia — Karachi convention
+      ['Mumbai','India',19.0760,72.8777,'karachi'], ['Surat','India',21.1702,72.8311,'karachi'],
+      ['Delhi','India',28.6139,77.2090,'karachi'], ['Ahmedabad','India',23.0225,72.5714,'karachi'],
+      ['Hyderabad','India',17.3850,78.4867,'karachi'], ['Bengaluru','India',12.9716,77.5946,'karachi'],
+      ['Kolkata','India',22.5726,88.3639,'karachi'], ['Chennai','India',13.0827,80.2707,'karachi'],
+      ['Lucknow','India',26.8467,80.9462,'karachi'], ['Bhopal','India',23.2599,77.4126,'karachi'],
+      ['Karachi','Pakistan',24.8607,67.0011,'karachi'], ['Lahore','Pakistan',31.5204,74.3587,'karachi'],
+      ['Islamabad','Pakistan',33.6844,73.0479,'karachi'], ['Peshawar','Pakistan',34.0151,71.5249,'karachi'],
+      ['Dhaka','Bangladesh',23.8103,90.4125,'karachi'], ['Chattogram','Bangladesh',22.3569,91.7832,'karachi'],
+      ['Colombo','Sri Lanka',6.9271,79.8612,'karachi'], ['Malé','Maldives',4.1755,73.5093,'karachi'],
+      ['Kabul','Afghanistan',34.5553,69.2075,'karachi'],
+
+      // Middle East
+      ['Makkah','Saudi Arabia',21.3891,39.8579,'makkah'], ['Madinah','Saudi Arabia',24.5247,39.5692,'makkah'],
+      ['Riyadh','Saudi Arabia',24.7136,46.6753,'makkah'], ['Jeddah','Saudi Arabia',21.4858,39.1925,'makkah'],
+      ['Dubai','UAE',25.2048,55.2708,'dubai'], ['Abu Dhabi','UAE',24.4539,54.3773,'dubai'],
+      ['Sharjah','UAE',25.3463,55.4209,'dubai'], ['Doha','Qatar',25.2854,51.5310,'makkah'],
+      ['Kuwait City','Kuwait',29.3759,47.9774,'kuwait'], ['Manama','Bahrain',26.2285,50.5860,'makkah'],
+      ['Muscat','Oman',23.5880,58.3829,'makkah'], ['Sanaa','Yemen',15.3694,44.1910,'makkah'],
+      ['Aden','Yemen',12.7855,45.0187,'makkah'], ['Taiz','Yemen',13.5789,44.0219,'makkah'],
+      ['Hodeidah','Yemen',14.7978,42.9545,'makkah'], ['Amman','Jordan',31.9454,35.9284,'mwl'],
+      ['Baghdad','Iraq',33.3152,44.3661,'mwl'], ['Beirut','Lebanon',33.8938,35.5018,'mwl'],
+      ['Damascus','Syria',33.5138,36.2765,'mwl'], ['Jerusalem','Palestine',31.7683,35.2137,'mwl'],
+      ['Gaza','Palestine',31.5017,34.4668,'mwl'], ['Istanbul','Türkiye',41.0082,28.9784,'mwl'],
+      ['Ankara','Türkiye',39.9334,32.8597,'mwl'], ['Tehran','Iran',35.6892,51.3890,'mwl'],
+
+      // Africa
+      ['Cairo','Egypt',30.0444,31.2357,'egypt'], ['Alexandria','Egypt',31.2001,29.9187,'egypt'],
+      ['Nairobi','Kenya',-1.2921,36.8219,'mwl'], ['Mombasa','Kenya',-4.0435,39.6682,'mwl'],
+      ['Dar es Salaam','Tanzania',-6.7924,39.2083,'mwl'], ['Kampala','Uganda',0.3476,32.5825,'mwl'],
+      ['Mogadishu','Somalia',2.0469,45.3182,'mwl'], ['Addis Ababa','Ethiopia',9.0300,38.7400,'mwl'],
+      ['Khartoum','Sudan',15.5007,32.5599,'mwl'], ['Lagos','Nigeria',6.5244,3.3792,'mwl'],
+      ['Kano','Nigeria',12.0022,8.5920,'mwl'], ['Abuja','Nigeria',9.0765,7.3986,'mwl'],
+      ['Accra','Ghana',5.6037,-0.1870,'mwl'], ['Dakar','Senegal',14.7167,-17.4677,'mwl'],
+      ['Casablanca','Morocco',33.5731,-7.5898,'mwl'], ['Tunis','Tunisia',36.8065,10.1815,'mwl'],
+      ['Algiers','Algeria',36.7538,3.0588,'mwl'], ['Tripoli','Libya',32.8872,13.1913,'mwl'],
+      ['Johannesburg','South Africa',-26.2041,28.0473,'mwl'], ['Cape Town','South Africa',-33.9249,18.4241,'mwl'],
+      ['Durban','South Africa',-29.8587,31.0218,'mwl'],
+
+      // United Kingdom
+      ['London','United Kingdom',51.5074,-0.1278,'mwl'], ['Birmingham','United Kingdom',52.4862,-1.8904,'mwl'],
+      ['Manchester','United Kingdom',53.4808,-2.2426,'mwl'], ['Bradford','United Kingdom',53.7960,-1.7594,'mwl'],
+      ['Leicester','United Kingdom',52.6369,-1.1398,'mwl'], ['Leeds','United Kingdom',53.8008,-1.5491,'mwl'],
+      ['Luton','United Kingdom',51.8787,-0.4200,'mwl'], ['Blackburn','United Kingdom',53.7486,-2.4820,'mwl'],
+      ['Glasgow','United Kingdom',55.8642,-4.2518,'mwl'], ['Cardiff','United Kingdom',51.4816,-3.1791,'mwl'],
+      ['Sheffield','United Kingdom',53.3811,-1.4701,'mwl'],
+
+      // North America — ISNA
+      ['New York','United States',40.7128,-74.0060,'isna'], ['Chicago','United States',41.8781,-87.6298,'isna'],
+      ['Dearborn','United States',42.3223,-83.1763,'isna'], ['Houston','United States',29.7604,-95.3698,'isna'],
+      ['Los Angeles','United States',34.0522,-118.2437,'isna'], ['Atlanta','United States',33.7490,-84.3880,'isna'],
+      ['Philadelphia','United States',39.9526,-75.1652,'isna'], ['Minneapolis','United States',44.9778,-93.2650,'isna'],
+      ['Dallas','United States',32.7767,-96.7970,'isna'], ['Washington DC','United States',38.9072,-77.0369,'isna'],
+      ['Toronto','Canada',43.6532,-79.3832,'isna'], ['Montreal','Canada',45.5019,-73.5674,'isna'],
+      ['Calgary','Canada',51.0447,-114.0719,'isna'],
+
+      // Far East and South East Asia
+      ['Kuala Lumpur','Malaysia',3.1390,101.6869,'singapore'], ['Singapore','Singapore',1.3521,103.8198,'singapore'],
+      ['Jakarta','Indonesia',-6.2088,106.8456,'singapore'], ['Surabaya','Indonesia',-7.2575,112.7521,'singapore'],
+      ['Bandung','Indonesia',-6.9175,107.6191,'singapore'], ['Medan','Indonesia',3.5952,98.6722,'singapore'],
+      ['Manila','Philippines',14.5995,120.9842,'singapore'], ['Bangkok','Thailand',13.7563,100.5018,'singapore'],
+      ['Hong Kong','Hong Kong',22.3193,114.1694,'mwl'], ['Tokyo','Japan',35.6762,139.6503,'mwl'],
+      ['Seoul','South Korea',37.5665,126.9780,'mwl'], ['Beijing','China',39.9042,116.4074,'mwl'],
+      ['Ürümqi','China',43.8256,87.6168,'mwl'],
+
+      // Europe and Oceania
+      ['Paris','France',48.8566,2.3522,'mwl'], ['Berlin','Germany',52.5200,13.4050,'mwl'],
+      ['Amsterdam','Netherlands',52.3676,4.9041,'mwl'], ['Brussels','Belgium',50.8503,4.3517,'mwl'],
+      ['Stockholm','Sweden',59.3293,18.0686,'mwl'], ['Oslo','Norway',59.9139,10.7522,'mwl'],
+      ['Copenhagen','Denmark',55.6761,12.5683,'mwl'], ['Madrid','Spain',40.4168,-3.7038,'mwl'],
+      ['Rome','Italy',41.9028,12.4964,'mwl'], ['Moscow','Russia',55.7558,37.6173,'mwl'],
+      ['Sydney','Australia',-33.8688,151.2093,'mwl'], ['Melbourne','Australia',-37.8136,144.9631,'mwl'],
+      ['Auckland','New Zealand',-36.8485,174.7633,'mwl']
+    ].map(([name,country,latitude,longitude,method]) => ({ name, country, latitude, longitude, method }));
+
+    const deg = value => value * Math.PI / 180;
+    const undeg = value => value * 180 / Math.PI;
+    const fixHour = value => ((value % 24) + 24) % 24;
+
+    /** Sun position for a date, following the standard low-precision solar
+        equations used by every published prayer-time implementation. */
+    function sunPosition(julian) {
+      const d = julian - 2451545.0;
+      const g = deg(fixAngle(357.529 + 0.98560028 * d));
+      const q = fixAngle(280.459 + 0.98564736 * d);
+      const L = deg(fixAngle(q + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)));
+      const e = deg(23.439 - 0.00000036 * d);
+      const declination = Math.asin(Math.sin(e) * Math.sin(L));
+      const rightAscension = fixHour(undeg(Math.atan2(Math.cos(e) * Math.sin(L), Math.cos(L))) / 15);
+      const equationOfTime = q / 15 - rightAscension;
+      return { declination, equationOfTime };
+    }
+
+    function fixAngle(value) { return ((value % 360) + 360) % 360; }
+
+    function julianDay(date) {
+      let year = date.getFullYear(), month = date.getMonth() + 1;
+      const day = date.getDate();
+      if (month <= 2) { year -= 1; month += 12; }
+      const a = Math.floor(year / 100);
+      const b = 2 - a + Math.floor(a / 4);
+      return Math.floor(365.25 * (year + 4716)) + Math.floor(30.6001 * (month + 1)) + day + b - 1524.5;
+    }
+
+    /**
+     * Hour angle for the sun at a given depression angle below the horizon.
+     * Returns null when the sun never reaches that angle — which really
+     * happens at high latitudes in summer, and is why the fallback below
+     * exists rather than the app quietly inventing a time.
+     */
+    function hourAngle(angle, latitude, declination) {
+      const value = (-Math.sin(deg(angle)) - Math.sin(declination) * Math.sin(deg(latitude)))
+                  / (Math.cos(declination) * Math.cos(deg(latitude)));
+      if (value > 1 || value < -1) return null;
+      return undeg(Math.acos(value)) / 15;
+    }
+
+    function asrAngle(factor, latitude, declination) {
+      const shadow = factor + Math.tan(Math.abs(deg(latitude) - declination));
+      const value = (Math.sin(Math.atan(1 / shadow)) - Math.sin(declination) * Math.sin(deg(latitude)))
+                  / (Math.cos(declination) * Math.cos(deg(latitude)));
+      if (value > 1 || value < -1) return null;
+      return undeg(Math.acos(value)) / 15;
+    }
+
+    function prayerTimes({ latitude, longitude, date = new Date(), method = 'mwl', madhab = 'standard', highLatRule = 'seventh' }) {
+      const config = PRAYER_METHODS[method] || PRAYER_METHODS.mwl;
+      const { declination, equationOfTime } = sunPosition(julianDay(date) + 0.5 - longitude / 360);
+      const offsetHours = -date.getTimezoneOffset() / 60;
+
+      const dhuhr = fixHour(12 - equationOfTime) - longitude / 15 + offsetHours;
+      const at = (angle, before) => {
+        const span = hourAngle(angle, latitude, declination);
+        return span === null ? null : dhuhr + (before ? -span : span);
+      };
+
+      const sunrise = at(0.833, true);
+      const sunset = at(0.833, false);
+      let fajr = at(config.fajr, true);
+      let isha = config.isha === null ? (sunset === null ? null : sunset + config.ishaMinutes / 60)
+                                      : at(config.isha, false);
+      const asrSpan = asrAngle(madhab === 'hanafi' ? 2 : 1, latitude, declination);
+      const asr = asrSpan === null ? null : dhuhr + asrSpan;
+
+      // High latitudes: for part of the year the sun never dips far enough
+      // below the horizon for a true Fajr or Isha to exist. Communities
+      // resolve this differently and mosques in the same city can disagree,
+      // so the rule is a setting rather than a hidden assumption — and the
+      // app says plainly when a time is estimated rather than calculated.
+      let estimated = false;
+      if ((fajr === null || isha === null) && sunrise !== null && sunset !== null) {
+        estimated = true;
+        const nightLength = 24 - (sunset - sunrise);
+        const portion = { seventh: nightLength / 7, half: nightLength / 2,
+                          angle: nightLength * (config.fajr / 60) }[highLatRule] ?? nightLength / 7;
+        const ishaPortion = highLatRule === 'angle'
+          ? nightLength * ((config.isha ?? 17) / 60) : portion;
+        if (fajr === null) fajr = sunrise - portion;
+        if (isha === null) isha = sunset + ishaPortion;
+      }
+
+      // Round once, in whole minutes, then split. Rounding the minutes on
+      // their own and taking the remainder loses the carry, which turned
+      // 07:59.6 into 07:00 — an hour wrong, silently.
+      const clock = hours => {
+        if (hours === null || !Number.isFinite(hours)) return null;
+        const total = ((Math.round(fixHour(hours) * 60) % 1440) + 1440) % 1440;
+        return `${String(Math.floor(total / 60)).padStart(2,'0')}:${String(total % 60).padStart(2,'0')}`;
+      };
+
+      return {
+        fajr: clock(fajr), sunrise: clock(sunrise), dhuhr: clock(dhuhr),
+        asr: clock(asr), maghrib: clock(sunset), isha: clock(isha),
+        estimated, method: config.label
+      };
+    }
+
+    /** Tomorrow's Fajr, which is the one a night plan is actually built around. */
+    function tomorrowPrayerTimes() {
+      const place = state.settings.place;
+      if (!place || !Number.isFinite(place.latitude)) return null;
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      return prayerTimes({
+        latitude: place.latitude, longitude: place.longitude, date: tomorrow,
+        method: state.settings.prayerMethod || 'mwl',
+        madhab: state.settings.madhab || 'standard',
+        highLatRule: state.settings.highLatRule || 'seventh'
+      });
+    }
+
+    function todayPrayerTimes() {
+      const place = state.settings.place;
+      if (!place || !Number.isFinite(place.latitude)) return null;
+      return prayerTimes({
+        latitude: place.latitude, longitude: place.longitude, date: new Date(),
+        method: state.settings.prayerMethod || 'mwl',
+        madhab: state.settings.madhab || 'standard',
+        highLatRule: state.settings.highLatRule || 'seventh'
+      });
+    }
+
+
+    // Test probe: lets the prayer maths be checked against published
+    // timetables without exposing app internals in normal use.
+    window.__prayerProbe = (latitude, longitude, method, y, m, d, highLatRule) =>
+      prayerTimes({ latitude, longitude, method, highLatRule, date:new Date(y, m-1, d, 12, 0, 0) });
+
+    function renderPrayer() {
+      const card = $('#prayerCard');
+      if (!card) return;
+      const place = state.settings.place;
+      const configured = Boolean(place && Number.isFinite(place.latitude));
+
+      $('#prayerSetup').hidden = configured;
+      $('#changePlace').hidden = !configured;
+      $('#prayerTimes').hidden = !configured;
+      $('#prayerOptions').hidden = !configured;
+      $('#prayerOffsets').hidden = !configured;
+      $('#fajrSource').textContent = '';
+
+      if (!configured) {
+        $('#prayerHeadline').textContent = 'Set your location once';
+        return;
+      }
+
+      const today = todayPrayerTimes();
+      const tomorrow = tomorrowPrayerTimes();
+      if (!today) return;
+
+      const fatemi = (state.settings.tradition || 'fatemi') === 'fatemi';
+      const nudge = state.settings.prayerOffsets || {};
+      const shift = (value, key) => value === null ? null
+        : normalizeMinutes(toMinutes(value) + (Number(nudge[key]) || 0));
+
+      $('#prayerHeadline').textContent = place.name
+        ? `Tonight in ${place.name}` : 'Tonight where you are';
+
+      const cell = (label, minutes, key, note) => `<div class="prayer-time${key ? ' ' + key : ''}">
+        <span>${label}</span><strong>${minutes === null ? '—' : formatTime(minutes)}</strong>
+        ${note ? `<em>${note}</em>` : ''}</div>`;
+
+      if (fatemi) {
+        // Three prayer times, not five: Zohr is prayed with Asr, and
+        // Maghrib with Isha. For sleep that matters — the night's last
+        // prayer lands at sunset rather than deep into the evening.
+        $('#prayerTimes').innerHTML =
+          // One row, not two: Sihori ends close to Fajr but the exact gap is
+          // a Dawat convention, not something to derive from the sun. The
+          // offset below is how you set it to your own timetable.
+          cell('Fajr', shift(today.fajr,'fajr'), 'fajr', 'sihori ends') +
+          cell('Sunrise', shift(today.sunrise,'sunrise')) +
+          cell('Zohr', shift(today.dhuhr,'dhuhr'), '', 'with Asr') +
+          cell('Maghrib', shift(today.maghrib,'maghrib'), 'isha', 'with Isha') +
+          cell('Nisful layl', today.maghrib && today.fajr
+            ? normalizeMinutes(toMinutes(today.maghrib) + Math.round(
+                (((toMinutes(today.fajr) - toMinutes(today.maghrib)) + 1440) % 1440) / 2)) : null) +
+          `<div class="prayer-tomorrow">Tomorrow’s Fajr <strong>${tomorrow?.fajr ? formatTime(shift(tomorrow.fajr,'fajr')) : '—'}</strong>${today.estimated ? ' · estimated, the sun does not dip far enough here at this time of year' : ''}</div>`;
+      } else {
+        $('#prayerTimes').innerHTML =
+          cell('Fajr', shift(today.fajr,'fajr'), 'fajr') +
+          cell('Sunrise', shift(today.sunrise,'sunrise')) +
+          cell('Dhuhr', shift(today.dhuhr,'dhuhr')) +
+          cell('Asr', shift(today.asr,'asr')) +
+          cell('Maghrib', shift(today.maghrib,'maghrib')) +
+          cell('Isha', shift(today.isha,'isha'), 'isha') +
+          `<div class="prayer-tomorrow">Tomorrow’s Fajr <strong>${tomorrow?.fajr ? formatTime(shift(tomorrow.fajr,'fajr')) : '—'}</strong>${today.estimated ? ' · estimated, the sun does not dip far enough here at this time of year' : ''}</div>`;
+      }
+
+      $('#prayerNote').innerHTML = fatemi
+        ? '<strong>Check these against your Dawat timetable.</strong> These are astronomical calculations, not the official miqaat times. Where they differ, the Dawat timetable is right and yours is the one to trust — use the adjustment below to line this up with it, once.'
+        : '<strong>These are calculated times.</strong> Communities differ, and your local mosque’s timetable is the authority. Use this for planning sleep, not for deciding when to pray.';
+
+      if (state.settings.fajrEdited) {
+        $('#fajrSource').textContent = 'Set by you';
+      } else if (tomorrow?.fajr) {
+        const value = shift(tomorrow.fajr,'fajr');
+        $('#fajrTime').value = `${String(Math.floor(value/60)).padStart(2,'0')}:${String(value%60).padStart(2,'0')}`;
+        $('#fajrSource').textContent = `Calculated for ${place.name || 'your location'}${tomorrow.estimated ? ' · estimated' : ''}`;
+        renderPlanPreview();
+      }
+    }
+
+    $('#changePlace')?.addEventListener('click', () => {
+      // People move, and this app has a travel planner in it. Being able to
+      // change your city is not optional.
+      $('#prayerSetup').hidden = false;
+      $('#citySearch').value = '';
+      $('#cityResults').innerHTML = '';
+      $('#citySearch').focus();
+    });
+
+    function savePlace(latitude, longitude, name) {
+      state.settings.place = { latitude, longitude, name: name || '' };
+      state.settings.fajrEdited = false;
+      saveState();
+      renderPrayer();
+      toast(`Prayer times set for ${name || 'your location'}`);
+    }
+
+    $('#useLocation')?.addEventListener('click', () => {
+      if (!navigator.geolocation) { toast('This device cannot share a location'); return; }
+      // Explain before the system prompt appears. A permission sheet with no
+      // stated reason is the fastest way to a "Don't Allow" you cannot undo.
+      const ok = window.confirm(
+        'SleepSphere needs your rough location to work out prayer times for where you are.\n\n' +
+        'It is used on this phone only, to do the sun calculation. It is never sent anywhere, ' +
+        'and you can enter a city by hand instead.\n\nAsk for location now?');
+      if (!ok) { toast('No problem — pick a city instead'); return; }
+      toast('Asking your device for a location…');
+      navigator.geolocation.getCurrentPosition(
+        position => savePlace(
+          Math.round(position.coords.latitude * 10000) / 10000,
+          Math.round(position.coords.longitude * 10000) / 10000, ''),
+        () => toast('Location declined. You can enter it by hand instead.'),
+        { enableHighAccuracy:false, timeout:10000, maximumAge:600000 }
+      );
+    });
+    $('#enterLocation')?.addEventListener('click', () => {
+      $('#prayerManual').hidden = false;
+      $('#prayerManualActions').hidden = false;
+      $('#placeLat').focus();
+    });
+    $('#savePlace')?.addEventListener('click', () => {
+      const latitude = Number($('#placeLat').value), longitude = Number($('#placeLon').value);
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
+        toast('Enter a latitude between −90 and 90, and a longitude between −180 and 180');
+        return;
+      }
+      $('#prayerManual').hidden = true;
+      $('#prayerManualActions').hidden = true;
+      savePlace(latitude, longitude, $('#placeName').value.trim());
+    });
+    ['prayerMethod','prayerTradition','prayerHighLat'].forEach(id => {
+      $('#' + id)?.addEventListener('change', () => {
+        state.settings.prayerMethod = $('#prayerMethod').value;
+        state.settings.tradition = $('#prayerTradition').value;
+        state.settings.madhab = $('#prayerTradition').value === 'hanafi' ? 'hanafi' : 'standard';
+        state.settings.highLatRule = $('#prayerHighLat').value;
+        state.settings.fajrEdited = false;
+        saveState();
+        renderPrayer();
+      });
+    });
+    // A hand-typed Fajr wins; the app stops overwriting it.
+    $('#fajrTime')?.addEventListener('input', () => {
+      state.settings.fajrEdited = true;
+      $('#fajrSource').textContent = 'Set by you';
+      saveState();
+    });
+
+    const OFFSET_FIELDS = { offFajr:'fajr', offSunrise:'sunrise', offDhuhr:'dhuhr',
+                            offAsr:'asr', offMaghrib:'maghrib', offIsha:'isha' };
+    Object.keys(OFFSET_FIELDS).forEach(id => {
+      $('#' + id)?.addEventListener('change', () => {
+        const offsets = { ...(state.settings.prayerOffsets || {}) };
+        offsets[OFFSET_FIELDS[id]] = clamp(Number($('#' + id).value) || 0, -60, 60);
+        state.settings.prayerOffsets = offsets;
+        state.settings.fajrEdited = false;
+        saveState();
+        renderPrayer();
+      });
+    });
+
+    function renderCityResults(query) {
+      const box = $('#cityResults');
+      if (!box) return;
+      const term = query.trim().toLowerCase();
+      if (term.length < 2) { box.innerHTML = ''; return; }
+      const hits = CITIES
+        .filter(city => city.name.toLowerCase().includes(term) || city.country.toLowerCase().includes(term))
+        .slice(0, 8);
+      box.innerHTML = hits.length
+        ? hits.map(city => `<button type="button" class="city-hit" data-city="${escapeHtml(city.name)}">
+             <strong>${escapeHtml(city.name)}</strong><span>${escapeHtml(city.country)}</span></button>`).join('')
+        : '<div class="empty">No match. You can enter coordinates instead.</div>';
+      box.querySelectorAll('.city-hit').forEach(button => button.addEventListener('click', () => {
+        const city = CITIES.find(item => item.name === button.dataset.city);
+        if (!city) return;
+        // The region's usual convention comes with the city; still changeable.
+        state.settings.prayerMethod = city.method;
+        savePlace(city.latitude, city.longitude, city.name);
+        $('#citySearch').value = '';
+        box.innerHTML = '';
+        populatePrayerForm();
+      }));
+    }
+    $('#citySearch')?.addEventListener('input', event => renderCityResults(event.target.value));
+
+    function populatePrayerForm() {
+      const select = $('#prayerMethod');
+      if (select && !select.options.length) {
+        select.innerHTML = Object.entries(PRAYER_METHODS)
+          .map(([key,value]) => `<option value="${key}">${escapeHtml(value.label)}</option>`).join('');
+      }
+      if (select) select.value = state.settings.prayerMethod || 'mwl';
+      if ($('#prayerTradition')) $('#prayerTradition').value = state.settings.tradition || 'fatemi';
+      if ($('#prayerHighLat')) $('#prayerHighLat').value = state.settings.highLatRule || 'seventh';
+      const offsets = state.settings.prayerOffsets || {};
+      Object.entries(OFFSET_FIELDS).forEach(([id,key]) => {
+        if ($('#' + id)) $('#' + id).value = String(offsets[key] || 0);
       });
     }
 
