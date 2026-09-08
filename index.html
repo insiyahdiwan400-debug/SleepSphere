@@ -749,6 +749,12 @@
     body.dim .qc.picked { background:linear-gradient(145deg,rgba(74,169,157,.22),rgba(158,219,210,.1)); }
 
     .flow-note { width:100%; min-height:104px; margin-top:4px; padding:14px 15px; border:1.5px solid var(--line); border-radius:18px; color:var(--ink); background:var(--card); resize:vertical; }
+    .flow-times { display:grid; gap:10px; }
+    .flow-time { display:grid; gap:6px; padding:13px 15px; border:1.5px solid var(--line); border-radius:18px; background:var(--card); }
+    .flow-time span { color:var(--muted); font-size:12.5px; font-weight:750; letter-spacing:.3px; }
+    .flow-time input { width:100%; padding:6px 0; border:0; background:none; color:var(--ink); font-size:21px; font-weight:750; }
+    .flow-time input:focus-visible { outline:none; }
+    .flow-time:focus-within { border-color:var(--teal); box-shadow:0 0 0 3px rgba(111,216,205,.14); }
 
     .flow-foot { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 18px max(16px,env(safe-area-inset-bottom)); }
     .flow-link { border:0; padding:10px 4px; color:var(--muted); background:none; font-size:14.5px; font-weight:650; }
@@ -1136,8 +1142,35 @@
       .console-actions .btn { width:100%; justify-content:center; }
       .guide-strip { margin-top:16px; }
     }
+    /* Arriving on a screen should feel like settling into it. The section
+       lifts, then its cards follow in a short stagger. */
+    .view { animation:enter .34s cubic-bezier(.22,1,.36,1); }
+    .view.active > .grid > .card,
+    .view.active > .grid > article,
+    .view.active > .night-console { animation:rise .46s cubic-bezier(.22,1,.36,1) both; }
+    @keyframes rise { from { opacity:0; transform:translateY(15px); } to { opacity:1; transform:none; } }
+    .view.active > .grid > *:nth-child(1) { animation-delay:.02s; }
+    .view.active > .grid > *:nth-child(2) { animation-delay:.06s; }
+    .view.active > .grid > *:nth-child(3) { animation-delay:.10s; }
+    .view.active > .grid > *:nth-child(4) { animation-delay:.14s; }
+    .view.active > .grid > *:nth-child(5) { animation-delay:.18s; }
+    .view.active > .grid > *:nth-child(n+6) { animation-delay:.22s; }
+
+    /* Everything tappable should answer the finger. */
+    .nav button, .card, .qc, .intent-pill, .chip, .scale button, .mini-scale button, .btn {
+      -webkit-tap-highlight-color:transparent;
+    }
+    .nav button:active, .intent-pill:active, .chip:active,
+    .scale button:active, .mini-scale button:active { transform:scale(.94); }
+    .btn:active { transform:scale(.975); }
+    .nav button, .intent-pill, .chip, .scale button, .mini-scale button, .btn {
+      transition:transform .13s cubic-bezier(.22,1,.36,1), background .18s ease,
+                 border-color .18s ease, box-shadow .18s ease, color .18s ease;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       body::before, body::after, .sabat-sphere { animation:none !important; }
+      .view, .view.active > .grid > *, .view.active > .night-console { animation:none !important; }
     }
   </style>
 </head>
@@ -1362,7 +1395,13 @@
           <div class="section-head"><div><div class="eyebrow">Morning record</div><h2>How did sleep actually function?</h2></div><p>This diary borrows the useful structure of sleep diaries while adding restoration, Fajr readiness and everyday context. Estimates are welcome; perfection is not required.</p></div>
           <div class="grid">
             <article class="card span-8">
-              <div class="form-grid three">
+              <div class="card-label">This morning</div>
+              <h3 style="margin:6px 0 8px">A few quick taps, then your result.</h3>
+              <p class="helper">One question at a time. If you saved a plan last night, this creates your Restoration Twin.</p>
+              <div class="button-row" style="margin-top:16px"><button class="btn primary" id="startMorningFlow">Record this morning</button></div>
+              <details style="margin-top:18px">
+                <summary style="cursor:pointer;color:var(--muted);font-size:14px;font-weight:650">Prefer to fill it in as one form?</summary>
+              <div class="form-grid three" style="margin-top:14px">
                 <div class="field"><label for="logDate">Night of</label><input id="logDate" type="date" /></div>
                 <div class="field"><label for="actualBed">Got into bed</label><input id="actualBed" type="time" value="22:30" /></div>
                 <div class="field"><label for="actualSleep">Fell asleep around</label><input id="actualSleep" type="time" value="23:00" /></div>
@@ -1399,6 +1438,7 @@
               </div>
               <div class="field"><label for="morningNote">Anything the numbers miss?</label><textarea id="morningNote" placeholder="For example: I slept long enough but woke with a headache; I felt calm even though the night was short..."></textarea></div>
               <div class="button-row"><button class="btn primary" id="saveMorning">Save morning record</button><button class="btn ghost" data-go="compass">View the Sabat Compass</button></div>
+              </details>
             </article>
 
             <article class="card span-4">
@@ -1866,7 +1906,10 @@
       $('#navMore').setAttribute('aria-expanded',String(expanded));
     });
     $$('[data-go]').forEach(button => button.addEventListener('click', () => {
-      if (button.dataset.go === 'flow') openFlow(); else navigate(button.dataset.go);
+      const target = button.dataset.go;
+      if (target === 'flow') openFlow('evening');
+      else if (target === 'morningFlow') openFlow('morning');
+      else navigate(target);
     }));
     $$('[data-scroll]').forEach(button => button.addEventListener('click', () => { navigate('today'); window.setTimeout(() => document.getElementById(button.dataset.scroll)?.scrollIntoView({behavior:'smooth',block:'start'}), 180); }));
     $('#dimToggle').addEventListener('click', () => { state.settings.dim = !state.settings.dim; document.body.classList.toggle('dim', state.settings.dim); saveState(); });
@@ -2325,7 +2368,7 @@
       const next = $('#guideNext');
       if (!hasBio) { next.textContent = 'Start tonight’s check-in'; next.dataset.go = 'flow'; }
       else if (!hasPlan) { next.textContent = 'Plan tonight'; next.dataset.go = 'plan'; }
-      else if (!hasMorning) { next.textContent = 'Return tomorrow: record morning'; next.dataset.go = 'morning'; }
+      else if (!hasMorning) { next.textContent = 'Record this morning'; next.dataset.go = 'morningFlow'; }
       else { next.textContent = 'See my pattern'; next.dataset.go = 'twin'; }
     }
 
@@ -2806,7 +2849,7 @@
        scoring, history, pairing and CSV export stay exactly as they were.
        The detailed form is still available on the Bio Harmony screen.
        ------------------------------------------------------------------ */
-    const flowSteps = [
+    const eveningSteps = [
       { key:'intent', kind:'intent', question:'What matters most tomorrow?', hint:'This stays visible across the app, so every screen answers the same question.', options:[
         { value:'restore', icon:'☾', label:'Feel restored', sub:'Wake up with something in the tank.' },
         { value:'focus', icon:'◈', label:'Think clearly', sub:'Hold attention through the day.' },
@@ -2861,14 +2904,60 @@
       { key:'bioNote', target:'#bioNote', kind:'note', optional:true, question:'Anything the check-in cannot see?', hint:'Travel, fasting, a medication change, exam pressure, caregiving, a celebration. Optional — skip if nothing stands out.', placeholder:'Optional. Written in your own words, kept in this browser.' }
     ];
 
+    // The morning record is the thing testers repeat every day, so it runs
+    // through the same one-question-at-a-time flow. Every step writes into
+    // the existing morning form, or clicks its own controls, so the estimate,
+    // the pairing and the Restoration Twin behave exactly as before.
+    const morningSteps = [
+      { key:'times', kind:'times', question:'When were you actually in bed?', hint:'Estimates are welcome. Nobody remembers this to the minute.' },
+      { key:'awake', kind:'choice', target:'#awakeMinutes', question:'How much were you awake in the night?', hint:'Add up the wakeful stretches as best you can.', options:[
+        { value:'0', icon:'○', label:'Barely at all', sub:'Straight through, or close to it.' },
+        { value:'15', icon:'◔', label:'About fifteen minutes', sub:'A brief stir.' },
+        { value:'30', icon:'◑', label:'About half an hour', sub:'One real wake-up.' },
+        { value:'60', icon:'◕', label:'About an hour', sub:'Broken in a few places.' },
+        { value:'120', icon:'⬤', label:'More than an hour', sub:'A properly disturbed night.' }
+      ]},
+      { key:'nap', kind:'choice', target:'#napMinutes', question:'Did you nap yesterday?', hint:'Daytime sleep changes how last night reads.', options:[
+        { value:'0', icon:'○', label:'No nap', sub:'Nothing to account for.' },
+        { value:'20', icon:'◔', label:'A short nap', sub:'Around twenty minutes.' },
+        { value:'45', icon:'◑', label:'About forty-five minutes', sub:'A proper doze.' },
+        { value:'90', icon:'◕', label:'An hour or more', sub:'A long one.' }
+      ]},
+      { key:'rest', kind:'scale', rating:'rest', question:'How restored do you feel?', hint:'The honest answer, not the one you would like to be true.', low:'Not restored', high:'Very restored' },
+      { key:'energy', kind:'scale', rating:'energy', question:'And your energy right now?', hint:'How much is actually in the tank this morning.', low:'Very low', high:'Very steady' },
+      { key:'focus', kind:'scale', rating:'focus', question:'How clear is your concentration?', hint:'Scattered, or able to hold on to a thought.', low:'Scattered', high:'Clear' },
+      { key:'calm', kind:'scale', rating:'calm', question:'How mentally calm do you feel?', hint:'How much you are already carrying as the day starts.', low:'Carrying a lot', high:'Mentally calm' },
+      { key:'fajrStatus', target:'#fajrStatus', optional:true, question:'How was Fajr?', hint:'Skip this if it is not part of your night.', options:[
+        { value:'ready', icon:'✦', label:'Woke and felt ready', sub:'Present for it.' },
+        { value:'woke_tired', icon:'◐', label:'Woke, but very tired', sub:'There, but heavily.' },
+        { value:'late', icon:'◷', label:'Woke late, or struggled', sub:'It did not go to plan.' },
+        { value:'not_applicable', icon:'○', label:'Not part of this night', sub:'' },
+        { value:'prefer_not', icon:'·', label:'Prefer not to record', sub:'' }
+      ]},
+      { key:'factors', kind:'multi', optional:true, question:'What was present last night?', hint:'Tap anything that fits, or none. Tap again to remove.' },
+      { key:'morningNote', target:'#morningNote', kind:'note', optional:true, question:'Anything the numbers miss?', hint:'“Slept long enough but woke with a headache.” “Short night, but calm.” Optional.', placeholder:'Optional. Kept in this browser.' }
+    ];
+
+    const flows = {
+      evening: { steps:eveningSteps, finish:finishEvening, reveal:revealEvening },
+      morning: { steps:morningSteps, finish:finishMorning, reveal:revealMorning }
+    };
+    let flowKind = 'evening';
     let flowIndex = 0;
     const flowPicks = {};
+    const flowSteps = () => flows[flowKind].steps;
 
-    function openFlow() {
+    function openFlow(kind) {
+      flowKind = flows[kind] ? kind : 'evening';
       flowIndex = 0;
       Object.keys(flowPicks).forEach(key => delete flowPicks[key]);
-      flowPicks.intent = state.settings.intent || 'restore';
-      $('#bioDate').value = new Date().toISOString().slice(0,10);
+      const today = new Date().toISOString().slice(0,10);
+      if (flowKind === 'evening') {
+        flowPicks.intent = state.settings.intent || 'restore';
+        $('#bioDate').value = today;
+      } else {
+        $('#logDate').value = today;
+      }
       $('#flow').classList.add('active');
       document.body.style.overflow = 'hidden';
       renderFlowStep();
@@ -2879,59 +2968,127 @@
       document.body.style.overflow = '';
     }
 
+    function qcButton(option, picked) {
+      return `<button type="button" class="qc${picked ? ' picked' : ''}" data-value="${escapeHtml(option.value)}">
+        <span class="qc-icon" aria-hidden="true">${option.icon}</span>
+        <span class="qc-text"><strong>${escapeHtml(option.label)}</strong>${option.sub ? `<span>${escapeHtml(option.sub)}</span>` : ''}</span>
+        <span class="qc-tick" aria-hidden="true">✓</span>
+      </button>`;
+    }
+
     function renderFlowStep() {
-      const step = flowSteps[flowIndex];
+      const steps = flowSteps();
+      const step = steps[flowIndex];
       const inner = $('#flowInner');
-      $('#flowBar').style.width = `${(flowIndex / flowSteps.length) * 100}%`;
+      const last = flowIndex === steps.length - 1;
+      $('#flowBar').style.width = `${(flowIndex / steps.length) * 100}%`;
       $('#flowBack').hidden = flowIndex === 0;
       $('#flowSkip').hidden = !step.optional;
       $('#flowSkip').textContent = 'Skip';
 
-      const heading = `<div class="flow-count">Step ${flowIndex+1} of ${flowSteps.length}</div>
+      const heading = `<div class="flow-count">Step ${flowIndex+1} of ${steps.length}</div>
         <h2 class="flow-q">${escapeHtml(step.question)}</h2>
         <p class="flow-hint">${escapeHtml(step.hint)}</p>`;
+      const cta = label => `<div class="reveal-actions" style="margin-top:15px"><button type="button" class="btn primary" id="flowNext">${label}</button></div>`;
+      const onNext = handler => $('#flowNext').addEventListener('click', () => { handler(); last ? finishFlow() : advanceFlow(); });
 
       if (step.kind === 'note') {
         inner.innerHTML = `<div class="flow-step">${heading}
           <textarea class="flow-note" id="flowNote" placeholder="${escapeHtml(step.placeholder)}"></textarea>
-          <div class="reveal-actions" style="margin-top:14px"><button type="button" class="btn primary" id="flowFinish">See my result</button></div></div>`;
-        $('#flowNote').value = flowPicks.bioNote || '';
+          ${cta(last ? 'See my result' : 'Continue')}</div>`;
+        $('#flowNote').value = flowPicks[step.key] || '';
         $('#flowSkip').textContent = 'Skip this';
-        $('#flowFinish').addEventListener('click', () => { flowPicks.bioNote = $('#flowNote').value.trim(); finishFlow(); });
+        onNext(() => { flowPicks[step.key] = $('#flowNote').value.trim(); });
+        return;
+      }
+
+      if (step.kind === 'times') {
+        const saved = flowPicks.times || {};
+        inner.innerHTML = `<div class="flow-step">${heading}
+          <div class="flow-times">
+            <label class="flow-time"><span>Got into bed</span><input type="time" id="ftBed" value="${saved.bed || $('#actualBed').value}" /></label>
+            <label class="flow-time"><span>Fell asleep around</span><input type="time" id="ftSleep" value="${saved.sleep || $('#actualSleep').value}" /></label>
+            <label class="flow-time"><span>Final wake time</span><input type="time" id="ftWake" value="${saved.wake || $('#actualWake').value}" /></label>
+          </div>${cta('Continue')}</div>`;
+        onNext(() => {
+          flowPicks.times = { bed:$('#ftBed').value, sleep:$('#ftSleep').value, wake:$('#ftWake').value };
+        });
+        return;
+      }
+
+      if (step.kind === 'scale') {
+        const labels = [step.low, 'Slightly', 'In between', 'Mostly', step.high];
+        const current = flowPicks[step.key];
+        inner.innerHTML = `<div class="flow-step">${heading}
+          <div class="flow-choices">${labels.map((label,index) => qcButton({
+            value:String(index+1), icon:String(index+1), label, sub:`${index+1} of 5`
+          }, String(current) === String(index+1))).join('')}</div></div>`;
+        inner.querySelectorAll('.qc').forEach(button => button.addEventListener('click', () => {
+          flowPicks[step.key] = button.dataset.value;
+          inner.querySelectorAll('.qc').forEach(other => other.classList.toggle('picked', other === button));
+          window.setTimeout(() => (last ? finishFlow() : advanceFlow()), 210);
+        }));
+        return;
+      }
+
+      if (step.kind === 'multi') {
+        const chosen = new Set(flowPicks.factors || []);
+        const chips = $$('#factorChips .chip').map(chip => chip.dataset.factor);
+        inner.innerHTML = `<div class="flow-step">${heading}
+          <div class="flow-choices">${chips.map(factor => qcButton(
+            { value:factor, icon:'◆', label:$$('#factorChips .chip').find(chip => chip.dataset.factor === factor).textContent, sub:'' },
+            chosen.has(factor)
+          )).join('')}</div>${cta(last ? 'See my result' : 'Continue')}</div>`;
+        inner.querySelectorAll('.qc').forEach(button => button.addEventListener('click', () => {
+          const factor = button.dataset.value;
+          chosen.has(factor) ? chosen.delete(factor) : chosen.add(factor);
+          button.classList.toggle('picked', chosen.has(factor));
+          flowPicks.factors = [...chosen];
+        }));
+        $('#flowSkip').textContent = 'None of these';
+        onNext(() => { flowPicks.factors = [...chosen]; });
         return;
       }
 
       const current = flowPicks[step.key];
       inner.innerHTML = `<div class="flow-step">${heading}
-        <div class="flow-choices">${step.options.map(option => `
-          <button type="button" class="qc${String(current) === String(option.value) ? ' picked' : ''}" data-value="${escapeHtml(option.value)}">
-            <span class="qc-icon" aria-hidden="true">${option.icon}</span>
-            <span class="qc-text"><strong>${escapeHtml(option.label)}</strong><span>${escapeHtml(option.sub)}</span></span>
-            <span class="qc-tick" aria-hidden="true">✓</span>
-          </button>`).join('')}</div></div>`;
+        <div class="flow-choices">${step.options.map(option =>
+          qcButton(option, String(current) === String(option.value))).join('')}</div></div>`;
 
       inner.querySelectorAll('.qc').forEach(button => button.addEventListener('click', () => {
         flowPicks[step.key] = button.dataset.value;
         inner.querySelectorAll('.qc').forEach(other => other.classList.toggle('picked', other === button));
-        window.setTimeout(advanceFlow, 210);
+        window.setTimeout(() => (last ? finishFlow() : advanceFlow()), 210);
       }));
     }
 
     function advanceFlow() {
-      if (flowIndex >= flowSteps.length - 1) { finishFlow(); return; }
+      if (flowIndex >= flowSteps().length - 1) { finishFlow(); return; }
       flowIndex += 1;
       renderFlowStep();
       $('.flow-body').scrollTop = 0;
     }
 
-    function finishFlow() {
-      // Write every answer into the original controls, then reuse the
-      // existing save path so nothing downstream has to change.
-      flowSteps.forEach(step => {
+    function writeTargets() {
+      flowSteps().forEach(step => {
         if (!step.target) return;
         const value = flowPicks[step.key];
         if (value != null) $(step.target).value = value;
       });
+    }
+
+    function finishFlow() {
+      flows[flowKind].finish();
+      $('#flowBar').style.width = '100%';
+      $('#flowBack').hidden = true;
+      $('#flowSkip').hidden = true;
+      flows[flowKind].reveal();
+    }
+
+    function finishEvening() {
+      // Write every answer into the original controls, then reuse the
+      // existing save path so nothing downstream has to change.
+      writeTargets();
       if (flowPicks.intent) {
         state.settings.intent = flowPicks.intent;
         renderIntent();
@@ -2941,13 +3098,36 @@
       const today = $('#bioDate').value;
       state.bioCheckins = state.bioCheckins.filter(item => item.date !== today);
       $('#saveBio').click();
-      $('#flowBar').style.width = '100%';
-      $('#flowBack').hidden = true;
-      $('#flowSkip').hidden = true;
-      renderFlowReveal();
     }
 
-    function renderFlowReveal() {
+    function finishMorning() {
+      writeTargets();
+      const times = flowPicks.times || {};
+      if (times.bed) $('#actualBed').value = times.bed;
+      if (times.sleep) $('#actualSleep').value = times.sleep;
+      if (times.wake) $('#actualWake').value = times.wake;
+      morningEstimate();
+
+      // Click the app's own controls so ratings and factors are recorded
+      // through exactly the same handlers the form uses.
+      ['rest','energy','focus','calm'].forEach(key => {
+        const pick = Number(flowPicks[key]);
+        if (!pick) return;
+        const scale = document.querySelector(`[data-rating="${key}"]`);
+        if (scale) scale.querySelectorAll('button')[pick-1]?.click();
+      });
+      const wanted = new Set(flowPicks.factors || []);
+      $$('#factorChips .chip').forEach(chip => {
+        const on = chip.classList.contains('active');
+        if (wanted.has(chip.dataset.factor) !== on) chip.click();
+      });
+
+      const date = $('#logDate').value;
+      state.mornings = state.mornings.filter(item => item.demo || item.date !== date);
+      $('#saveMorning').click();
+    }
+
+    function revealEvening() {
       const latest = [...state.bioCheckins].sort((a,b) => String(a.date).localeCompare(String(b.date))).at(-1);
       if (!latest) { closeFlow(); return; }
       const [title,summary] = bioStatus(latest.harmony);
@@ -2995,11 +3175,77 @@
       $('#revealDetail').addEventListener('click', () => { closeFlow(); navigate('bio'); });
     }
 
+    function revealMorning() {
+      const record = [...state.mornings].filter(item => !item.demo)
+        .sort((a,b) => String(a.date).localeCompare(String(b.date))).at(-1);
+      if (!record) { closeFlow(); return; }
+
+      const planned = record.planSnapshot
+        ? Number(record.planSnapshot.total || record.planSnapshot.target || 0) : 0;
+      const delta = planned ? record.opportunityMinutes - planned : null;
+      const paired = Boolean(record.planSnapshot);
+      const line = (label, value) => `<div class="reveal-signal"><b>${label}</b><i>${value}</i></div>`;
+
+      $('#flowInner').innerHTML = `<div class="reveal">
+        <div class="reveal-ring" id="revealRing"><div class="reveal-num"><strong id="revealNum">0</strong><span>Estimated sleep</span></div></div>
+        <h2>${escapeHtml(paired ? 'Your Restoration Twin is ready' : 'Morning recorded')}</h2>
+        <p>${escapeHtml(paired
+          ? 'This morning is now paired with the night you planned, so you can see the gap between intention and real life.'
+          : 'Recorded without judgement. Save a night plan tonight and tomorrow’s record will pair with it.')}</p>
+        <div class="reveal-signals">
+          ${line('How restored you felt', `${record.rest} / 5`)}
+          ${line('Sleep efficiency', `${record.efficiency}%`)}
+          ${line('Time in bed', formatDuration(record.opportunityMinutes))}
+          ${planned ? line('You had planned', formatDuration(planned)) : ''}
+          ${delta !== null ? line('Difference', `${delta >= 0 ? '+' : '−'}${formatDuration(Math.abs(delta))}`) : ''}
+        </div>
+        <div class="reveal-move">
+          <div class="card-label">What this does not mean</div>
+          <strong>One morning is a data point, not a verdict.</strong>
+          <p>A single night cannot tell you what causes what. SleepSphere waits for a pattern before suggesting anything, and it will keep showing you the arithmetic.</p>
+        </div>
+        <div class="reveal-actions">
+          <button type="button" class="btn primary" id="revealPattern">${paired ? 'See my Restoration Twin' : 'See my pattern'}</button>
+          <button type="button" class="btn ghost" id="revealMorningDetail">See the full record</button>
+        </div>
+      </div>`;
+
+      // The ring reads sleep against a ten-hour dial so it always lands
+      // somewhere sensible, and the number counts up in hours and minutes.
+      const minutes = record.sleepMinutes;
+      const ring = $('#revealRing');
+      const num = $('#revealNum');
+      const pct = clamp(minutes / 600 * 100, 0, 100);
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        num.textContent = formatDuration(minutes);
+        ring.style.setProperty('--harmony', pct);
+      } else {
+        window.requestAnimationFrame(() => ring.style.setProperty('--harmony', pct));
+        const start = performance.now();
+        const tick = now => {
+          const progress = Math.min(1, (now - start) / 1100);
+          num.textContent = formatDuration(Math.round(minutes * (1 - Math.pow(1 - progress, 3))));
+          if (progress < 1) window.requestAnimationFrame(tick);
+        };
+        window.requestAnimationFrame(tick);
+      }
+
+      $('#revealPattern').addEventListener('click', () => { closeFlow(); navigate('twin'); });
+      $('#revealMorningDetail').addEventListener('click', () => { closeFlow(); navigate('morning'); });
+    }
+
     $('#flowClose').addEventListener('click', closeFlow);
     $('#flowBack').addEventListener('click', () => { if (flowIndex > 0) { flowIndex -= 1; renderFlowStep(); } });
-    $('#flowSkip').addEventListener('click', () => { const step = flowSteps[flowIndex]; if (step.kind === 'note') { flowPicks.bioNote = ''; finishFlow(); } else advanceFlow(); });
+    $('#flowSkip').addEventListener('click', () => {
+      const steps = flowSteps();
+      const step = steps[flowIndex];
+      if (step.kind === 'note') flowPicks[step.key] = '';
+      if (step.kind === 'multi') flowPicks.factors = [];
+      if (flowIndex >= steps.length - 1) finishFlow(); else advanceFlow();
+    });
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && $('#flow').classList.contains('active')) closeFlow(); });
-    $('#startFlow').addEventListener('click', openFlow);
+    $('#startFlow').addEventListener('click', () => openFlow('evening'));
+    $('#startMorningFlow').addEventListener('click', () => openFlow('morning'));
 
     function closeWelcome(destination) {
       state.settings.welcomeSeen = true;
