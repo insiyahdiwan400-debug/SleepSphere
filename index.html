@@ -801,7 +801,8 @@
        ================================================================== */
     :root {
       --ink:#e9eefb;
-      --muted:#8d9bbb;
+      /* Lifted from #8d9bbb so secondary labels clear 4.5:1 on card fills. */
+      --muted:#98a6c6;
       --paper:#070c1b;
       --paper-2:#0d142c;
       --card:rgba(21,30,58,.66);
@@ -995,6 +996,43 @@
       background:linear-gradient(158deg, rgba(19,28,61,.9), rgba(8,13,32,.94));
       box-shadow:var(--shadow);
     }
+    /* Surfaces the pearl palette left mid-grey, which read as washed-out
+       boxes floating on the night sky. */
+    .gap-banner {
+      color:#eaf4ff; border:1px solid rgba(111,216,205,.2);
+      background:
+        radial-gradient(ellipse 70% 60% at 84% 6%, rgba(111,216,205,.18), transparent 70%),
+        linear-gradient(150deg, rgba(23,33,70,.96), rgba(10,16,38,.98));
+    }
+    .gap-banner strong { color:var(--gold-soft); }
+    .gap-banner span { color:#a8bbdc; }
+    .console-metrics { border-color:var(--line); background:var(--line); }
+    /* These kept an opaque white from the very first palette and never got
+       re-themed, so they punched white holes in the sky. */
+    .loop-number {
+      color:#04121a; border-color:transparent;
+      background:linear-gradient(150deg, var(--aqua), var(--teal));
+    }
+    .loop-step .status { color:var(--aqua); background:rgba(111,216,205,.14); }
+    .source-card { background:rgba(31,43,78,.44); }
+    /* Reference links were left a dull sage that reads at 3.8:1 on night. */
+    .source-card a, .history-item a { color:var(--aqua); }
+    .btn.light { color:#04121a; background:linear-gradient(150deg, var(--aqua), var(--teal)); }
+    /* Callout text was left a dark brown/rose that vanishes on dark. */
+    .callout { color:#f0d9a4; background:rgba(240,205,132,.08); border-left-color:var(--gold); }
+    .callout.teal { color:#a9e9df; background:rgba(111,216,205,.08); border-left-color:var(--teal); }
+    .callout.safety { color:#f0b6bf; background:rgba(226,145,156,.09); border-left-color:var(--rose); }
+    /* White on mint is only 2.6:1; the ink the buttons use is far higher. */
+    .segmented button.active, .mini-scale button.selected,
+    .chip.active, .scale button.active, .mini-scale button.active {
+      color:#04121a; border-color:transparent;
+      background:linear-gradient(150deg, var(--aqua), var(--teal));
+      box-shadow:0 4px 16px rgba(111,216,205,.3);
+    }
+    .twin-line { background:rgba(150,180,230,.12); }
+    .twin-line.plan span { background:linear-gradient(90deg, var(--gold), var(--gold-soft)); }
+    .twin-line.actual span { background:linear-gradient(90deg, var(--teal-deep), var(--aqua)); }
+    .twin-delta > div { background:rgba(31,43,78,.5); border-color:var(--line); }
     .twin-visual, .hero {
       background:
         radial-gradient(ellipse 60% 50% at 80% 6%, rgba(111,216,205,.15), transparent 68%),
