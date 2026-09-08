@@ -1178,51 +1178,15 @@
        phase; the colour is spent low, at the horizon, where nothing has
        to be read over it.
        ================================================================== */
-    /* --sun-at is where the light actually is: rising low in the east,
-       climbing overhead by midday, setting opposite, the moon high at
-       night. The halo and the directional wash both come from that point,
-       so the leak across the screen matches the hour outside. */
-    :root[data-sky="night"] {
+    /* Sky tokens are interpolated in JS every minute and written onto
+       the root element, so the colours drift continuously through the day
+       instead of snapping between phases. These are the fallbacks. */
+    :root {
       --sky-top:#05070f; --sky-mid:#080d1a; --sky-low:#0f1a2e;
-      --sun-at:72% 9%;  --sun-halo:rgba(214,224,255,.13);
+      --sun-at:72% 9%; --sun-halo:rgba(214,224,255,.13);
       --glow-1:rgba(150,175,225,.09);
       --glow-2:rgba(116,136,196,.06); --glow-2-at:20% 98%;
       --stars:.6; --orb:#e8e2d6;
-    }
-    :root[data-sky="dawn"] {
-      --sky-top:#0d1030; --sky-mid:#231a3f; --sky-low:#4a2a48;
-      --sun-at:14% 86%; --sun-halo:rgba(255,168,116,.26);
-      --glow-1:rgba(226,124,92,.20);
-      --glow-2:rgba(150,130,210,.09); --glow-2-at:82% 10%;
-      --stars:.26; --orb:#ffcf9a;
-    }
-    :root[data-sky="morning"] {
-      --sky-top:#0d2440; --sky-mid:#164059; --sky-low:#256b83;
-      --sun-at:22% 40%; --sun-halo:rgba(255,224,164,.20);
-      --glow-1:rgba(255,212,148,.14);
-      --glow-2:rgba(150,215,235,.09); --glow-2-at:84% 92%;
-      --stars:0; --orb:#ffe8b4;
-    }
-    :root[data-sky="day"] {
-      --sky-top:#12395c; --sky-mid:#1a5578; --sky-low:#2b7a97;
-      --sun-at:52% 2%;  --sun-halo:rgba(255,247,214,.22);
-      --glow-1:rgba(196,230,250,.13);
-      --glow-2:rgba(255,240,205,.07); --glow-2-at:30% 104%;
-      --stars:0; --orb:#fff6d6;
-    }
-    :root[data-sky="evening"] {
-      --sky-top:#1a1020; --sky-mid:#3a1e2c; --sky-low:#6b3430;
-      --sun-at:84% 52%; --sun-halo:rgba(255,158,84,.26);
-      --glow-1:rgba(240,146,74,.19);
-      --glow-2:rgba(120,96,170,.09); --glow-2-at:12% 8%;
-      --stars:.14; --orb:#ffb46e;
-    }
-    :root[data-sky="dusk"] {
-      --sky-top:#090b22; --sky-mid:#141438; --sky-low:#2a2450;
-      --sun-at:88% 94%; --sun-halo:rgba(206,132,150,.16);
-      --glow-1:rgba(138,110,196,.15);
-      --glow-2:rgba(88,108,178,.08); --glow-2-at:18% 12%;
-      --stars:.74; --orb:#d6cee9;
     }
 
     /* A lighter sky needs lighter type and denser glass, or every muted
@@ -1271,30 +1235,6 @@
       --sky-top:#dcd7cb; --sky-mid:#d3cec1; --sky-low:#c7c1b3;
       --sun-halo:rgba(255,238,196,.5); --glow-1:rgba(214,196,160,.4);
       --glow-2:rgba(186,190,204,.3); --stars:0;
-    }
-    :root[data-mode="light"][data-sky="dawn"] {
-      --sky-top:#dcd2cd; --sky-mid:#d8c9c2; --sky-low:#d0bab2;
-      --sun-halo:rgba(255,200,158,.55); --glow-1:rgba(226,168,140,.34);
-    }
-    :root[data-mode="light"][data-sky="morning"] {
-      --sky-top:#dcdbd3; --sky-mid:#d4d6d0; --sky-low:#c8cec9;
-      --sun-halo:rgba(255,242,198,.55); --glow-1:rgba(206,206,176,.3);
-    }
-    :root[data-mode="light"][data-sky="day"] {
-      --sky-top:#d9dcdb; --sky-mid:#d0d5d6; --sky-low:#c4cbcd;
-      --sun-halo:rgba(255,250,226,.6); --glow-1:rgba(190,206,214,.32);
-    }
-    :root[data-mode="light"][data-sky="evening"] {
-      --sky-top:#dcd3cb; --sky-mid:#d7c8ba; --sky-low:#cdb5a4;
-      --sun-halo:rgba(255,196,140,.55); --glow-1:rgba(220,160,116,.32);
-    }
-    :root[data-mode="light"][data-sky="dusk"] {
-      --sky-top:#d4d1d2; --sky-mid:#cbc7cf; --sky-low:#bdb8c6;
-      --sun-halo:rgba(206,168,190,.4); --glow-1:rgba(158,150,190,.3);
-    }
-    :root[data-mode="light"][data-sky="night"] {
-      --sky-top:#d2cfca; --sky-mid:#c9c6c1; --sky-low:#bcb9b5;
-      --sun-halo:rgba(214,220,238,.42); --glow-1:rgba(160,168,190,.28);
     }
     :root[data-mode="light"] .night-console,
     :root[data-mode="light"] .bio-stage, :root[data-mode="light"] .twin-visual,
@@ -1492,6 +1432,28 @@
     :root[data-view="today"] .page-heading { display:none; }
     :root[data-view="today"] .topbar { justify-content:flex-end; padding-top:20px; }
 
+    /* Travel: light windows read as a schedule, so they are laid out like one. */
+    .trip-days { display:grid; gap:10px; }
+    .trip-day { padding:14px 15px; border:1px solid var(--line); border-radius:17px; background:rgba(233,228,217,.035); }
+    .trip-day.pre { border-style:dashed; }
+    .trip-day-head { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:11px; }
+    .trip-day-head strong { font-family:var(--font-display); font-size:17px; }
+    .trip-day-head span { color:var(--muted); font-size:12px; }
+    .trip-windows { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+    .trip-window { padding:10px 11px; border-radius:12px; background:rgba(233,228,217,.04); border:1px solid var(--line); }
+    .trip-window span { display:block; color:var(--muted); font-size:10.5px; font-weight:800; letter-spacing:.7px; text-transform:uppercase; }
+    .trip-window strong { display:block; margin-top:4px; font-family:var(--font-display); font-size:14.5px; font-variant-numeric:tabular-nums; }
+    .trip-window.seek { border-color:rgba(195,160,104,.34); background:rgba(195,160,104,.09); }
+    .trip-window.seek strong { color:var(--gold-soft); }
+    .trip-window.avoid { border-color:rgba(143,147,184,.3); background:rgba(143,147,184,.08); }
+    .trip-window.avoid strong { color:var(--lavender); }
+    :root[data-mode="light"] .trip-day, :root[data-mode="light"] .trip-window { background:rgba(255,253,247,.6); }
+    :root[data-mode="light"] .trip-window.seek { background:rgba(138,106,48,.1); }
+    :root[data-mode="light"] .trip-window.seek strong { color:var(--gold-soft); }
+    :root[data-mode="light"] .trip-window.avoid { background:rgba(90,96,140,.09); }
+    :root[data-mode="light"] .trip-window.avoid strong { color:#464b76; }
+    @media (max-width:680px) { .trip-windows { grid-template-columns:1fr; } }
+
     /* One tap for a night like the last one. */
     .flow-repeat {
       display:grid; grid-template-columns:38px 1fr; align-items:center; gap:12px;
@@ -1543,6 +1505,7 @@
         <button data-view="morning"><span class="nav-icon">☀</span><span>Morning</span></button>
         <button data-view="twin"><span class="nav-icon">◎</span><span>My pattern</span></button>
         <button type="button" id="navMore" aria-expanded="false"><span class="nav-icon">•••</span><span>More</span></button>
+        <button class="secondary-nav" data-view="travel"><span class="nav-icon">✈</span><span>Travel</span></button>
         <button class="secondary-nav" data-view="unload"><span class="nav-icon">✦</span><span>Clear my mind</span></button>
         <button class="secondary-nav" data-view="compass"><span class="nav-icon">⌁</span><span>Trends</span></button>
         <button class="secondary-nav" data-view="experiment"><span class="nav-icon">◈</span><span>Try one change</span></button>
@@ -1723,6 +1686,47 @@
               <div class="callout teal" id="planSuggestion" style="margin-top:15px">Park the phone away from the pillow when wind-down begins, then choose one offline replacement.</div>
               <div class="callout safety" id="planWarning" style="display:none;margin-top:10px"></div>
               <p class="helper" style="margin-top:12px">This is a planning estimate, not a prediction of when you will fall asleep or how well you will sleep.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="travel">
+          <div class="section-head"><div><div class="eyebrow">Crossing time zones</div><h2>Jet lag is a timing problem</h2></div><p>Your body clock moves about an hour a day on its own. Light is the lever that decides which way it moves — and mistimed light pushes you the wrong way. This plans the light, not just the sleep.</p></div>
+          <div class="grid">
+            <article class="card span-7">
+              <div class="card-label">The trip</div>
+              <div class="form-grid" style="margin-top:14px">
+                <div class="field"><label for="tripName">Where are you going?</label><input id="tripName" type="text" placeholder="Istanbul, Toronto, home again…" /></div>
+              </div>
+              <div class="form-grid three">
+                <div class="field"><label for="tripDirection">Direction of travel</label><select id="tripDirection"><option value="east">Eastward — clocks go forward</option><option value="west">Westward — clocks go back</option></select></div>
+                <div class="field"><label for="tripHours">Time zones crossed</label><select id="tripHours"></select></div>
+                <div class="field"><label for="tripArrive">Arrival date</label><input id="tripArrive" type="date" /></div>
+                <div class="field"><label for="tripNights">Nights away</label><input id="tripNights" type="number" min="1" max="120" value="7" /></div>
+                <div class="field"><label for="tripWake">Your usual wake time at home</label><input id="tripWake" type="time" value="06:30" /></div>
+                <div class="field"><label for="tripPre">Start shifting before you fly?</label><select id="tripPre"><option value="yes">Yes — three days of pre-adjustment</option><option value="no">No — begin on arrival</option></select></div>
+              </div>
+              <div class="button-row"><button class="btn primary" id="buildTrip">Build my adjustment plan</button><button class="btn ghost" id="clearTrip">Clear trip</button></div>
+              <div class="callout" style="margin-top:14px"><strong>Why light and not melatonin:</strong> light is the strongest signal your body clock reads, it is free, and it is the one you can time deliberately. This plan shows the arithmetic rather than hiding it.</div>
+            </article>
+
+            <article class="bio-stage span-5">
+              <div class="console-status"><span class="live-signal">Body-clock shift</span><span class="console-date" id="tripStatusDate">No trip planned</span></div>
+              <div class="bio-orbit" id="tripOrbit"><div class="bio-reading"><strong id="tripDays">—</strong><span>days to adjust</span></div></div>
+              <h3 id="tripHeadline">Plan a trip to see the shift</h3>
+              <p class="helper" id="tripSummary">Enter where you are going and this will work out which way your clock has to move, and how long that honestly takes.</p>
+            </article>
+
+            <article class="card span-12" id="tripPlanCard" style="display:none">
+              <div class="section-head" style="margin-bottom:12px"><div><div class="card-label">Day by day</div><h3>Your light and sleep plan</h3></div><p id="tripPlanNote"></p></div>
+              <div class="trip-days" id="tripDayList"></div>
+              <div class="bio-formula" id="tripFormula"></div>
+            </article>
+
+            <article class="card span-12">
+              <div class="card-label">What this cannot do</div>
+              <h3>A plan is not a guarantee, and a short trip may not be worth shifting at all.</h3>
+              <p class="helper">Adjustment speed varies a lot between people. Night-shift work, medication, pregnancy and some health conditions change the picture entirely. If a trip matters medically, speak to a clinician rather than an early prototype.</p>
             </article>
           </div>
         </section>
@@ -2148,6 +2152,7 @@
       thoughts: [],
       mornings: [],
       bioCheckins: [],
+      trip: null,
       activeExperiment: null,
       experimentHistory: [],
       feedback: []
@@ -2167,6 +2172,7 @@
           thoughts: Array.isArray(stored.thoughts) ? stored.thoughts : [],
           mornings: Array.isArray(stored.mornings) ? stored.mornings : [],
           bioCheckins: Array.isArray(stored.bioCheckins) ? stored.bioCheckins : [],
+          trip: stored.trip && typeof stored.trip === 'object' ? stored.trip : null,
           experimentHistory: Array.isArray(stored.experimentHistory) ? stored.experimentHistory : [],
           feedback: Array.isArray(stored.feedback) ? stored.feedback : []
         };
@@ -2231,6 +2237,7 @@
       today: ['Start here', 'Your simple sleep loop.', 'Check today, plan tonight and return tomorrow.'],
       twin: ['My pattern', 'What helped me feel restored?', 'See the difference between the night you planned and the morning you experienced.'],
       plan: ['Plan tonight', 'Build a realistic night.', 'Protect sleep around the responsibilities you actually have.'],
+      travel: ['Travel', 'Move your body clock on purpose.', 'Cross time zones with a light plan instead of hoping it sorts itself out.'],
       unload: ['Clear my mind', 'Put unfinished thoughts somewhere safe.', 'Name the thought, give it a destination and continue offline.'],
       morning: ['Morning check-in', 'How did sleep actually feel?', 'Record restoration, energy and focus in a few taps.'],
       bio: ['Step 1 of 3', 'Check your Bio Harmony.', 'Notice five body and routine signals, then receive one clear suggestion.'],
@@ -2254,6 +2261,7 @@
       if (id === 'bio') renderBioHarmony();
       if (id === 'experiment') renderExperiment();
       if (id === 'data') renderDataSummary();
+      if (id === 'travel') renderTravel();
       if (window.innerWidth <= 900) {
         $('.nav').classList.remove('expanded');
         $('#navMore').setAttribute('aria-expanded','false');
@@ -2282,6 +2290,8 @@
       button.title = mode === 'light' ? 'Dark mode' : 'Light mode';
       document.querySelector('meta[name="theme-color"]')
         ?.setAttribute('content', mode === 'light' ? '#d3cec1' : '#07080c');
+      // The sky palette differs per mode, and JS owns those tokens now.
+      if (typeof applySky === 'function') applySky();
     }
     $('#dimToggle').addEventListener('click', () => {
       state.settings.mode = state.settings.mode === 'light' ? 'dark' : 'light';
@@ -2795,6 +2805,25 @@
         }
       }
 
+      // While a trip is running, where the body clock has got to is the
+      // most useful thing the home screen can say.
+      const travel = tripProgress();
+      if (travel && travel.remaining > 0.25) {
+        const dir = travel.plan.east ? 'earlier' : 'later';
+        status.textContent = travel.day < 0
+          ? `${formatDuration(travel.remaining * 60)} to shift before you fly`
+          : `${formatDuration(travel.remaining * 60)} of jet lag left`;
+        sub.textContent = travel.day < 0
+          ? `Pre-adjusting ${dir} for ${travel.trip.name || 'your trip'}. Light early, dark late.`
+          : `Day ${travel.day + 1}. Your clock has moved ${formatDuration(travel.shifted * 60)} ${dir} of ${travel.trip.hours}h.`;
+        return;
+      }
+      if (travel && travel.day >= 0) {
+        status.textContent = 'Adjusted';
+        sub.textContent = `Your clock has caught up with ${travel.trip.name || 'local time'}.`;
+        return;
+      }
+
       if (bio) {
         status.textContent = `Tonight reads ${bio.harmony}`;
         sub.textContent = `${bioStatus(bio.harmony)[0]}. Build a night plan around it.`;
@@ -3268,11 +3297,12 @@
       applySettings();
       $('#logDate').value = new Date().toISOString().slice(0,10);
       resetBioForm();
+      populateTripForm();
       morningEstimate();
     }
 
     function renderAll() {
-      renderToday(); renderTwin(); renderBioHarmony(); renderActiveExperiment(); renderThoughts(); renderExperiment(); renderCompass(); renderDataSummary(); renderFeedbackCount(); applySettings();
+      renderToday(); renderTwin(); renderBioHarmony(); renderActiveExperiment(); renderThoughts(); renderExperiment(); renderCompass(); renderDataSummary(); renderFeedbackCount(); renderTravel(); applySettings();
     }
 
     /* ------------------------------------------------------------------
@@ -3750,22 +3780,97 @@
        not look like the same place — this is the one thing a sleep app can
        do that nothing else on a phone does, and it costs the user nothing.
        ------------------------------------------------------------------ */
-    const skyPhases = [
-      { at:4,  key:'dawn',    label:'Dawn · Fajr window', orb:'☾' },
-      { at:7,  key:'morning', label:'Morning light',      orb:'☀' },
-      { at:11, key:'day',     label:'Daytime',            orb:'☀' },
-      { at:16, key:'evening', label:'Evening · wind-down', orb:'☾' },
-      { at:19, key:'dusk',    label:'Dusk · first stars', orb:'☾' },
-      { at:22, key:'night',   label:'Night · quiet hours', orb:'☾' }
+    /* ------------------------------------------------------------------
+       The sky is interpolated, not switched. Keyframes are anchored to the
+       real events of a day — first light, sunrise, noon, sunset, last
+       light — and every minute the current colours are mixed between the
+       two that bracket the hour. Nothing ever snaps.
+       ------------------------------------------------------------------ */
+    const skyKeys = {
+      dark: [
+        { h:0,    top:'#05070f', mid:'#080d1a', low:'#0f1a2e', halo:[214,224,255,.13], glow:[150,175,225,.09], stars:1,   orb:'#e8e2d6' },
+        { h:4,    top:'#070a1c', mid:'#161230', low:'#2b1c3a', halo:[236,170,150,.10], glow:[190,130,140,.12], stars:.7,  orb:'#dcd3e4' },
+        { h:6,    top:'#0d1030', mid:'#231a3f', low:'#4a2a48', halo:[255,168,116,.26], glow:[226,124,92,.20],  stars:.2,  orb:'#ffcf9a' },
+        { h:8,    top:'#0d2440', mid:'#164059', low:'#256b83', halo:[255,224,164,.20], glow:[255,212,148,.14], stars:0,   orb:'#ffe8b4' },
+        { h:12,   top:'#12395c', mid:'#1a5578', low:'#2b7a97', halo:[255,247,214,.22], glow:[196,230,250,.13], stars:0,   orb:'#fff6d6' },
+        { h:16,   top:'#153350', mid:'#274664', low:'#4d5a72', halo:[255,226,170,.20], glow:[236,180,130,.14], stars:0,   orb:'#ffe6ae' },
+        { h:18.5, top:'#1a1020', mid:'#3a1e2c', low:'#6b3430', halo:[255,158,84,.26],  glow:[240,146,74,.19],  stars:.08, orb:'#ffb46e' },
+        { h:20.5, top:'#090b22', mid:'#141438', low:'#2a2450', halo:[206,132,150,.16], glow:[138,110,196,.15], stars:.6,  orb:'#d6cee9' },
+        { h:22,   top:'#05070f', mid:'#080d1a', low:'#0f1a2e', halo:[214,224,255,.13], glow:[150,175,225,.09], stars:1,   orb:'#e8e2d6' }
+      ],
+      light: [
+        { h:0,    top:'#d2cfca', mid:'#c9c6c1', low:'#bcb9b5', halo:[214,220,238,.42], glow:[160,168,190,.28], stars:0, orb:'#8d8a86' },
+        { h:4,    top:'#d5d0cd', mid:'#cdc6c4', low:'#c2b7b6', halo:[228,192,186,.42], glow:[190,160,164,.26], stars:0, orb:'#9a8f92' },
+        { h:6,    top:'#dcd2cd', mid:'#d8c9c2', low:'#d0bab2', halo:[255,200,158,.55], glow:[226,168,140,.34], stars:0, orb:'#c98f5e' },
+        { h:8,    top:'#dcdbd3', mid:'#d4d6d0', low:'#c8cec9', halo:[255,242,198,.55], glow:[206,206,176,.30], stars:0, orb:'#c9a24e' },
+        { h:12,   top:'#d9dcdb', mid:'#d0d5d6', low:'#c4cbcd', halo:[255,250,226,.60], glow:[190,206,214,.32], stars:0, orb:'#c8a13f' },
+        { h:16,   top:'#dbd8d2', mid:'#d4cec6', low:'#cbc0b4', halo:[255,238,196,.55], glow:[212,186,150,.30], stars:0, orb:'#c99a48' },
+        { h:18.5, top:'#dcd3cb', mid:'#d7c8ba', low:'#cdb5a4', halo:[255,196,140,.55], glow:[220,160,116,.32], stars:0, orb:'#c07f4a' },
+        { h:20.5, top:'#d4d1d2', mid:'#cbc7cf', low:'#bdb8c6', halo:[206,168,190,.40], glow:[158,150,190,.30], stars:0, orb:'#8f8a95' },
+        { h:22,   top:'#d2cfca', mid:'#c9c6c1', low:'#bcb9b5', halo:[214,220,238,.42], glow:[160,168,190,.28], stars:0, orb:'#8d8a86' }
+      ]
+    };
+
+    const skyLabels = [
+      { at:4,  key:'dawn',    label:'Dawn · Fajr window' },
+      { at:7,  key:'morning', label:'Morning light' },
+      { at:11, key:'day',     label:'Daytime' },
+      { at:16, key:'evening', label:'Evening · wind-down' },
+      { at:19, key:'dusk',    label:'Dusk · first stars' },
+      { at:22, key:'night',   label:'Night · quiet hours' }
     ];
+
+    const toRgb = hex => [1,3,5].map(i => parseInt(hex.substr(i,2),16));
+    const mix = (a,b,t) => a.map((v,i) => Math.round(v + (b[i]-v) * t));
+    const rgbCss = c => `rgb(${c[0]},${c[1]},${c[2]})`;
+    const rgbaCss = c => `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${c[3].toFixed(3)})`;
 
     function currentSky(now = new Date()) {
       const hour = now.getHours() + now.getMinutes() / 60;
-      return [...skyPhases].reverse().find(phase => hour >= phase.at) || skyPhases.at(-1);
+      return [...skyLabels].reverse().find(phase => hour >= phase.at) || skyLabels.at(-1);
+    }
+
+    /* Sunrise and sunset are the anchors; between them the light climbs a
+       parabola to overhead at solar noon and back down. Outside them the
+       moon walks the same arc, so the glow always comes from a body that
+       is plausibly in the sky. */
+    function lightPosition(hour) {
+      const rise = 6, set = 18.5;
+      if (hour >= rise && hour <= set) {
+        const t = (hour - rise) / (set - rise);
+        return [8 + t * 84, 90 - Math.sin(t * Math.PI) * 88];
+      }
+      const nightLength = 24 - (set - rise);
+      const t = ((hour > set ? hour - set : hour + 24 - set)) / nightLength;
+      return [88 - t * 80, 88 - Math.sin(t * Math.PI) * 80];
     }
 
     function applySky() {
-      const phase = currentSky();
+      const now = new Date();
+      const hour = now.getHours() + now.getMinutes() / 60;
+      const mode = state.settings.mode === 'light' ? 'light' : 'dark';
+      const keys = skyKeys[mode];
+
+      let i = 0;
+      while (i < keys.length - 1 && hour >= keys[i+1].h) i += 1;
+      const from = keys[i];
+      const to = keys[Math.min(i + 1, keys.length - 1)];
+      const span = Math.max(0.0001, to.h - from.h);
+      const t = Math.min(1, Math.max(0, (hour - from.h) / span));
+
+      const root = document.documentElement.style;
+      root.setProperty('--sky-top', rgbCss(mix(toRgb(from.top), toRgb(to.top), t)));
+      root.setProperty('--sky-mid', rgbCss(mix(toRgb(from.mid), toRgb(to.mid), t)));
+      root.setProperty('--sky-low', rgbCss(mix(toRgb(from.low), toRgb(to.low), t)));
+      root.setProperty('--sun-halo', rgbaCss(from.halo.map((v,k) => v + (to.halo[k]-v) * t)));
+      root.setProperty('--glow-1', rgbaCss(from.glow.map((v,k) => v + (to.glow[k]-v) * t)));
+      root.setProperty('--stars', String(from.stars + (to.stars - from.stars) * t));
+      root.setProperty('--orb', rgbCss(mix(toRgb(from.orb), toRgb(to.orb), t)));
+
+      const [x,y] = lightPosition(hour);
+      root.setProperty('--sun-at', `${x.toFixed(1)}% ${y.toFixed(1)}%`);
+
+      const phase = currentSky(now);
       if (document.documentElement.dataset.sky !== phase.key) {
         document.documentElement.dataset.sky = phase.key;
       }
@@ -3773,13 +3878,209 @@
       if (signal) signal.textContent = phase.label;
     }
 
-    applySky();
-    // navigate() keeps this current; Tonight is active before it first runs.
-    document.documentElement.dataset.view = document.querySelector('.view.active')?.id || 'today';
-    window.setInterval(applySky, 60000);
-    // The hero is a countdown, so it has to keep up with the clock.
-    window.setInterval(() => { if (!document.hidden) renderHeroStatus(); }, 60000);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) applySky(); });
+    /* ------------------------------------------------------------------
+       Travel.
+
+       The whole feature turns on one fact most sleep apps get wrong: light
+       does not simply "help". Its effect depends on which side of your
+       core-body-temperature minimum it lands on. CBTmin sits roughly two
+       hours before habitual wake.
+
+         light AFTER  CBTmin  ->  clock moves EARLIER (a phase advance)
+         light BEFORE CBTmin  ->  clock moves LATER   (a phase delay)
+
+       Flying east means you must get up earlier than your body wants, so
+       you need an advance, so you seek morning light and avoid it late.
+       Flying west needs the opposite. Getting this backwards is what makes
+       people feel worse on day four than on day one.
+
+       Rates are the conservative end of the literature: about an hour a
+       day advancing, about an hour and a half delaying, because the human
+       circadian period runs a little over 24 hours and delaying is easier.
+       ------------------------------------------------------------------ */
+    const ADVANCE_RATE = 1;    // hours per day, travelling east
+    const DELAY_RATE = 1.5;    // hours per day, travelling west
+
+    function readTripForm() {
+      return {
+        id: state.trip?.id || uid(),
+        name: $('#tripName').value.trim(),
+        direction: $('#tripDirection').value,
+        hours: clamp(Number($('#tripHours').value) || 0, 1, 12),
+        arrive: $('#tripArrive').value,
+        nights: clamp(Number($('#tripNights').value) || 1, 1, 120),
+        homeWake: $('#tripWake').value || '06:30',
+        preAdjust: $('#tripPre').value === 'yes',
+        createdAt: new Date().toISOString()
+      };
+    }
+
+    function travelPlan(trip) {
+      const east = trip.direction === 'east';
+      const rate = east ? ADVANCE_RATE : DELAY_RATE;
+      const days = Math.ceil(trip.hours / rate);
+      const homeWake = toMinutes(trip.homeWake);
+      const cbtMin = normalizeMinutes(homeWake - 120);
+
+      // Beyond about ten zones eastward, advancing is so hard that the body
+      // often re-entrains the long way round instead. Say so rather than
+      // pretending the plan is clean.
+      const antidromic = east && trip.hours >= 10;
+      const shortTrip = trip.nights <= 2;
+
+      const steps = [];
+      const preDays = trip.preAdjust ? Math.min(3, days) : 0;
+      for (let index = 0; index < preDays; index += 1) {
+        const shifted = (index + 1) * rate;
+        steps.push(buildDay({ trip, east, rate, cbtMin, homeWake, shifted, offset:-(preDays - index), pre:true }));
+      }
+      for (let index = 0; index < days; index += 1) {
+        const shifted = Math.min(trip.hours, (index + 1 + preDays) * rate);
+        steps.push(buildDay({ trip, east, rate, cbtMin, homeWake, shifted, offset:index, pre:false }));
+        if (shifted >= trip.hours) break;
+      }
+      return { east, rate, days, cbtMin, homeWake, steps, antidromic, shortTrip,
+               totalDays: preDays + Math.min(days, steps.length - preDays) };
+    }
+
+    function buildDay({ trip, east, cbtMin, homeWake, shifted, offset, pre }) {
+      // The body clock has moved `shifted` hours in the direction of travel,
+      // and CBTmin travels with it. Before departure that is read on the
+      // home clock; from arrival onwards it has to be read on the
+      // destination clock, which is the whole time-zone offset away. Miss
+      // this and the plan tells you to seek bright light at half past midnight.
+      const move = (east ? -1 : 1) * shifted * 60;
+      const zone = pre ? 0 : (east ? 1 : -1) * trip.hours * 60;
+      const cbt = normalizeMinutes(cbtMin + move + zone);
+      // Advancing wants light in the two hours after CBTmin and darkness
+      // before it; delaying wants the mirror image.
+      const seekFrom = east ? cbt + 15 : cbt - 240;
+      const seekTo   = east ? cbt + 195 : cbt - 60;
+      const avoidFrom = east ? cbt - 240 : cbt + 30;
+      const avoidTo   = east ? cbt - 30  : cbt + 240;
+      const wake = normalizeMinutes(homeWake + move + zone);
+      const target = Number(state.settings.target) || 480;
+      return {
+        pre, offset, shifted,
+        label: pre ? `${Math.abs(offset)} day${Math.abs(offset) === 1 ? '' : 's'} before you fly`
+                   : offset === 0 ? 'Arrival day' : `Day ${offset + 1}`,
+        date: shiftDate(trip.arrive, offset),
+        wake, sleep: normalizeMinutes(wake - target),
+        seek: [normalizeMinutes(seekFrom), normalizeMinutes(seekTo)],
+        avoid: [normalizeMinutes(avoidFrom), normalizeMinutes(avoidTo)],
+        zone: pre ? 'home time' : 'local time at your destination'
+      };
+    }
+
+    function shiftDate(date, days) {
+      if (!date) return '';
+      const base = new Date(`${String(date).slice(0,10)}T12:00:00`);
+      if (Number.isNaN(base.getTime())) return '';
+      base.setDate(base.getDate() + days);
+      return base.toISOString().slice(0,10);
+    }
+
+    function renderTravel() {
+      const trip = state.trip;
+      const card = $('#tripPlanCard');
+      if (!trip || !trip.hours) {
+        $('#tripOrbit').style.setProperty('--harmony', 0);
+        $('#tripDays').textContent = '—';
+        $('#tripStatusDate').textContent = 'No trip planned';
+        $('#tripHeadline').textContent = 'Plan a trip to see the shift';
+        $('#tripSummary').textContent = 'Enter where you are going and this will work out which way your clock has to move, and how long that honestly takes.';
+        card.style.display = 'none';
+        return;
+      }
+      const plan = travelPlan(trip);
+      const where = trip.name ? ` to ${trip.name}` : '';
+      $('#tripOrbit').style.setProperty('--harmony', clamp(plan.days / 12 * 100, 8, 100));
+      $('#tripDays').textContent = plan.days;
+      $('#tripStatusDate').textContent = trip.arrive ? `Arriving ${dateLabel(trip.arrive)}` : 'Arrival date not set';
+      $('#tripHeadline').textContent = plan.east
+        ? `Your clock has to move ${trip.hours}h earlier`
+        : `Your clock has to move ${trip.hours}h later`;
+      $('#tripSummary').textContent = plan.east
+        ? `Flying east${where} means getting up before your body is ready, so you need morning light and dark evenings. Expect about ${plan.days} day${plan.days === 1 ? '' : 's'} at roughly an hour a day.`
+        : `Flying west${where} means staying up past your body's bedtime, so you need evening light and dark early mornings. Expect about ${plan.days} day${plan.days === 1 ? '' : 's'} at roughly an hour and a half a day.`;
+
+      const notes = [];
+      if (plan.shortTrip) notes.push('For a trip this short, many people do better staying on home time and simply protecting sleep opportunity — shifting twice costs more than it returns.');
+      if (plan.antidromic) notes.push('Crossing this many zones eastward is close to the limit where the body often re-entrains the other way instead. Treat the plan as a starting point and follow how you actually feel.');
+      if (trip.nights < plan.days) notes.push(`You are away ${trip.nights} night${trip.nights === 1 ? '' : 's'} but full adjustment takes about ${plan.days}. You will probably return part-adjusted, which is normal.`);
+      $('#tripPlanNote').textContent = notes.join(' ') || 'Each day moves the whole pattern a little further. Treat the light windows as the important part; the sleep times follow them.';
+
+      $('#tripDayList').innerHTML = plan.steps.map(step => `
+        <div class="trip-day${step.pre ? ' pre' : ''}">
+          <div class="trip-day-head">
+            <strong>${escapeHtml(step.label)}</strong>
+            <span>${step.date ? dateLabel(step.date) : ''} · ${escapeHtml(step.zone)}</span>
+          </div>
+          <div class="trip-windows">
+            <div class="trip-window seek"><span>Seek bright light</span><strong>${formatTime(step.seek[0])} – ${formatTime(step.seek[1])}</strong></div>
+            <div class="trip-window avoid"><span>Keep light low</span><strong>${formatTime(step.avoid[0])} – ${formatTime(step.avoid[1])}</strong></div>
+            <div class="trip-window"><span>Aim to sleep</span><strong>${formatTime(step.sleep)} – ${formatTime(step.wake)}</strong></div>
+          </div>
+        </div>`).join('');
+
+      $('#tripFormula').innerHTML = `<strong>Visible arithmetic</strong>
+        <span>Your usual wake is ${formatTime(plan.homeWake)}, so your body-temperature minimum sits near ${formatTime(plan.cbtMin)} — about two hours earlier. Light after that point moves the clock earlier; light before it moves the clock later.</span>
+        <span>Travelling ${plan.east ? 'east' : 'west'} needs ${plan.east ? 'an advance' : 'a delay'}, so the plan puts light ${plan.east ? 'after' : 'before'} that point and keeps it low on the other side. Each day shifts by ${plan.east ? ADVANCE_RATE : DELAY_RATE}h: ${trip.hours} ÷ ${plan.east ? ADVANCE_RATE : DELAY_RATE} = ${plan.days} day${plan.days === 1 ? '' : 's'}.</span>`;
+      card.style.display = '';
+    }
+
+    function populateTripForm() {
+      const select = $('#tripHours');
+      if (select && !select.options.length) {
+        select.innerHTML = Array.from({length:12}, (unused,index) =>
+          `<option value="${index+1}">${index+1} hour${index === 0 ? '' : 's'}</option>`).join('');
+        select.value = '5';
+      }
+      const trip = state.trip;
+      if (!trip) { if ($('#tripArrive') && !$('#tripArrive').value) $('#tripArrive').value = new Date().toISOString().slice(0,10); return; }
+      $('#tripName').value = trip.name || '';
+      $('#tripDirection').value = trip.direction || 'east';
+      $('#tripHours').value = String(trip.hours || 5);
+      $('#tripArrive').value = trip.arrive || '';
+      $('#tripNights').value = String(trip.nights || 7);
+      $('#tripWake').value = trip.homeWake || '06:30';
+      $('#tripPre').value = trip.preAdjust ? 'yes' : 'no';
+    }
+
+    $('#buildTrip').addEventListener('click', () => {
+      const trip = readTripForm();
+      if (!trip.arrive) { toast('Choose the arrival date first'); return; }
+      state.trip = trip;
+      saveState();
+      renderTravel();
+      renderToday();
+      toast('Adjustment plan ready');
+    });
+    $('#clearTrip').addEventListener('click', () => {
+      state.trip = null;
+      saveState();
+      populateTripForm();
+      renderTravel();
+      renderToday();
+      toast('Trip cleared');
+    });
+
+    /* How far through the shift you are today, so the rest of the app can
+       say something useful while you are actually travelling. */
+    function tripProgress() {
+      const trip = state.trip;
+      if (!trip || !trip.arrive) return null;
+      const today = new Date(`${new Date().toISOString().slice(0,10)}T12:00:00`);
+      const arrive = new Date(`${trip.arrive}T12:00:00`);
+      const day = Math.round((today - arrive) / 86400000);
+      const plan = travelPlan(trip);
+      if (day < -3 || day > trip.nights) return null;
+      const shifted = day < 0
+        ? Math.max(0, (3 + day + 1) * plan.rate * (trip.preAdjust ? 1 : 0))
+        : Math.min(trip.hours, (day + 1) * plan.rate);
+      return { trip, plan, day, shifted: Math.min(shifted, trip.hours),
+               remaining: Math.max(0, trip.hours - shifted) };
+    }
 
     function closeWelcome(destination) {
       state.settings.welcomeSeen = true;
