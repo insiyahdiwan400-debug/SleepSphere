@@ -704,6 +704,94 @@
       body { color:#111; background:white; }
       .card, .twin-visual { color:#111; background:white; }
     }
+
+    /* ------------------------------------------------------------------
+       Guided check-in flow: one question at a time, built for thumbs.
+       ------------------------------------------------------------------ */
+    .flow { position:fixed; inset:0; z-index:60; display:none; flex-direction:column; background:linear-gradient(160deg,#f7f5f0,#eef3ef 52%,#e8efec); }
+    .flow.active { display:flex; }
+    body.dim .flow { background:linear-gradient(160deg,#0a1c23,#0d242c 52%,#09191f); }
+
+    .flow-top { flex:0 0 auto; display:flex; align-items:center; gap:14px; padding:max(14px,env(safe-area-inset-top)) 18px 10px; }
+    .flow-bar { flex:1 1 auto; height:6px; border-radius:999px; background:rgba(104,126,124,.18); overflow:hidden; }
+    .flow-bar span { display:block; height:100%; width:0; border-radius:999px; background:linear-gradient(90deg,var(--teal),var(--aqua)); transition:width .42s cubic-bezier(.22,1,.36,1); }
+    .flow-close { flex:0 0 auto; width:38px; height:38px; display:grid; place-items:center; border:0; border-radius:50%; color:var(--muted); background:rgba(255,255,255,.7); font-size:17px; line-height:1; }
+    body.dim .flow-close { color:#9db1b5; background:rgba(255,255,255,.08); }
+
+    .flow-body { flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch; display:flex; flex-direction:column; justify-content:center; padding:8px 18px 20px; }
+    .flow-inner { width:min(560px,100%); margin:0 auto; }
+
+    .flow-step { animation:flowIn .34s cubic-bezier(.22,1,.36,1) both; }
+    @keyframes flowIn { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+
+    .flow-count { color:var(--teal-deep); font-size:12px; font-weight:850; letter-spacing:1.4px; text-transform:uppercase; }
+    body.dim .flow-count { color:var(--aqua); }
+    .flow-q { margin:8px 0 4px; color:var(--ink); font-size:clamp(27px,7vw,38px); line-height:1.08; letter-spacing:-1.1px; }
+    .flow-hint { margin:0 0 20px; color:var(--muted); font-size:15px; line-height:1.45; }
+
+    .flow-choices { display:grid; gap:10px; }
+    .qc {
+      display:grid; grid-template-columns:44px 1fr 22px; align-items:center; gap:13px;
+      width:100%; min-height:62px; padding:13px 15px; text-align:left;
+      border:1.5px solid var(--line); border-radius:18px; color:var(--ink);
+      background:var(--card); box-shadow:0 3px 14px rgba(18,44,52,.05);
+      transition:transform .16s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease;
+    }
+    .qc:hover { border-color:var(--teal); transform:translateY(-1px); }
+    .qc:active { transform:scale(.985); }
+    .qc-icon { width:44px; height:44px; display:grid; place-items:center; border-radius:14px; background:rgba(74,169,157,.13); color:var(--teal-deep); font-size:19px; }
+    body.dim .qc-icon { background:rgba(158,219,210,.14); color:var(--aqua); }
+    .qc-text strong { display:block; font-size:16.5px; line-height:1.25; }
+    .qc-text span { display:block; margin-top:2px; color:var(--muted); font-size:13px; line-height:1.35; }
+    .qc-tick { opacity:0; color:var(--teal-deep); font-size:17px; transition:opacity .16s ease; }
+    .qc.picked { border-color:var(--teal); background:linear-gradient(145deg,rgba(74,169,157,.14),rgba(158,219,210,.09)); box-shadow:0 6px 22px rgba(74,169,157,.2); }
+    .qc.picked .qc-tick { opacity:1; }
+    body.dim .qc.picked { background:linear-gradient(145deg,rgba(74,169,157,.22),rgba(158,219,210,.1)); }
+
+    .flow-note { width:100%; min-height:104px; margin-top:4px; padding:14px 15px; border:1.5px solid var(--line); border-radius:18px; color:var(--ink); background:var(--card); resize:vertical; }
+
+    .flow-foot { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 18px max(16px,env(safe-area-inset-bottom)); }
+    .flow-link { border:0; padding:10px 4px; color:var(--muted); background:none; font-size:14.5px; font-weight:650; }
+    .flow-link:hover { color:var(--teal-deep); }
+    .flow-link[hidden] { visibility:hidden; display:inline-block; }
+
+    /* Reveal: the day-one payoff. Nothing here is ever blank. */
+    .reveal { animation:flowIn .4s cubic-bezier(.22,1,.36,1) both; text-align:center; }
+    .reveal-ring {
+      position:relative; width:min(216px,58vw); aspect-ratio:1; margin:2px auto 18px; border-radius:50%;
+      display:grid; place-items:center;
+      background:conic-gradient(var(--teal) calc(var(--harmony,0) * 1%), rgba(120,150,148,.16) 0);
+      transition:background 1.1s cubic-bezier(.22,1,.36,1);
+    }
+    .reveal-ring::after { content:""; position:absolute; inset:13px; border-radius:50%; background:var(--paper); box-shadow:inset 0 2px 18px rgba(18,44,52,.07); }
+    body.dim .reveal-ring::after { background:#0d242c; }
+    .reveal-num { position:relative; z-index:1; }
+    .reveal-num strong { display:block; color:var(--ink); font-size:clamp(46px,13vw,64px); line-height:1; letter-spacing:-2.5px; }
+    .reveal-num span { display:block; margin-top:5px; color:var(--muted); font-size:11.5px; font-weight:800; letter-spacing:1.3px; text-transform:uppercase; }
+    .reveal h2 { margin:0 0 8px; color:var(--ink); font-size:clamp(24px,6vw,32px); line-height:1.12; letter-spacing:-1px; }
+    .reveal > p { margin:0 auto 22px; max-width:44ch; color:var(--muted); font-size:15px; line-height:1.5; }
+
+    .reveal-signals { display:grid; gap:9px; margin-bottom:20px; text-align:left; }
+    .reveal-signal { display:grid; grid-template-columns:1fr auto; gap:4px 10px; padding:12px 14px; border:1px solid var(--line); border-radius:15px; background:var(--card); }
+    .reveal-signal b { font-size:14px; font-weight:650; }
+    .reveal-signal i { font-style:normal; font-variant-numeric:tabular-nums; font-weight:800; }
+    .reveal-signal .progress-track { grid-column:1/-1; }
+
+    .reveal-move { padding:17px 16px; margin-bottom:16px; border-radius:20px; text-align:left; color:#eef7f5; background:linear-gradient(150deg,var(--night-2),var(--night-3)); }
+    .reveal-move .card-label { color:var(--aqua); }
+    .reveal-move strong { display:block; margin:5px 0 6px; font-size:19px; line-height:1.2; }
+    .reveal-move p { margin:0; color:#b6cdc9; font-size:14px; line-height:1.45; }
+
+    .reveal-actions { display:grid; gap:9px; }
+    .reveal-actions .btn { width:100%; justify-content:center; }
+
+    @media (max-width:680px) {
+      .flow-body { justify-content:flex-start; padding-top:4px; }
+      .qc { min-height:58px; }
+    }
+    @media (min-height:720px) and (min-width:681px) {
+      .flow-body { justify-content:center; }
+    }
   </style>
 </head>
 <body>
@@ -745,7 +833,7 @@
               <div class="console-copy">
                 <div class="eyebrow">SleepSphere V5 • Private prototype</div>
                 <h2>Understand tonight.<br />Learn from tomorrow.</h2>
-                <p>Start with a one-minute body check, make a realistic night plan, then record how you actually felt in the morning. SleepSphere turns those three moments into a pattern you can understand.</p>
+                <p>Three short moments — a quick check-in, a realistic plan, one morning note — become a pattern you can actually read.</p>
                 <div class="intent-label">What matters most tomorrow?</div>
                 <div class="intent-row" id="intentRow">
                   <button type="button" class="intent-pill" data-intent="restore">Feel restored</button>
@@ -754,7 +842,7 @@
                   <button type="button" class="intent-pill" data-intent="calm">Carry less into bed</button>
                 </div>
                 <div class="intent-result" id="intentResult" aria-live="polite">Choose tomorrow’s priority. SleepSphere will keep that outcome visible.</div>
-                <div class="console-actions"><button class="btn primary" id="guideNext" data-go="bio">Start my 3-minute check-in</button><button class="btn ghost" data-go="twin">See what this creates</button></div>
+                <div class="console-actions"><button class="btn primary" id="guideNext" data-go="flow">Start tonight’s check-in</button><button class="btn ghost" data-go="twin">See what this creates</button></div>
                 <div class="guide-strip" aria-label="Your SleepSphere progress">
                   <div class="guide-step" id="guideBio"><span class="guide-number">1</span><div><strong>Check today</strong><span id="guideBioText">Not started</span></div></div>
                   <div class="guide-step" id="guidePlan"><span class="guide-number">2</span><div><strong>Plan tonight</strong><span id="guidePlanText">Waiting</span></div></div>
@@ -770,19 +858,8 @@
             </div>
           </article>
           <div class="grid">
-            <article class="card span-7">
-              <div class="card-label">One connected loop</div>
-              <h3>Every screen must answer one question: what helps this person feel restored?</h3>
-              <div class="loop">
-                <div class="loop-step"><div class="loop-number">01</div><div><strong>Choose tomorrow’s outcome</strong><small>Restoration, focus, Fajr readiness or a calmer transition.</small></div><span class="status">Intent</span></div>
-                <div class="loop-step"><div class="loop-number">02</div><div><strong>Listen for Bio Harmony</strong><small>Keep timing, sleep pressure, mental load, body comfort and environment visible.</small></div><span class="status">Body</span></div>
-                <div class="loop-step"><div class="loop-number">03</div><div><strong>Build around real obligations</strong><small>One sleep block or a transparent Fajr Bridge.</small></div><span class="status">Plan</span></div>
-                <div class="loop-step"><div class="loop-number">04</div><div><strong>Create the Restoration Twin</strong><small>Compare the planned night, body context and morning that actually happened.</small></div><span class="status">Twin</span></div>
-                <div class="loop-step"><div class="loop-number">05</div><div><strong>Test one change</strong><small>Predefine success, record adherence and accept unclear results.</small></div><span class="status">Learn</span></div>
-              </div>
-            </article>
 
-            <article class="card span-5">
+            <article class="card span-12">
               <div class="card-label">Active experiment</div>
               <h3 id="activeExperimentTitle">No experiment running</h3>
               <p class="helper" id="activeExperimentText">Choose one small change and define what “helpful” would mean before testing it.</p>
@@ -994,7 +1071,12 @@
           <div class="section-head"><div><div class="eyebrow">SleepSphere signature system</div><h2>Bio Harmony</h2></div><p>See whether daily timing, body signals and tonight’s conditions are pulling in the same direction. This is a transparent reflection—not a biological test or medical score.</p></div>
           <div class="grid">
             <article class="card span-7">
-              <div class="card-label">60-second body-context check-in</div>
+              <div class="card-label">Tonight’s check-in</div>
+              <h3 style="margin:6px 0 8px">A few quick taps. About thirty seconds.</h3>
+              <p class="helper">One question at a time, then your result straight away. Nothing here is stored outside this browser.</p>
+              <div class="button-row" style="margin-top:16px"><button class="btn primary" id="startFlow">Start the check-in</button></div>
+              <details style="margin-top:18px">
+                <summary style="cursor:pointer;color:var(--muted);font-size:14px;font-weight:650">Prefer to fill it in as one form?</summary>
               <div class="form-grid three" style="margin-top:14px">
                 <div class="field"><label for="bioDate">Day / night</label><input id="bioDate" type="date" /></div>
                 <div class="field"><label for="bioLight">Outdoor morning light</label><select id="bioLight"><option value="0">None or unknown</option><option value="35">Under 10 minutes</option><option value="70">10–30 minutes</option><option value="100">More than 30 minutes</option></select></div>
@@ -1009,6 +1091,7 @@
               <div class="field"><label for="bioNote">Anything the check-in cannot see?</label><textarea id="bioNote" placeholder="Travel, fasting, medication change, illness, exam pressure, caregiving, a celebration…"></textarea></div>
               <div class="button-row"><button class="btn primary" id="saveBio">Reveal today’s Bio Harmony</button><button class="btn ghost" id="clearBio">Clear form</button></div>
               <div class="callout" style="margin-top:14px"><strong>Privacy and dignity:</strong> cycle context is optional, stays in this browser and never changes the Harmony calculation. It only helps you remember context in your own words.</div>
+              </details>
             </article>
 
             <article class="bio-stage span-5">
@@ -1140,6 +1223,17 @@
           <div class="grid">
             <article class="card hero span-12" style="min-height:270px">
               <div class="hero-copy" style="padding-right:0;max-width:760px"><div class="eyebrow" style="color:#9edbd2">Central idea</div><h2 style="font-family:Georgia,serif;font-weight:500">﴿وَجَعَلْنَا نَوْمَكُمْ سُبَاتًا﴾</h2><p>Sleep as <em>sabat</em> frames rest as purposeful restoration. SleepSphere uses Fajr and other responsibilities as real planning anchors, while refusing to turn faith, study or productivity into a reason to celebrate chronic sleep restriction.</p></div>
+            </article>
+            <article class="card span-12">
+              <div class="card-label">One connected loop</div>
+              <h3>Every screen must answer one question: what helps this person feel restored?</h3>
+              <div class="loop">
+                <div class="loop-step"><div class="loop-number">01</div><div><strong>Choose tomorrow’s outcome</strong><small>Restoration, focus, Fajr readiness or a calmer transition.</small></div><span class="status">Intent</span></div>
+                <div class="loop-step"><div class="loop-number">02</div><div><strong>Listen for Bio Harmony</strong><small>Keep timing, sleep pressure, mental load, body comfort and environment visible.</small></div><span class="status">Body</span></div>
+                <div class="loop-step"><div class="loop-number">03</div><div><strong>Build around real obligations</strong><small>One sleep block or a transparent Fajr Bridge.</small></div><span class="status">Plan</span></div>
+                <div class="loop-step"><div class="loop-number">04</div><div><strong>Create the Restoration Twin</strong><small>Compare the planned night, body context and morning that actually happened.</small></div><span class="status">Twin</span></div>
+                <div class="loop-step"><div class="loop-number">05</div><div><strong>Test one change</strong><small>Predefine success, record adherence and accept unclear results.</small></div><span class="status">Learn</span></div>
+              </div>
             </article>
 
             <article class="card span-8">
@@ -1278,6 +1372,18 @@
     </div>
   </div>
 
+  <div class="flow" id="flow" role="dialog" aria-modal="true" aria-label="Guided check-in">
+    <div class="flow-top">
+      <div class="flow-bar"><span id="flowBar"></span></div>
+      <button type="button" class="flow-close" id="flowClose" aria-label="Close check-in">✕</button>
+    </div>
+    <div class="flow-body"><div class="flow-inner" id="flowInner"></div></div>
+    <div class="flow-foot">
+      <button type="button" class="flow-link" id="flowBack">← Back</button>
+      <button type="button" class="flow-link" id="flowSkip">Skip</button>
+    </div>
+  </div>
+
   <div class="offline-overlay" id="offlineOverlay" role="dialog" aria-modal="true" aria-labelledby="offlineTitle">
     <div><div class="offline-orbit"></div><div class="eyebrow" style="color:#9edbd2">The app can stop now</div><h2 id="offlineTitle">Continue the ritual offline.</h2><p id="offlineText">Place the phone away from the pillow. SleepSphere will still be here in the morning.</p><button class="btn ghost" id="closeOffline" style="color:#d7e6e2;border-color:#35515a;margin-top:18px">Return to the app</button></div>
   </div>
@@ -1412,7 +1518,9 @@
       const expanded = $('.nav').classList.toggle('expanded');
       $('#navMore').setAttribute('aria-expanded',String(expanded));
     });
-    $$('[data-go]').forEach(button => button.addEventListener('click', () => navigate(button.dataset.go)));
+    $$('[data-go]').forEach(button => button.addEventListener('click', () => {
+      if (button.dataset.go === 'flow') openFlow(); else navigate(button.dataset.go);
+    }));
     $$('[data-scroll]').forEach(button => button.addEventListener('click', () => { navigate('today'); window.setTimeout(() => document.getElementById(button.dataset.scroll)?.scrollIntoView({behavior:'smooth',block:'start'}), 180); }));
     $('#dimToggle').addEventListener('click', () => { state.settings.dim = !state.settings.dim; document.body.classList.toggle('dim', state.settings.dim); saveState(); });
 
@@ -1859,7 +1967,7 @@
         $(textId).textContent = label;
       });
       const next = $('#guideNext');
-      if (!hasBio) { next.textContent = 'Start my 3-minute check-in'; next.dataset.go = 'bio'; }
+      if (!hasBio) { next.textContent = 'Start tonight’s check-in'; next.dataset.go = 'flow'; }
       else if (!hasPlan) { next.textContent = 'Plan tonight'; next.dataset.go = 'plan'; }
       else if (!hasMorning) { next.textContent = 'Return tomorrow: record morning'; next.dataset.go = 'morning'; }
       else { next.textContent = 'See my pattern'; next.dataset.go = 'twin'; }
@@ -1905,14 +2013,35 @@
       };
       const record = twinDemoMode ? example : [...records].reverse().find(item => item.planSnapshot);
       if (!record) {
-        $('#twinRecordDate').textContent = 'Waiting for a paired morning';
-        $('#twinPlanLabel').textContent = '—'; $('#twinActualLabel').textContent = '—';
-        $('#twinPlanLine').style.width = '0%'; $('#twinActualLine').style.width = '0%';
-        $('#twinPlanTrack').setAttribute('aria-valuenow','0'); $('#twinActualTrack').setAttribute('aria-valuenow','0');
-        $('#twinOpportunityDelta').textContent = '—'; $('#twinTimingDrift').textContent = '—';
-        $('#twinRestoration').textContent = '—'; $('#twinOutcome').textContent = '—';
-        $('#twinStatus').textContent = 'Waiting for a real morning';
-        $('#twinExplanation').textContent = 'Save a new night plan, then record the following morning. That pair creates the first Restoration Twin.';
+        // Day one should still show the person where they are, not a row of
+        // dashes. Everything already known is filled in; only the parts that
+        // genuinely need tomorrow morning are marked as waiting.
+        const hasBio = state.bioCheckins.length > 0;
+        const savedPlan = state.plan;
+        const plannedMinutes = Number(savedPlan?.total || savedPlan?.target || 0);
+
+        $('#twinRecordDate').textContent = savedPlan ? 'Tonight’s plan is saved' : 'Your first twin is one night away';
+        $('#twinPlanLabel').textContent = plannedMinutes ? formatDuration(plannedMinutes) : 'Not planned yet';
+        $('#twinActualLabel').textContent = 'After tomorrow morning';
+        $('#twinPlanLine').style.width = plannedMinutes ? `${clamp(plannedMinutes/600*100,4,100)}%` : '0%';
+        $('#twinActualLine').style.width = '0%';
+        $('#twinPlanTrack').setAttribute('aria-valuenow',String(clamp(Math.round(plannedMinutes),0,600)));
+        $('#twinActualTrack').setAttribute('aria-valuenow','0');
+        $('#twinOpportunityDelta').textContent = 'Tomorrow';
+        $('#twinTimingDrift').textContent = 'Tomorrow';
+        $('#twinRestoration').textContent = 'Tomorrow';
+        $('#twinOutcome').textContent = ({restore:'Feel restored',focus:'Think clearly',fajr:'Ready for Fajr',calm:'Carry less to bed'})[state.settings.intent] || 'Feel restored';
+
+        if (!hasBio) {
+          $('#twinStatus').textContent = 'Step 1 of 3 — start with tonight’s check-in';
+          $('#twinExplanation').textContent = 'Your twin compares the night you planned with the morning that actually followed. Take the quick check-in first, then build tonight’s plan.';
+        } else if (!savedPlan) {
+          $('#twinStatus').textContent = 'Step 2 of 3 — build tonight’s plan';
+          $('#twinExplanation').textContent = 'Your check-in is recorded. Save a night plan and this screen will hold the two halves of the comparison.';
+        } else {
+          $('#twinStatus').textContent = 'Step 3 of 3 — record tomorrow morning';
+          $('#twinExplanation').textContent = `Tonight’s plan gives you ${formatDuration(plannedMinutes)} of sleep opportunity. Record how the morning actually felt and your first Restoration Twin appears here.`;
+        }
         return;
       }
       const plan = record.planSnapshot;
@@ -2315,6 +2444,207 @@
       renderToday(); renderTwin(); renderBioHarmony(); renderActiveExperiment(); renderThoughts(); renderExperiment(); renderCompass(); renderDataSummary(); renderFeedbackCount(); applySettings();
     }
 
+    /* ------------------------------------------------------------------
+       Guided check-in flow.
+       Each step writes into the existing Bio Harmony controls, so the
+       scoring, history, pairing and CSV export stay exactly as they were.
+       The detailed form is still available on the Bio Harmony screen.
+       ------------------------------------------------------------------ */
+    const flowSteps = [
+      { key:'intent', kind:'intent', question:'What matters most tomorrow?', hint:'This stays visible across the app, so every screen answers the same question.', options:[
+        { value:'restore', icon:'☾', label:'Feel restored', sub:'Wake up with something in the tank.' },
+        { value:'focus', icon:'◈', label:'Think clearly', sub:'Hold attention through the day.' },
+        { value:'fajr', icon:'✦', label:'Be ready for Fajr', sub:'Protect the early prayer and the sleep around it.' },
+        { value:'calm', icon:'◌', label:'Carry less into bed', sub:'Put the day down more gently.' }
+      ]},
+      { key:'bioLight', target:'#bioLight', question:'Did you get outside today?', hint:'Daylight is the strongest signal your body clock reads.', options:[
+        { value:'100', icon:'☀', label:'More than 30 minutes', sub:'A proper dose of outdoor light.' },
+        { value:'70', icon:'◐', label:'10 to 30 minutes', sub:'A walk, a commute, a break outside.' },
+        { value:'35', icon:'◔', label:'Under 10 minutes', sub:'Brief, but it counts.' },
+        { value:'0', icon:'○', label:'Barely, or not sure', sub:'Mostly indoors today.' }
+      ]},
+      { key:'bioCaffeine', target:'#bioCaffeine', question:'When was your last caffeine?', hint:'Caffeine can quietly stay in the body for hours.', options:[
+        { value:'100', icon:'✓', label:'None today', sub:'Nothing to account for.' },
+        { value:'90', icon:'◴', label:'Before noon', sub:'Plenty of room before tonight.' },
+        { value:'70', icon:'◵', label:'Between 12 and 3 PM', sub:'Early afternoon.' },
+        { value:'40', icon:'◶', label:'Between 3 and 6 PM', sub:'Late afternoon.' },
+        { value:'15', icon:'◷', label:'After 6 PM', sub:'Still close to bedtime.' }
+      ]},
+      { key:'bioMovement', target:'#bioMovement', question:'How much did you move today?', hint:'Movement builds the sleep pressure that helps you drop off.', options:[
+        { value:'100', icon:'⬤', label:'Very active', sub:'Training, sport or heavy physical work.' },
+        { value:'80', icon:'◕', label:'Moderately active', sub:'A solid walk or a busy day on your feet.' },
+        { value:'55', icon:'◑', label:'Some light movement', sub:'A bit here and there.' },
+        { value:'25', icon:'○', label:'Very little', sub:'Mostly sitting or resting.' }
+      ]},
+      { key:'bioStress', target:'#bioStress', question:'How loud is your mind right now?', hint:'There is no good or bad answer here — only what is true tonight.', options:[
+        { value:'100', icon:'○', label:'Quiet', sub:'Settled and unhurried.' },
+        { value:'80', icon:'◔', label:'Light', sub:'A little on my mind.' },
+        { value:'60', icon:'◑', label:'Noticeable', sub:'Thoughts keep returning.' },
+        { value:'40', icon:'◕', label:'Heavy', sub:'Hard to put down.' },
+        { value:'20', icon:'⬤', label:'Overloaded', sub:'Too much at once.' }
+      ]},
+      { key:'bioBody', target:'#bioBody', question:'How does your body feel?', hint:'SleepSphere adapts to discomfort. It will never ask you to optimise pain or illness.', options:[
+        { value:'100', icon:'✓', label:'Comfortable', sub:'Nothing pulling at my attention.' },
+        { value:'75', icon:'◔', label:'Minor discomfort', sub:'Noticeable but manageable.' },
+        { value:'45', icon:'◕', label:'Strong discomfort', sub:'Hard to ignore.' },
+        { value:'25', icon:'✚', label:'Ill or in pain', sub:'Tonight is for rest and care.' }
+      ]},
+      { key:'bioEnvironment', target:'#bioEnvironment', question:'What is your room like tonight?', hint:'Light, noise, temperature, sharing the space — whatever is true.', options:[
+        { value:'100', icon:'☾', label:'Calm and comfortable', sub:'Little to work around.' },
+        { value:'75', icon:'◔', label:'One small disturbance', sub:'A single thing to manage.' },
+        { value:'45', icon:'◕', label:'Several disturbances', sub:'A few things competing.' },
+        { value:'20', icon:'⚡', label:'Hard to control tonight', sub:'Travel, guests, noise, caregiving.' }
+      ]},
+      { key:'bioMeal', target:'#bioMeal', question:'When did you last eat properly?', hint:'A large meal close to bed can make settling harder.', options:[
+        { value:'100', icon:'◴', label:'More than 3 hours before bed', sub:'Plenty of space.' },
+        { value:'85', icon:'◵', label:'2 to 3 hours before bed', sub:'Comfortable spacing.' },
+        { value:'55', icon:'◶', label:'1 to 2 hours before bed', sub:'Fairly close.' },
+        { value:'30', icon:'◷', label:'Within an hour of bed', sub:'Very close to sleep.' },
+        { value:'70', icon:'?', label:'Not sure', sub:'Treated as neutral.' }
+      ]},
+      { key:'bioNote', target:'#bioNote', kind:'note', optional:true, question:'Anything the check-in cannot see?', hint:'Travel, fasting, a medication change, exam pressure, caregiving, a celebration. Optional — skip if nothing stands out.', placeholder:'Optional. Written in your own words, kept in this browser.' }
+    ];
+
+    let flowIndex = 0;
+    const flowPicks = {};
+
+    function openFlow() {
+      flowIndex = 0;
+      Object.keys(flowPicks).forEach(key => delete flowPicks[key]);
+      flowPicks.intent = state.settings.intent || 'restore';
+      $('#bioDate').value = new Date().toISOString().slice(0,10);
+      $('#flow').classList.add('active');
+      document.body.style.overflow = 'hidden';
+      renderFlowStep();
+    }
+
+    function closeFlow() {
+      $('#flow').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    function renderFlowStep() {
+      const step = flowSteps[flowIndex];
+      const inner = $('#flowInner');
+      $('#flowBar').style.width = `${(flowIndex / flowSteps.length) * 100}%`;
+      $('#flowBack').hidden = flowIndex === 0;
+      $('#flowSkip').hidden = !step.optional;
+      $('#flowSkip').textContent = 'Skip';
+
+      const heading = `<div class="flow-count">Step ${flowIndex+1} of ${flowSteps.length}</div>
+        <h2 class="flow-q">${escapeHtml(step.question)}</h2>
+        <p class="flow-hint">${escapeHtml(step.hint)}</p>`;
+
+      if (step.kind === 'note') {
+        inner.innerHTML = `<div class="flow-step">${heading}
+          <textarea class="flow-note" id="flowNote" placeholder="${escapeHtml(step.placeholder)}"></textarea>
+          <div class="reveal-actions" style="margin-top:14px"><button type="button" class="btn primary" id="flowFinish">See my result</button></div></div>`;
+        $('#flowNote').value = flowPicks.bioNote || '';
+        $('#flowSkip').textContent = 'Skip this';
+        $('#flowFinish').addEventListener('click', () => { flowPicks.bioNote = $('#flowNote').value.trim(); finishFlow(); });
+        return;
+      }
+
+      const current = flowPicks[step.key];
+      inner.innerHTML = `<div class="flow-step">${heading}
+        <div class="flow-choices">${step.options.map(option => `
+          <button type="button" class="qc${String(current) === String(option.value) ? ' picked' : ''}" data-value="${escapeHtml(option.value)}">
+            <span class="qc-icon" aria-hidden="true">${option.icon}</span>
+            <span class="qc-text"><strong>${escapeHtml(option.label)}</strong><span>${escapeHtml(option.sub)}</span></span>
+            <span class="qc-tick" aria-hidden="true">✓</span>
+          </button>`).join('')}</div></div>`;
+
+      inner.querySelectorAll('.qc').forEach(button => button.addEventListener('click', () => {
+        flowPicks[step.key] = button.dataset.value;
+        inner.querySelectorAll('.qc').forEach(other => other.classList.toggle('picked', other === button));
+        window.setTimeout(advanceFlow, 210);
+      }));
+    }
+
+    function advanceFlow() {
+      if (flowIndex >= flowSteps.length - 1) { finishFlow(); return; }
+      flowIndex += 1;
+      renderFlowStep();
+      $('.flow-body').scrollTop = 0;
+    }
+
+    function finishFlow() {
+      // Write every answer into the original controls, then reuse the
+      // existing save path so nothing downstream has to change.
+      flowSteps.forEach(step => {
+        if (!step.target) return;
+        const value = flowPicks[step.key];
+        if (value != null) $(step.target).value = value;
+      });
+      if (flowPicks.intent) {
+        state.settings.intent = flowPicks.intent;
+        renderIntent();
+      }
+      // The person just answered every question for today on purpose, so
+      // replace today's entry rather than interrupting them with a prompt.
+      const today = $('#bioDate').value;
+      state.bioCheckins = state.bioCheckins.filter(item => item.date !== today);
+      $('#saveBio').click();
+      $('#flowBar').style.width = '100%';
+      $('#flowBack').hidden = true;
+      $('#flowSkip').hidden = true;
+      renderFlowReveal();
+    }
+
+    function renderFlowReveal() {
+      const latest = [...state.bioCheckins].sort((a,b) => String(a.date).localeCompare(String(b.date))).at(-1);
+      if (!latest) { closeFlow(); return; }
+      const [title,summary] = bioStatus(latest.harmony);
+      const lowest = Object.entries(latest.dimensions).sort((a,b) => a[1]-b[1])[0][0];
+      const plan = state.plan;
+
+      $('#flowInner').innerHTML = `<div class="reveal">
+        <div class="reveal-ring" id="revealRing"><div class="reveal-num"><strong id="revealNum">0</strong><span>Visible alignment</span></div></div>
+        <h2>${escapeHtml(title)}</h2>
+        <p>${escapeHtml(summary)}</p>
+        <div class="reveal-signals">${Object.entries(bioSignalMeta).map(([key,meta]) => `
+          <div class="reveal-signal"><b>${escapeHtml(meta.label)}</b><i>${latest.dimensions[key]}</i>
+            <div class="progress-track"><span style="width:${latest.dimensions[key]}%"></span></div></div>`).join('')}</div>
+        <div class="reveal-move">
+          <div class="card-label">Tonight’s one move</div>
+          <strong>${escapeHtml(bioSignalMeta[lowest].move)}</strong>
+          <p>${escapeHtml(bioSignalMeta[lowest].text)}</p>
+        </div>
+        <div class="reveal-actions">
+          <button type="button" class="btn primary" id="revealPlan">${plan ? 'Review tonight’s plan' : 'Build tonight’s plan'}</button>
+          <button type="button" class="btn ghost" id="revealDetail">See the full breakdown</button>
+        </div>
+      </div>`;
+
+      // Count the number up so the result lands as a moment, not a number.
+      const target = latest.harmony;
+      const ring = $('#revealRing');
+      const num = $('#revealNum');
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduceMotion) {
+        num.textContent = target;
+        ring.style.setProperty('--harmony', target);
+      } else {
+        window.requestAnimationFrame(() => ring.style.setProperty('--harmony', target));
+        const start = performance.now();
+        const tick = now => {
+          const progress = Math.min(1, (now - start) / 1100);
+          num.textContent = Math.round(target * (1 - Math.pow(1 - progress, 3)));
+          if (progress < 1) window.requestAnimationFrame(tick);
+        };
+        window.requestAnimationFrame(tick);
+      }
+
+      $('#revealPlan').addEventListener('click', () => { closeFlow(); navigate('plan'); });
+      $('#revealDetail').addEventListener('click', () => { closeFlow(); navigate('bio'); });
+    }
+
+    $('#flowClose').addEventListener('click', closeFlow);
+    $('#flowBack').addEventListener('click', () => { if (flowIndex > 0) { flowIndex -= 1; renderFlowStep(); } });
+    $('#flowSkip').addEventListener('click', () => { const step = flowSteps[flowIndex]; if (step.kind === 'note') { flowPicks.bioNote = ''; finishFlow(); } else advanceFlow(); });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && $('#flow').classList.contains('active')) closeFlow(); });
+    $('#startFlow').addEventListener('click', openFlow);
+
     function closeWelcome(destination) {
       state.settings.welcomeSeen = true;
       saveState();
@@ -2322,7 +2652,7 @@
       $('#welcomeOverlay').classList.remove('active');
       navigate(destination);
     }
-    $('#welcomeStart').addEventListener('click', () => closeWelcome('bio'));
+    $('#welcomeStart').addEventListener('click', () => { closeWelcome('today'); openFlow(); });
     $('#welcomeExplore').addEventListener('click', () => closeWelcome('today'));
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && $('#welcomeOverlay').classList.contains('active')) closeWelcome('today'); });
 
