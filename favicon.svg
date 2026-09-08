@@ -1,19 +1,104 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="SleepSphere crescent and orbit">
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
-    <linearGradient id="bg" x1="80" y1="40" x2="430" y2="470" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#173A45"/>
-      <stop offset="1" stop-color="#07171D"/>
-    </linearGradient>
-    <radialGradient id="moon" cx="0" cy="0" r="1" gradientTransform="translate(196 164) rotate(55) scale(224)" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFF7CF"/>
-      <stop offset="1" stop-color="#D8B968"/>
+    <linearGradient id="u" x1="30" y1="-40" x2="1000" y2="1060" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1A4FA3"/><stop offset="0.6" stop-color="#123F86"/><stop offset="1" stop-color="#0E2E63"/></linearGradient>
+    <radialGradient id="lu" cx="0" cy="0" r="1" gradientTransform="translate(340 270) scale(860)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFF" stop-opacity=".12"/><stop offset="1" stop-color="#FFF" stop-opacity="0"/>
     </radialGradient>
-    <mask id="crescent"><rect width="512" height="512" fill="white"/><circle cx="306" cy="202" r="142" fill="black"/></mask>
   </defs>
-  <rect width="512" height="512" rx="122" fill="url(#bg)"/>
-  <circle cx="256" cy="256" r="190" fill="none" stroke="#9EDBD2" stroke-opacity=".22" stroke-width="5"/>
-  <circle cx="256" cy="256" r="146" fill="none" stroke="#D8B968" stroke-opacity=".28" stroke-width="3" stroke-dasharray="8 15"/>
-  <circle cx="232" cy="252" r="142" fill="url(#moon)" mask="url(#crescent)"/>
-  <circle cx="391" cy="144" r="17" fill="#9EDBD2"/>
-  <circle cx="364" cy="343" r="10" fill="#FFF7CF" fill-opacity=".88"/>
+  <rect width="1024" height="1024" fill="url(#u)"/>
+  <rect width="1024" height="1024" fill="url(#lu)"/>
+
+  <g stroke="#FBF4E4" fill="none" stroke-width="21" stroke-linecap="round">
+    <g transform="rotate(22.5 512 512)"><g transform="translate(512 512)"><path d="M0 -129
+  C-86 -172 -146.2 -258 -103.2 -318.2
+  C-64.5 -369.8 8.6 -361.2 21.5 -301"/><path d="M0 -129
+  C86 -172 146.2 -258 103.2 -318.2
+  C64.5 -369.8 -8.6 -361.2 -21.5 -301"/></g></g><g transform="rotate(67.5 512 512)"><g transform="translate(512 512)"><path d="M0 -129
+  C-86 -172 -146.2 -258 -103.2 -318.2
+  C-64.5 -369.8 8.6 -361.2 21.5 -301"/><path d="M0 -129
+  C86 -172 146.2 -258 103.2 -318.2
+  C64.5 -369.8 -8.6 -361.2 -21.5 -301"/></g></g><g transform="rotate(112.5 512 512)"><g transform="translate(512 512)"><path d="M0 -129
+  C-86 -172 -146.2 -258 -103.2 -318.2
+  C-64.5 -369.8 8.6 -361.2 21.5 -301"/><path d="M0 -129
+  C86 -172 146.2 -258 103.2 -318.2
+  C64.5 -369.8 -8.6 -361.2 -21.5 -301"/></g></g><g transform="rotate(157.5 512 512)"><g transform="translate(512 512)"><path d="M0 -129
+  C-86 -172 -146.2 -258 -103.2 -318.2
+  C-64.5 -369.8 8.6 -361.2 21.5 -301"/><path d="M0 -129
+  C86 -172 146.2 -258 103.2 -318.2
+  C64.5 -369.8 -8.6 -361.2 -21.5 -301"/></g></g><g transform="rotate(202.5 512 512)"><g transform="translate(512 512)"><path d="M0 -129
+  C-86 -172 -146.2 -258 -103.2 -318.2
+  C-64.5 -369.8 8.6 -361.2 21.5 -301"/><path d="M0 -129
+  C86 -172 146.2 -258 103.2 -318.2
+  C64.5 -369.8 -8.6 -361.2 -21.5 -301"/></g></g><g transform="rotate(247.5 512 512)"><g transform="translate(512 512)"><path d="M0 -129
+  C-86 -172 -146.2 -258 -103.2 -318.2
+  C-64.5 -369.8 8.6 -361.2 21.5 -301"/><path d="M0 -129
+  C86 -172 146.2 -258 103.2 -318.2
+  C64.5 -369.8 -8.6 -361.2 -21.5 -301"/></g></g><g transform="rotate(292.5 512 512)"><g transform="translate(512 512)"><path d="M0 -129
+  C-86 -172 -146.2 -258 -103.2 -318.2
+  C-64.5 -369.8 8.6 -361.2 21.5 -301"/><path d="M0 -129
+  C86 -172 146.2 -258 103.2 -318.2
+  C64.5 -369.8 -8.6 -361.2 -21.5 -301"/></g></g><g transform="rotate(337.5 512 512)"><g transform="translate(512 512)"><path d="M0 -129
+  C-86 -172 -146.2 -258 -103.2 -318.2
+  C-64.5 -369.8 8.6 -361.2 21.5 -301"/><path d="M0 -129
+  C86 -172 146.2 -258 103.2 -318.2
+  C64.5 -369.8 -8.6 -361.2 -21.5 -301"/></g></g>
+  </g>
+  <g fill="#FBF4E4">
+    <g transform="rotate(22.5 512 512)"><g transform="translate(512 512)"><path d="M0 -322
+  C-30 -347.2 -21.6 -384.2 0 -396
+  C21.6 -384.2 30 -347.2 0 -322 Z"/></g></g><g transform="rotate(67.5 512 512)"><g transform="translate(512 512)"><path d="M0 -322
+  C-30 -347.2 -21.6 -384.2 0 -396
+  C21.6 -384.2 30 -347.2 0 -322 Z"/></g></g><g transform="rotate(112.5 512 512)"><g transform="translate(512 512)"><path d="M0 -322
+  C-30 -347.2 -21.6 -384.2 0 -396
+  C21.6 -384.2 30 -347.2 0 -322 Z"/></g></g><g transform="rotate(157.5 512 512)"><g transform="translate(512 512)"><path d="M0 -322
+  C-30 -347.2 -21.6 -384.2 0 -396
+  C21.6 -384.2 30 -347.2 0 -322 Z"/></g></g><g transform="rotate(202.5 512 512)"><g transform="translate(512 512)"><path d="M0 -322
+  C-30 -347.2 -21.6 -384.2 0 -396
+  C21.6 -384.2 30 -347.2 0 -322 Z"/></g></g><g transform="rotate(247.5 512 512)"><g transform="translate(512 512)"><path d="M0 -322
+  C-30 -347.2 -21.6 -384.2 0 -396
+  C21.6 -384.2 30 -347.2 0 -322 Z"/></g></g><g transform="rotate(292.5 512 512)"><g transform="translate(512 512)"><path d="M0 -322
+  C-30 -347.2 -21.6 -384.2 0 -396
+  C21.6 -384.2 30 -347.2 0 -322 Z"/></g></g><g transform="rotate(337.5 512 512)"><g transform="translate(512 512)"><path d="M0 -322
+  C-30 -347.2 -21.6 -384.2 0 -396
+  C21.6 -384.2 30 -347.2 0 -322 Z"/></g></g>
+    <g transform="rotate(0 512 512)"><g transform="translate(512 512)"><path d="M0 -236
+  C-21 -253.7 -15.1 -279.7 0 -288
+  C15.1 -279.7 21 -253.7 0 -236 Z"/></g></g><g transform="rotate(45 512 512)"><g transform="translate(512 512)"><path d="M0 -236
+  C-21 -253.7 -15.1 -279.7 0 -288
+  C15.1 -279.7 21 -253.7 0 -236 Z"/></g></g><g transform="rotate(90 512 512)"><g transform="translate(512 512)"><path d="M0 -236
+  C-21 -253.7 -15.1 -279.7 0 -288
+  C15.1 -279.7 21 -253.7 0 -236 Z"/></g></g><g transform="rotate(135 512 512)"><g transform="translate(512 512)"><path d="M0 -236
+  C-21 -253.7 -15.1 -279.7 0 -288
+  C15.1 -279.7 21 -253.7 0 -236 Z"/></g></g><g transform="rotate(180 512 512)"><g transform="translate(512 512)"><path d="M0 -236
+  C-21 -253.7 -15.1 -279.7 0 -288
+  C15.1 -279.7 21 -253.7 0 -236 Z"/></g></g><g transform="rotate(225 512 512)"><g transform="translate(512 512)"><path d="M0 -236
+  C-21 -253.7 -15.1 -279.7 0 -288
+  C15.1 -279.7 21 -253.7 0 -236 Z"/></g></g><g transform="rotate(270 512 512)"><g transform="translate(512 512)"><path d="M0 -236
+  C-21 -253.7 -15.1 -279.7 0 -288
+  C15.1 -279.7 21 -253.7 0 -236 Z"/></g></g><g transform="rotate(315 512 512)"><g transform="translate(512 512)"><path d="M0 -236
+  C-21 -253.7 -15.1 -279.7 0 -288
+  C15.1 -279.7 21 -253.7 0 -236 Z"/></g></g>
+    <g transform="rotate(0 512 512)"><g transform="translate(512 512)"><path d="M0 -96
+  C-44 -121.2 -35.2 -167.4 0 -186
+  C35.2 -167.4 44 -121.2 0 -96 Z"/></g></g><g transform="rotate(45 512 512)"><g transform="translate(512 512)"><path d="M0 -96
+  C-44 -121.2 -35.2 -167.4 0 -186
+  C35.2 -167.4 44 -121.2 0 -96 Z"/></g></g><g transform="rotate(90 512 512)"><g transform="translate(512 512)"><path d="M0 -96
+  C-44 -121.2 -35.2 -167.4 0 -186
+  C35.2 -167.4 44 -121.2 0 -96 Z"/></g></g><g transform="rotate(135 512 512)"><g transform="translate(512 512)"><path d="M0 -96
+  C-44 -121.2 -35.2 -167.4 0 -186
+  C35.2 -167.4 44 -121.2 0 -96 Z"/></g></g><g transform="rotate(180 512 512)"><g transform="translate(512 512)"><path d="M0 -96
+  C-44 -121.2 -35.2 -167.4 0 -186
+  C35.2 -167.4 44 -121.2 0 -96 Z"/></g></g><g transform="rotate(225 512 512)"><g transform="translate(512 512)"><path d="M0 -96
+  C-44 -121.2 -35.2 -167.4 0 -186
+  C35.2 -167.4 44 -121.2 0 -96 Z"/></g></g><g transform="rotate(270 512 512)"><g transform="translate(512 512)"><path d="M0 -96
+  C-44 -121.2 -35.2 -167.4 0 -186
+  C35.2 -167.4 44 -121.2 0 -96 Z"/></g></g><g transform="rotate(315 512 512)"><g transform="translate(512 512)"><path d="M0 -96
+  C-44 -121.2 -35.2 -167.4 0 -186
+  C35.2 -167.4 44 -121.2 0 -96 Z"/></g></g>
+  </g>
+  <g stroke="#FBF4E4" fill="none" stroke-width="15">
+    <circle cx="512" cy="512" r="72"/>
+    <circle cx="512" cy="512" r="452"/>
+  </g>
+  <circle cx="512" cy="512" r="30" fill="#FBF4E4"/>
 </svg>
