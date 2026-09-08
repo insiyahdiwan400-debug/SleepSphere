@@ -1441,6 +1441,35 @@
     :root[data-view="today"] .page-heading { display:none; }
     :root[data-view="today"] .topbar { justify-content:flex-end; padding-top:20px; }
 
+    /* Your week: seven nights on one axis. */
+    .week-strip { display:grid; gap:5px; }
+    .week-row { display:grid; grid-template-columns:38px 1fr 26px; align-items:center; gap:9px; }
+    .week-day { color:var(--muted); font-size:11px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; }
+    .week-track { height:26px; border-radius:8px; overflow:hidden; border:1px solid var(--line); }
+    .week-track svg { display:block; width:100%; height:100%; }
+    .week-planned { fill:none; stroke:rgba(226,200,150,.45); stroke-width:1; vector-effect:non-scaling-stroke; }
+    .week-actual.good { fill:#E2C896; }
+    .week-actual.fair { fill:#B99B63; }
+    .week-actual.low  { fill:#7C6B4E; }
+    .week-rest { font-family:var(--font-display); font-size:14px; font-variant-numeric:tabular-nums; text-align:right; }
+    .week-rest.good { color:var(--gold-soft); }
+    .week-rest.fair { color:var(--gold); }
+    .week-rest.low { color:var(--muted); }
+    .week-scale { display:flex; justify-content:space-between; margin:6px 26px 0 47px; color:var(--muted); font-size:9.5px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; }
+    :root[data-mode="light"] .week-actual.good { fill:#8A6A30; }
+    :root[data-mode="light"] .week-actual.fair { fill:#A08A5C; }
+    :root[data-mode="light"] .week-actual.low { fill:#B9AE97; }
+
+    /* A milestone is a real unlock, so it is stated once and quietly. */
+    .reveal-milestone {
+      margin-bottom:14px; padding:16px 16px; border-radius:18px; text-align:left;
+      border:1px solid rgba(195,160,104,.34); background:rgba(195,160,104,.09);
+    }
+    .reveal-milestone strong { display:block; margin:5px 0 6px; font-family:var(--font-display); font-size:19px; font-weight:500; color:var(--gold-soft); }
+    .reveal-milestone p { margin:0; color:var(--muted); font-size:13.5px; line-height:1.45; }
+    :root[data-mode="light"] .reveal-milestone { background:rgba(138,106,48,.1); }
+    :root[data-mode="light"] .reveal-milestone strong { color:#5c4517; }
+
     .city-results { display:grid; gap:7px; margin-top:10px; }
     .city-hit {
       display:flex; align-items:baseline; justify-content:space-between; gap:12px;
@@ -1707,6 +1736,14 @@
         <section class="view" id="twin">
           <div class="section-head"><div><div class="eyebrow">SleepSphere signature</div><h2>Your Restoration Twin</h2></div><p>A twin is created by pairing a saved plan with the morning that followed. It exposes the gap between intention and real life without hiding the calculation inside a mystery score.</p></div>
           <div class="grid">
+            <article class="card span-12">
+              <div class="section-head" style="margin-bottom:12px">
+                <div><div class="card-label">Your week</div><h3>Seven nights, one axis</h3><p class="helper" id="weekSummary"></p></div>
+                <p>Each row is a night from 6pm to 10am. The solid band is when you actually slept; the faint outline is what you planned.</p>
+              </div>
+              <div class="week-strip" id="weekStrip"></div>
+            </article>
+
             <article class="twin-visual span-8">
               <div class="console-status"><span class="live-signal">Plan versus reality</span><span class="console-date" id="twinRecordDate">Waiting for a paired morning</span></div>
               <div class="twin-track">
@@ -2419,7 +2456,7 @@
       $('#pageTitle').textContent = pageMeta[id][1];
       $('#pageSubtitle').textContent = pageMeta[id][2];
       if (id === 'compass') renderCompass();
-      if (id === 'twin') renderTwin();
+      if (id === 'twin') { renderTwin(); renderWeekStrip(); }
       if (id === 'bio') renderBioHarmony();
       if (id === 'experiment') renderExperiment();
       if (id === 'data') renderDataSummary();
@@ -2718,7 +2755,13 @@
       const existing = state.mornings.find(item => !item.demo && item.date === date);
       if (existing && !window.confirm('A record already exists for this date. Replace it?')) return;
       const estimate = morningEstimate();
-      const sleepLatency = spanMinutes($('#actualBed').value,$('#actualSleep').value);
+      // spanMinutes treats an identical start and end as a full day, which is
+      // right for a sleep window and wrong for sleep latency: someone who got
+      // into bed and fell asleep at the same time waited zero minutes, not
+      // 1,440. Left unhandled this failed the check below and the morning
+      // silently refused to save.
+      const sleepLatency = toMinutes($('#actualBed').value) === toMinutes($('#actualSleep').value)
+        ? 0 : spanMinutes($('#actualBed').value,$('#actualSleep').value);
       if (sleepLatency > estimate.opportunityMinutes) { toast('Estimated sleep onset must fall between getting into bed and final waking'); return; }
       const preservesBaseline = Boolean(existing && state.activeExperiment?.baselineIds?.includes(existing.id));
       const pairedBio = [...state.bioCheckins].reverse().find(item => item.date === date);
@@ -3085,6 +3128,80 @@
         legend.innerHTML = `<span class="arc-key planned">Planned ${formatDuration(Number(plan.total || plan.target || 0))}</span>
           <span class="arc-key empty">Record the morning to see what actually happened.</span>`;
       }
+    }
+
+    /* ------------------------------------------------------------------
+       Your week, stacked.
+
+       One night is a data point. Seven nights on the same axis is a shape —
+       you can see the drift, the short nights and the ones that held,
+       without reading a single number. This is the reason to come back, and
+       it earns the visit rather than nagging for it.
+       ------------------------------------------------------------------ */
+    function renderWeekStrip() {
+      const host = $('#weekStrip');
+      if (!host) return;
+      const mode = state.settings.mode === 'light' ? 'light' : 'dark';
+      const records = realMornings().slice(-7);
+
+      if (!records.length) {
+        host.innerHTML = '<div class="empty">Your first recorded morning starts the week.</div>';
+        return;
+      }
+
+      const stops = [];
+      for (let hour = ARC_START; hour <= ARC_START + ARC_SPAN; hour += 2) {
+        stops.push(`<stop offset="${(((hour - ARC_START) / ARC_SPAN) * 100).toFixed(1)}%" stop-color="${skySample(hour, mode).mid}"/>`);
+      }
+
+      // Restoration is the one judgement the app makes, so it is the only
+      // thing carrying colour here: brass for a night that returned
+      // something, dim for one that did not.
+      const tone = rest => rest >= 4 ? 'good' : rest >= 3 ? 'fair' : 'low';
+
+      host.innerHTML = records.map((record, index) => {
+        const from = arcPos(toMinutes(record.sleepTime || record.bedTime));
+        const to = arcPos(toMinutes(record.wakeTime));
+        const width = Math.max(1.5, to - from);
+        const planned = record.planSnapshot;
+        const plannedBand = planned && Number.isFinite(Number(planned.sleepStart))
+          ? `<rect class="week-planned" x="${arcPos(Number(planned.sleepStart))}%" y="12%"
+                   width="${Math.max(1.5, arcPos(toMinutes(planned.mode === 'fajr' ? planned.fajr : planned.wake)) - arcPos(Number(planned.sleepStart)))}%"
+                   height="76%" rx="4"/>` : '';
+        return `<div class="week-row">
+          <span class="week-day">${new Date(`${record.date}T12:00:00`).toLocaleDateString(undefined,{weekday:'short'})}</span>
+          <div class="week-track">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              <defs><linearGradient id="weekSky${index}" x1="0" x2="1" y1="0" y2="0">${stops.join('')}</linearGradient></defs>
+              <rect width="100" height="100" fill="url(#weekSky${index})"/>
+              ${plannedBand}
+              <rect class="week-actual ${tone(record.rest)}" x="${from}%" y="26%" width="${width}%" height="48%" rx="5"/>
+            </svg>
+          </div>
+          <span class="week-rest ${tone(record.rest)}">${record.rest}</span>
+        </div>`;
+      }).join('') + `<div class="week-scale"><span>6pm</span><span>midnight</span><span>6am</span><span>10am</span></div>`;
+
+      const summary = $('#weekSummary');
+      if (!summary) return;
+      const nights = records.length;
+      const mean7 = mean(records.map(item => Number(item.sleepMinutes) || 0));
+      const restMean = mean(records.map(item => Number(item.rest) || 0));
+      summary.textContent = `${nights} night${nights === 1 ? '' : 's'} recorded · about ${formatDuration(mean7)} of sleep a night · restoration averaging ${restMean.toFixed(1)} out of 5.`;
+    }
+
+    /* Milestones mark things that genuinely became available, not arbitrary
+       counts. Nothing here nags, and nothing is lost by missing a night. */
+    function milestoneFor(record) {
+      const mornings = realMornings();
+      const count = mornings.length;
+      if (count === 1 && record.planSnapshot) return { title:'Your first Restoration Twin', body:'A plan and a morning are now paired. From here the app is comparing what you intended with what happened.' };
+      if (count === 1) return { title:'First morning recorded', body:'Save a night plan tonight and tomorrow’s record will pair with it.' };
+      if (count === 3) return { title:'Your compass is live', body:'Three mornings is enough to separate opportunity, regularity and restoration. My trends has opened up.' };
+      if (count === 7) return { title:'A week of nights', body:'Seven nights on one axis is a shape rather than a list. My pattern now shows your week stacked.' };
+      if (count === 14) return { title:'Two weeks in', body:'Long enough to test one change against a real baseline. The experiment studio is worth a look.' };
+      if (count === 30) return { title:'Thirty mornings', body:'That is a genuine record of your sleep, kept entirely on your own phone.' };
+      return null;
     }
 
     function renderSignature(records) {
@@ -3557,7 +3674,7 @@
     }
 
     function renderAll() {
-      renderToday(); renderTwin(); renderBioHarmony(); renderActiveExperiment(); renderThoughts(); renderExperiment(); renderCompass(); renderDataSummary(); renderFeedbackCount(); renderTravel(); renderRestoration(); renderPrayer(); applySettings();
+      renderToday(); renderTwin(); renderBioHarmony(); renderActiveExperiment(); renderThoughts(); renderExperiment(); renderCompass(); renderDataSummary(); renderFeedbackCount(); renderTravel(); renderRestoration(); renderPrayer(); renderWeekStrip(); applySettings();
       if (window.SleepSphereNative) { refreshHealthAvailability(); syncWindDownActivity(); }
     }
 
@@ -3987,6 +4104,9 @@
           ${planned ? line('You had planned', formatDuration(planned)) : ''}
           ${delta !== null ? line('Difference', `${delta >= 0 ? '+' : '−'}${formatDuration(Math.abs(delta))}`) : ''}
         </div>
+        ${(() => { const m = milestoneFor(record); return m ? `<div class="reveal-milestone">
+            <div class="card-label">Milestone</div><strong>${escapeHtml(m.title)}</strong><p>${escapeHtml(m.body)}</p>
+          </div>` : ''; })()}
         <div class="reveal-move">
           <div class="card-label">What this does not mean</div>
           <strong>One morning is a data point, not a verdict.</strong>
