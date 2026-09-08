@@ -1573,6 +1573,14 @@
           </article>
           <div class="grid">
 
+            <article class="card span-12" id="healthCard" hidden>
+              <div class="card-label">Apple Health</div>
+              <h3 style="margin:6px 0 8px">Let the phone fill in what it already knows</h3>
+              <p class="helper" id="healthState">Not connected. Everything still works by hand.</p>
+              <div class="button-row" style="margin-top:15px"><button class="btn primary" id="healthConnect">Connect Apple Health</button></div>
+              <div class="callout" style="margin-top:14px"><strong>Read only, and only these:</strong> your activity, last night as Health recorded it, and — if you switch cycle context on — your cycle phase. SleepSphere never writes to Health, and nothing leaves this phone.</div>
+            </article>
+
             <article class="card span-12" id="restorationCard">
               <div class="section-head" style="margin-bottom:12px">
                 <div><div class="card-label">Restoration need</div><h3 id="needTotal">—</h3><p class="helper" id="needBaseline"></p></div>
@@ -2178,7 +2186,7 @@
     const STORAGE_KEY = 'sleepsphere_state_v2';
     const defaults = {
       version: 2,
-      settings: { name: '', age: 'adult', target: 480, faith: 'on', dim: false, intent: 'restore', welcomeSeen: false, mode: 'dark', useCycle: false },
+      settings: { name: '', age: 'adult', target: 480, faith: 'on', dim: false, intent: 'restore', welcomeSeen: false, mode: 'dark', useCycle: false, healthLinked: false },
       plan: null,
       scans: [],
       thoughts: [],
@@ -3336,6 +3344,7 @@
 
     function renderAll() {
       renderToday(); renderTwin(); renderBioHarmony(); renderActiveExperiment(); renderThoughts(); renderExperiment(); renderCompass(); renderDataSummary(); renderFeedbackCount(); renderTravel(); renderRestoration(); applySettings();
+      if (window.SleepSphereNative) { refreshHealthAvailability(); syncWindDownActivity(); }
     }
 
     /* ------------------------------------------------------------------
@@ -3502,6 +3511,16 @@
       } else {
         $('#logDate').value = today;
         flowCanRepeat = prefillMorning();
+        if (state.settings.healthLinked && native()) {
+          native().lastNightSleep().then(sleep => {
+            if (!sleep || flowKind !== 'morning') return;
+            if (sleep.bedTime) $('#actualBed').value = sleep.bedTime;
+            if (sleep.sleepTime) $('#actualSleep').value = sleep.sleepTime;
+            if (sleep.wakeTime) $('#actualWake').value = sleep.wakeTime;
+            if (sleep.awakeMinutes != null) flowPicks.awake = String(sleep.awakeMinutes);
+            if (flowIndex === 0) renderFlowStep();
+          });
+        }
       }
       $('#flow').classList.add('active');
       document.body.style.overflow = 'hidden';
@@ -4210,6 +4229,90 @@
         ? 'Cycle context will be counted in your restoration need'
         : 'Cycle context is recorded, not counted');
     });
+
+    /* ------------------------------------------------------------------
+       Health, when the app is running natively.
+
+       Everything here is additive. The bridge resolves to null on the web,
+       when HealthKit is absent, and when the person declines — and each
+       caller treats that identically to "not asked yet", so the manual
+       path this app was built on is never removed, only skipped when there
+       is something better to skip it with.
+       ------------------------------------------------------------------ */
+    const native = () => window.SleepSphereNative || null;
+
+    async function refreshHealthAvailability() {
+      const bridge = native();
+      const card = $('#healthCard');
+      if (!card) return;
+      const available = bridge ? await bridge.healthAvailable() : false;
+      card.hidden = !available;
+      $('#healthState').textContent = state.settings.healthLinked
+        ? 'Connected. Your check-ins arrive pre-filled.'
+        : 'Not connected. Everything still works by hand.';
+      $('#healthConnect').textContent = state.settings.healthLinked ? 'Refresh from Health' : 'Connect Apple Health';
+    }
+
+    async function pullFromHealth({ quiet } = {}) {
+      const bridge = native();
+      if (!bridge) return null;
+      const [activity, cycle] = await Promise.all([bridge.activityLoad(), bridge.cyclePhase()]);
+      const notes = [];
+      if (activity) {
+        $('#bioMovement').value = String(activity.score);
+        notes.push(`${activity.activeMinutes} active minutes`);
+      }
+      if (cycle && state.settings.useCycle) {
+        $('#bioCycle').value = cycle.cycle;
+        notes.push(`cycle: ${cycle.cycle}`);
+      }
+      if (!quiet) toast(notes.length ? `Read from Health — ${notes.join(', ')}` : 'Nothing new in Health yet');
+      return { activity, cycle };
+    }
+
+    async function connectHealth() {
+      const bridge = native();
+      if (!bridge) return;
+      // Requested from a tap, never on launch: an unexplained HealthKit
+      // sheet at startup is both rude and a rejection risk.
+      const result = await bridge.requestHealthAccess();
+      state.settings.healthLinked = Boolean(result && result.granted);
+      saveState();
+      await refreshHealthAvailability();
+      if (state.settings.healthLinked) await pullFromHealth({});
+      else toast('Health stayed private. Everything still works by hand.');
+    }
+
+    $('#healthConnect')?.addEventListener('click', connectHealth);
+
+    /* The wind-down Live Activity is the Dynamic Island presence. It is
+       started only when a plan is saved, and ended once the morning is
+       recorded, so it never outlives the night it describes. */
+    function nextOccurrence(minutes) {
+      const now = new Date();
+      const when = new Date(now);
+      when.setHours(0, normalizeMinutes(minutes), 0, 0);
+      if (when.getTime() < now.getTime() - 3600000) when.setDate(when.getDate() + 1);
+      return when.getTime();
+    }
+
+    async function syncWindDownActivity() {
+      const bridge = native();
+      if (!bridge || !bridge.isNative) return;
+      const plan = state.plan;
+      const today = new Date().toISOString().slice(0,10);
+      const recorded = state.mornings.some(item => !item.demo && item.date === today);
+      if (!plan || recorded || !Number.isFinite(Number(plan.sleepStart))) {
+        await bridge.endWindDown();
+        return;
+      }
+      await bridge.startWindDown({
+        windStart: nextOccurrence(Number(plan.windStart)),
+        sleepStart: nextOccurrence(Number(plan.sleepStart)),
+        wakeAt: nextOccurrence(toMinutes(plan.mode === 'fajr' ? plan.fajr : plan.wake)),
+        label: 'Tonight'
+      });
+    }
 
     function closeWelcome(destination) {
       state.settings.welcomeSeen = true;
