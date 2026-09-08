@@ -792,6 +792,315 @@
     @media (min-height:720px) and (min-width:681px) {
       .flow-body { justify-content:center; }
     }
+
+    /* ==================================================================
+       NIGHT SKY — the authoritative theme.
+       This file grew three stacked palettes over time; this final layer
+       is the one that ships. Deep, quiet and luminous: a sleep app
+       should feel like looking up at a clear night, not like a form.
+       ================================================================== */
+    :root {
+      --ink:#e9eefb;
+      --muted:#8d9bbb;
+      --paper:#070c1b;
+      --paper-2:#0d142c;
+      --card:rgba(21,30,58,.66);
+      --line:rgba(150,180,230,.14);
+      --teal:#6fd8cd;
+      --teal-deep:#3fb3a8;
+      --aqua:#a6efe4;
+      --gold:#f0cd84;
+      --gold-soft:#ffeec4;
+      --lavender:#a892e0;
+      --blue:#7fa6d9;
+      --rose:#e2919c;
+      --night:#050915;
+      --night-2:#0b122a;
+      --night-3:#131c3d;
+      --shadow:0 26px 70px rgba(0,0,0,.42);
+      --glow:0 0 44px rgba(111,216,205,.28);
+      --radius:24px;
+    }
+
+    html, body { background:#050915; }
+    body {
+      color:var(--ink);
+      background:
+        radial-gradient(ellipse 70% 48% at 76% -4%, rgba(111,216,205,.16), transparent 70%),
+        radial-gradient(ellipse 62% 45% at 12% 8%, rgba(168,146,224,.14), transparent 70%),
+        radial-gradient(ellipse 80% 50% at 40% 104%, rgba(240,205,132,.07), transparent 70%),
+        linear-gradient(178deg, #070c1b 0%, #0a1029 40%, #050915 100%);
+      background-attachment:fixed;
+      background-size:auto;
+    }
+
+    /* A quiet starfield. Two layers drifting at different speeds so the
+       sky has depth without ever asking for attention. */
+    body::before, body::after {
+      content:""; position:fixed; inset:0; z-index:0;
+      pointer-events:none; opacity:.55;
+      background-repeat:repeat;
+    }
+    body::before {
+      background-size:420px 620px;
+      background-image:
+        radial-gradient(1.6px 1.6px at 12% 14%, rgba(255,255,255,.75), transparent),
+        radial-gradient(1.4px 1.4px at 27% 34%, rgba(198,228,255,.6), transparent),
+        radial-gradient(1.1px 1.1px at 44% 9%, rgba(255,255,255,.5), transparent),
+        radial-gradient(1.7px 1.7px at 61% 26%, rgba(255,238,196,.6), transparent),
+        radial-gradient(1.2px 1.2px at 78% 12%, rgba(255,255,255,.55), transparent),
+        radial-gradient(1.5px 1.5px at 90% 31%, rgba(166,239,228,.55), transparent),
+        radial-gradient(1.1px 1.1px at 8% 52%, rgba(255,255,255,.45), transparent),
+        radial-gradient(1.6px 1.6px at 33% 63%, rgba(255,255,255,.5), transparent),
+        radial-gradient(1.2px 1.2px at 55% 47%, rgba(198,228,255,.45), transparent),
+        radial-gradient(1.4px 1.4px at 71% 68%, rgba(255,238,196,.45), transparent),
+        radial-gradient(1.1px 1.1px at 86% 55%, rgba(255,255,255,.4), transparent),
+        radial-gradient(1.5px 1.5px at 19% 82%, rgba(255,255,255,.45), transparent),
+        radial-gradient(1.2px 1.2px at 47% 90%, rgba(166,239,228,.4), transparent),
+        radial-gradient(1.3px 1.3px at 66% 86%, rgba(255,255,255,.4), transparent),
+        radial-gradient(1.1px 1.1px at 94% 78%, rgba(198,228,255,.4), transparent);
+      animation:drift 240s linear infinite;
+    }
+    body::after {
+      background-size:660px 880px;
+      background-image:
+        radial-gradient(2.1px 2.1px at 21% 22%, rgba(255,255,255,.5), transparent),
+        radial-gradient(2.3px 2.3px at 68% 41%, rgba(255,238,196,.45), transparent),
+        radial-gradient(2px 2px at 39% 74%, rgba(166,239,228,.42), transparent),
+        radial-gradient(2.2px 2.2px at 83% 88%, rgba(255,255,255,.4), transparent);
+      animation:twinkle 9s ease-in-out infinite alternate, driftSlow 380s linear infinite;
+    }
+    @keyframes drift { from { background-position:0 0; } to { background-position:0 -620px; } }
+    @keyframes driftSlow { from { background-position:0 0; } to { background-position:0 880px; } }
+    @keyframes twinkle { from { opacity:.3; } to { opacity:.72; } }
+    /* Lift the app above the starfield. Only the shell needs a stacking
+       context — the fixed nav, overlays and toast already carry their own
+       z-index, and must keep their own positioning. */
+    .app-shell { position:relative; z-index:1; }
+
+    /* Glass surfaces, lit from above. */
+    .sidebar {
+      color:var(--ink);
+      border-color:rgba(150,180,230,.15);
+      background:rgba(10,16,38,.72);
+      box-shadow:0 18px 54px rgba(0,0,0,.45);
+      backdrop-filter:blur(26px) saturate(1.3);
+    }
+    .brand-mark {
+      color:#1a1206;
+      background:radial-gradient(circle at 34% 28%, #fff7dd, var(--gold) 68%, #cfa758);
+      box-shadow:0 0 0 5px rgba(240,205,132,.09), 0 0 26px rgba(240,205,132,.4), 0 8px 22px rgba(0,0,0,.4);
+    }
+    .brand strong { color:var(--ink); }
+    .brand small { color:#7c8aa8; }
+    .nav button { color:#93a1c0; }
+    .nav button:hover, .nav button.active {
+      color:#f2f6ff; background:rgba(111,216,205,.14);
+      box-shadow:inset 0 0 0 1px rgba(111,216,205,.24);
+    }
+    .nav-icon { color:var(--aqua); }
+    /* The topbar is static and transparent by design — the floating nav
+       pill is the only chrome. Keep it that way; a panel here reads as a
+       stray band across the sky. */
+    .topbar { background:transparent; backdrop-filter:none; border:0; }
+    .topbar h1 { color:var(--ink); }
+    .subtitle, .helper { color:var(--muted); }
+    .privacy-pill, .icon-button, .share-button {
+      color:#c3d0ea; background:rgba(30,42,74,.6); border-color:var(--line);
+    }
+    .card {
+      border-color:var(--line); background:var(--card);
+      box-shadow:var(--shadow); backdrop-filter:blur(18px) saturate(1.2);
+    }
+    .metric-tile, .scan-item, .experiment-card, .source-card, .thought-item, .pattern-item,
+    .history-item, .loop-step, .soft-panel, .empty, .timeline-stop, .bio-signal, .result-panel {
+      color:var(--ink); background:rgba(31,43,78,.44); border-color:var(--line);
+    }
+    input, select, textarea, .option-label, .chip, .scale button, .mini-scale button {
+      color:var(--ink); background:rgba(16,24,50,.72); border-color:var(--line);
+      color-scheme:dark;
+    }
+    input::placeholder, textarea::placeholder { color:#6f7d9c; }
+    .chip:hover, .scale button:hover, .mini-scale button:hover, .option-label:hover { border-color:var(--teal); }
+    .chip.active, .scale button.active, .mini-scale button.active {
+      color:#04121a; background:linear-gradient(150deg, var(--aqua), var(--teal));
+      border-color:transparent; box-shadow:0 4px 18px rgba(111,216,205,.35);
+    }
+    .choice input:checked + .option-label {
+      color:var(--ink); background:rgba(111,216,205,.16);
+      border-color:var(--teal); box-shadow:0 0 0 3px rgba(111,216,205,.12);
+    }
+    .segmented { background:rgba(150,180,230,.09); }
+    .callout { border-color:rgba(240,205,132,.24); background:rgba(240,205,132,.07); }
+    .progress-track { background:rgba(150,180,230,.14); }
+    .progress-track span { background:linear-gradient(90deg, var(--teal), var(--gold)); }
+    .eyebrow, .card-label { color:var(--teal); }
+    .live-signal { color:var(--aqua); }
+
+    /* Buttons: the primary action should be impossible to miss. */
+    .btn.primary {
+      color:#04121a; border:0;
+      background:linear-gradient(148deg, var(--aqua), var(--teal) 55%, var(--teal-deep));
+      box-shadow:0 10px 30px rgba(111,216,205,.3), inset 0 1px 0 rgba(255,255,255,.4);
+      font-weight:800;
+    }
+    .btn.primary:hover { box-shadow:0 14px 38px rgba(111,216,205,.44), inset 0 1px 0 rgba(255,255,255,.5); transform:translateY(-1px); }
+    .btn.ghost { color:#cfdcf5; border-color:var(--line); background:rgba(31,43,78,.5); }
+    .btn.ghost:hover { border-color:var(--teal); color:#eef4ff; }
+
+    /* The night console: the hero object. */
+    .night-console {
+      border:1px solid rgba(150,180,230,.16);
+      background:
+        radial-gradient(ellipse 66% 52% at 78% 4%, rgba(111,216,205,.16), transparent 68%),
+        radial-gradient(ellipse 60% 50% at 8% 92%, rgba(168,146,224,.15), transparent 68%),
+        linear-gradient(158deg, rgba(19,28,61,.94), rgba(8,13,32,.96));
+      box-shadow:0 30px 90px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    .console-copy h2 { color:#f4f8ff; }
+    .console-copy > p, .intent-result { color:#9fb0d2; }
+    .intent-pill { color:#c2d0ec; border-color:var(--line); background:rgba(31,43,78,.55); }
+    .intent-pill:hover { border-color:var(--teal); }
+    .intent-pill.active {
+      color:#04121a; border-color:transparent;
+      background:linear-gradient(150deg, var(--aqua), var(--teal));
+      box-shadow:0 6px 22px rgba(111,216,205,.36);
+    }
+    .console-metric { border-color:var(--line); background:rgba(31,43,78,.4); }
+    .console-metric span { color:var(--muted); }
+    .console-metric strong { color:var(--ink); }
+    .guide-step { border-color:var(--line); background:rgba(31,43,78,.4); }
+    .guide-step.complete { border-color:rgba(111,216,205,.4); background:rgba(111,216,205,.1); }
+    .guide-number { color:#04121a; background:linear-gradient(150deg, var(--aqua), var(--teal)); }
+
+    /* The sphere breathes, slowly, the way a settled body does. */
+    .sabat-sphere {
+      background:conic-gradient(from -40deg, var(--teal) 0 var(--gap-angle), rgba(150,180,230,.09) var(--gap-angle) 360deg);
+      box-shadow:0 0 0 1px rgba(166,239,228,.14), 0 0 90px rgba(111,216,205,.18);
+      animation:breathe 11s ease-in-out infinite;
+    }
+    @keyframes breathe {
+      0%, 100% { transform:scale(1); box-shadow:0 0 0 1px rgba(166,239,228,.14), 0 0 90px rgba(111,216,205,.16); }
+      50% { transform:scale(1.022); box-shadow:0 0 0 1px rgba(166,239,228,.2), 0 0 120px rgba(111,216,205,.28); }
+    }
+    .sphere-reading strong { color:var(--gold-soft); text-shadow:0 0 34px rgba(240,205,132,.35); }
+    .sphere-reading span { color:#9fb0d2; }
+    .sphere-satellite { background:var(--gold-soft); box-shadow:0 0 26px var(--gold), 0 0 52px rgba(240,205,132,.5); }
+    .bio-orbit {
+      background:conic-gradient(from 220deg, var(--teal) calc(var(--harmony) * 1%), rgba(150,180,230,.1) 0);
+      box-shadow:0 0 64px rgba(111,216,205,.16);
+    }
+    .bio-stage {
+      border:1px solid var(--line);
+      background:linear-gradient(158deg, rgba(19,28,61,.9), rgba(8,13,32,.94));
+      box-shadow:var(--shadow);
+    }
+    .twin-visual, .hero {
+      background:
+        radial-gradient(ellipse 60% 50% at 80% 6%, rgba(111,216,205,.15), transparent 68%),
+        linear-gradient(158deg, rgba(19,28,61,.94), rgba(8,13,32,.96));
+      border:1px solid var(--line);
+    }
+
+    /* Guided flow, in the same sky. */
+    .flow {
+      background:
+        radial-gradient(ellipse 70% 46% at 78% -2%, rgba(111,216,205,.16), transparent 70%),
+        radial-gradient(ellipse 60% 44% at 10% 6%, rgba(168,146,224,.14), transparent 70%),
+        linear-gradient(178deg, #080e20, #050915);
+    }
+    body.dim .flow { background:linear-gradient(178deg, #05080f, #02040a); }
+    .flow-bar { background:rgba(150,180,230,.16); }
+    .flow-bar span { background:linear-gradient(90deg, var(--teal), var(--gold)); box-shadow:0 0 16px rgba(111,216,205,.5); }
+    .flow-close { color:#a9b8d8; background:rgba(31,43,78,.66); }
+    .flow-close:hover { color:var(--ink); background:rgba(45,60,102,.8); }
+    .flow-count { color:var(--aqua); }
+    .qc {
+      border-color:var(--line); background:rgba(24,34,66,.62);
+      box-shadow:0 4px 20px rgba(0,0,0,.28); backdrop-filter:blur(14px);
+    }
+    .qc:hover { border-color:var(--teal); background:rgba(31,43,78,.75); }
+    .qc-icon { color:var(--aqua); background:rgba(111,216,205,.14); }
+    .qc.picked {
+      border-color:var(--teal);
+      background:linear-gradient(145deg, rgba(111,216,205,.2), rgba(166,239,228,.09));
+      box-shadow:0 8px 30px rgba(111,216,205,.3);
+    }
+    .qc.picked .qc-icon { color:#04121a; background:linear-gradient(150deg, var(--aqua), var(--teal)); }
+    body.dim .qc.picked { background:linear-gradient(145deg, rgba(111,216,205,.24), rgba(166,239,228,.1)); }
+    .flow-note { border-color:var(--line); background:rgba(24,34,66,.62); }
+    .flow-link { color:var(--muted); }
+    .flow-link:hover { color:var(--aqua); }
+
+    .reveal-ring {
+      background:conic-gradient(var(--teal) calc(var(--harmony,0) * 1%), rgba(150,180,230,.13) 0);
+      filter:drop-shadow(0 0 34px rgba(111,216,205,.32));
+    }
+    .reveal-ring::after { background:#080e20; box-shadow:inset 0 2px 26px rgba(0,0,0,.5); }
+    body.dim .reveal-ring::after { background:#05080f; }
+    .reveal-num strong { color:#f4f8ff; text-shadow:0 0 30px rgba(111,216,205,.3); }
+    .reveal-num span { color:var(--muted); }
+    .reveal h2 { color:#f4f8ff; }
+    .reveal-signal { border-color:var(--line); background:rgba(24,34,66,.6); }
+    .reveal-move {
+      color:#eaf4ff;
+      background:
+        radial-gradient(ellipse 70% 60% at 84% 8%, rgba(111,216,205,.18), transparent 70%),
+        linear-gradient(150deg, rgba(23,33,70,.96), rgba(10,16,38,.98));
+      border:1px solid rgba(111,216,205,.2);
+      box-shadow:0 16px 44px rgba(0,0,0,.4);
+    }
+    .reveal-move p { color:#a8bbdc; }
+
+    /* Onboarding, in the same language as the app it introduces. */
+    .welcome-overlay { background:rgba(4,8,20,.72); }
+    .welcome-card {
+      border:1px solid rgba(150,180,230,.16);
+      background:
+        radial-gradient(ellipse 66% 50% at 82% 0%, rgba(111,216,205,.16), transparent 70%),
+        radial-gradient(ellipse 60% 46% at 6% 96%, rgba(168,146,224,.14), transparent 70%),
+        linear-gradient(158deg, rgba(20,29,62,.97), rgba(8,13,32,.99));
+      box-shadow:0 34px 100px rgba(0,0,0,.6);
+    }
+    .welcome-card h2 { color:#f4f8ff; }
+    .welcome-card > p { color:#9fb0d2; }
+    .welcome-badge { color:var(--aqua); background:rgba(111,216,205,.13); }
+    .welcome-step { border-color:var(--line); background:rgba(31,43,78,.46); }
+    .welcome-step b { color:#04121a; background:linear-gradient(150deg, var(--aqua), var(--teal)); }
+    .welcome-step strong { color:var(--ink); }
+    .welcome-step span { color:var(--muted); }
+    .welcome-note { color:#7c8aa8; }
+    .toast { color:#04121a; background:linear-gradient(150deg, var(--aqua), var(--teal)); box-shadow:0 12px 36px rgba(111,216,205,.34); }
+
+    /* "Dim" becomes a true bedtime mode: the same sky, turned right down. */
+    body.dim { --ink:#c8d2e6; --muted:#71809f; }
+    body.dim::before, body.dim::after { opacity:.28; }
+    body.dim .card, body.dim .surface, body.dim input, body.dim select, body.dim textarea,
+    body.dim .option-label, body.dim .chip, body.dim .scale button, body.dim .timeline-stop,
+    body.dim .thought-item, body.dim .source-card { background-color:rgba(10,16,34,.8); }
+    body.dim .soft-panel, body.dim .empty, body.dim .result-panel { background:rgba(12,19,40,.8); }
+    body.dim .topbar { background:rgba(3,6,15,.86); }
+    body.dim .btn.primary { box-shadow:0 8px 22px rgba(111,216,205,.18); }
+
+    /* The sphere is the most beautiful thing here; phones should see it —
+       but the one action has to stay in view alongside it, so the hero is
+       tuned to land the button on the first screen. */
+    @media (max-width:760px) {
+      .sabat-sphere { display:grid; width:min(196px,52vw); }
+      .sphere-reading { width:82%; }
+      .sphere-reading strong { font-size:clamp(34px,10vw,46px); letter-spacing:-2px; }
+      .sphere-reading span { max-width:180px; margin-top:9px; font-size:12.5px; }
+      .night-console { padding:20px 16px; }
+      .console-main { gap:8px; }
+      .console-copy h2 { margin:9px 0 8px; font-size:31px; letter-spacing:-1.6px; }
+      .console-copy > p { font-size:14.5px; }
+      .console-actions { margin-top:17px; }
+      .console-actions .btn { width:100%; justify-content:center; }
+      .guide-strip { margin-top:16px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      body::before, body::after, .sabat-sphere { animation:none !important; }
+    }
   </style>
 </head>
 <body>
@@ -834,6 +1143,12 @@
                 <div class="eyebrow">SleepSphere V5 • Private prototype</div>
                 <h2>Understand tonight.<br />Learn from tomorrow.</h2>
                 <p>Three short moments — a quick check-in, a realistic plan, one morning note — become a pattern you can actually read.</p>
+                <div class="console-actions"><button class="btn primary" id="guideNext" data-go="flow">Start tonight’s check-in</button><button class="btn ghost" data-go="twin">See what this creates</button></div>
+                <div class="guide-strip" aria-label="Your SleepSphere progress">
+                  <div class="guide-step" id="guideBio"><span class="guide-number">1</span><div><strong>Check today</strong><span id="guideBioText">Not started</span></div></div>
+                  <div class="guide-step" id="guidePlan"><span class="guide-number">2</span><div><strong>Plan tonight</strong><span id="guidePlanText">Waiting</span></div></div>
+                  <div class="guide-step" id="guideMorning"><span class="guide-number">3</span><div><strong>Record tomorrow</strong><span id="guideMorningText">Waiting</span></div></div>
+                </div>
                 <div class="intent-label">What matters most tomorrow?</div>
                 <div class="intent-row" id="intentRow">
                   <button type="button" class="intent-pill" data-intent="restore">Feel restored</button>
@@ -842,12 +1157,6 @@
                   <button type="button" class="intent-pill" data-intent="calm">Carry less into bed</button>
                 </div>
                 <div class="intent-result" id="intentResult" aria-live="polite">Choose tomorrow’s priority. SleepSphere will keep that outcome visible.</div>
-                <div class="console-actions"><button class="btn primary" id="guideNext" data-go="flow">Start tonight’s check-in</button><button class="btn ghost" data-go="twin">See what this creates</button></div>
-                <div class="guide-strip" aria-label="Your SleepSphere progress">
-                  <div class="guide-step" id="guideBio"><span class="guide-number">1</span><div><strong>Check today</strong><span id="guideBioText">Not started</span></div></div>
-                  <div class="guide-step" id="guidePlan"><span class="guide-number">2</span><div><strong>Plan tonight</strong><span id="guidePlanText">Waiting</span></div></div>
-                  <div class="guide-step" id="guideMorning"><span class="guide-number">3</span><div><strong>Record tomorrow</strong><span id="guideMorningText">Waiting</span></div></div>
-                </div>
               </div>
             </div>
             <div class="console-metrics">
@@ -1941,17 +2250,26 @@
       } else {
         $('#todayWinddown').textContent = 'Not planned'; $('#todayOpportunity').textContent = '—'; $('#todayWake').textContent = '—';
       }
+      // The sphere is the first thing anyone sees, so it must always say
+      // something true about them. Today's check-in outranks the longer-term
+      // restoration gap, and an untouched app invites rather than shrugs.
       const records = realMornings().slice(-14);
-      if (records.length >= 3) {
+      const todayBio = state.bioCheckins.find(item => item.date === today);
+      if (todayBio) {
+        $('#heroGap').textContent = todayBio.harmony;
+        $('#heroGapLabel').textContent = records.length >= 3
+          ? `tonight’s alignment • ${bioStatus(todayBio.harmony)[0].toLowerCase()}`
+          : 'tonight’s visible alignment';
+        $('#sabatSphere').style.setProperty('--gap-angle',`${clamp(todayBio.harmony,8,100)*3.6}deg`);
+      } else if (records.length >= 3) {
         const analysis = calculateCompass(records);
         $('#heroGap').textContent = `${Math.abs(Math.round(analysis.gap))} pts`;
         $('#heroGapLabel').textContent = analysis.gap > 8 ? 'opportunity above restoration' : analysis.gap < -8 ? 'restoration above opportunity' : 'opportunity and restoration aligned';
         $('#sabatSphere').style.setProperty('--gap-angle',`${clamp(analysis.restoration,8,100)*3.6}deg`);
       } else {
-        $('#heroGap').textContent = '—';
-        const needed = 3-records.length;
-        $('#heroGapLabel').textContent = `${needed} more morning${needed === 1 ? '' : 's'} reveal your restoration gap`;
-        $('#sabatSphere').style.setProperty('--gap-angle','72deg');
+        $('#heroGap').textContent = '☾';
+        $('#heroGapLabel').textContent = 'Take tonight’s check-in to see your alignment';
+        $('#sabatSphere').style.setProperty('--gap-angle','64deg');
       }
 
       const hasBio = state.bioCheckins.some(item => item.date === today);
