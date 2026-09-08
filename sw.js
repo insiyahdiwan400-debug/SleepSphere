@@ -1,5 +1,5 @@
-const CACHE = 'sleepsphere-v5-guided-prototype-20260908c';
-const SHELL = ['./', './manifest.webmanifest', './favicon.svg', './sleepsphere-icon-192.png', './sleepsphere-icon-512.png'];
+const CACHE = 'sleepsphere-v5-guided-prototype-20260908d';
+const SHELL = ['./', './manifest.webmanifest', './favicon.svg', './apple-touch-icon.png', './sleepsphere-icon-192.png', './sleepsphere-icon-512.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));

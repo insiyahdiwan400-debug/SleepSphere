@@ -19,7 +19,20 @@
   <meta name="color-scheme" content="dark light" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="./sleepsphere-icon-192.png" />
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+  <!-- Launch images. Without these iOS shows a white flash on every
+       cold start, which is the clearest tell that something is a web
+       page rather than an app. -->
+  <link rel="apple-touch-startup-image" href="./splash/splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+  <link rel="apple-touch-startup-image" href="./splash/splash-1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+  <link rel="apple-touch-startup-image" href="./splash/splash-1206x2622.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+  <link rel="apple-touch-startup-image" href="./splash/splash-1320x2868.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+  <link rel="apple-touch-startup-image" href="./splash/splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+  <link rel="apple-touch-startup-image" href="./splash/splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+  <link rel="apple-touch-startup-image" href="./splash/splash-828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+  <link rel="apple-touch-startup-image" href="./splash/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+  <link rel="apple-touch-startup-image" href="./splash/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+  <link rel="apple-touch-startup-image" href="./splash/splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
   <title>SleepSphere Prototype — Bio Harmony</title>
   <style>
     :root {
@@ -1441,6 +1454,75 @@
     :root[data-view="today"] .page-heading { display:none; }
     :root[data-view="today"] .topbar { justify-content:flex-end; padding-top:20px; }
 
+    /* The opening.
+
+       Sūrat an-Nabaʾ 78:9 — sleep as sabat, rest — is the idea the whole
+       app is built on, so it opens with it. Held for a breath, skippable
+       with a tap, and shown once per launch rather than on every screen.
+
+       The face is whichever calligraphic Arabic the device actually has:
+       Mishafi and Al Bayan on Apple platforms, Noto Naskh elsewhere. The
+       CSP forbids remote fonts, and a Quranic verse falling back to a UI
+       sans would be worse than not showing it at all. */
+    .opening {
+      position:fixed; inset:0; z-index:90; display:grid; place-items:center;
+      padding:32px; text-align:center; cursor:pointer;
+      background:
+        radial-gradient(ellipse 70% 44% at 50% 42%, rgba(195,160,104,.13), transparent 70%),
+        linear-gradient(178deg, #0b0e18, #06070c);
+      animation:openingIn .9s ease both;
+    }
+    .opening.leaving { animation:openingOut .7s ease both; pointer-events:none; }
+    @keyframes openingIn { from { opacity:0; } to { opacity:1; } }
+    @keyframes openingOut { to { opacity:0; visibility:hidden; } }
+    .opening-inner { max-width:min(620px,92vw); animation:openingRise 1.4s cubic-bezier(.22,1,.36,1) both; }
+    @keyframes openingRise { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+
+    .ayah {
+      margin:0 0 26px;
+      font-family:'Mishafi', 'Al Bayan', 'Geeza Pro', 'Noto Naskh Arabic', 'Traditional Arabic', 'Scheherazade New', serif;
+      font-size:clamp(34px,10vw,62px); line-height:2; font-weight:400;
+      color:#F6EEDC; text-shadow:0 0 44px rgba(226,200,150,.28);
+      direction:rtl; unicode-bidi:isolate;
+    }
+    .ayah-meaning {
+      margin:0 0 12px; font-family:var(--font-display); font-weight:500;
+      font-size:clamp(15px,4vw,19px); line-height:1.5; letter-spacing:-.01em; color:#C9C0AC;
+    }
+    .ayah-ref {
+      margin:0; color:#C3A068; font-size:11px; font-weight:800;
+      letter-spacing:1.6px; text-transform:uppercase;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .opening, .opening-inner { animation:none; }
+      .opening.leaving { display:none; }
+    }
+
+    /* Install sheet: shown once, on an iPhone, in Safari, after there is
+       something worth keeping. */
+    .install-sheet { position:fixed; inset:0; z-index:70; display:none; place-items:end center; padding:16px; background:rgba(4,6,12,.66); backdrop-filter:blur(10px); }
+    .install-sheet.active { display:grid; }
+    :root[data-mode="light"] .install-sheet { background:rgba(200,196,186,.6); }
+    .install-card {
+      width:min(520px,100%); max-height:88vh; overflow:auto; padding:26px 22px calc(22px + env(safe-area-inset-bottom));
+      border:1px solid var(--line); border-radius:26px;
+      background:linear-gradient(158deg, rgba(26,30,38,.98), rgba(10,12,18,.99));
+      box-shadow:0 -20px 60px rgba(0,0,0,.6);
+      animation:sheetUp .34s cubic-bezier(.22,1,.36,1) both;
+    }
+    :root[data-mode="light"] .install-card { background:linear-gradient(158deg,#fdfbf6,#f0ece3); }
+    @keyframes sheetUp { from { opacity:0; transform:translateY(26px); } to { opacity:1; transform:none; } }
+    .install-card h2 { margin:12px 0 8px; font-family:var(--font-display); font-weight:500; font-size:clamp(25px,6vw,32px); letter-spacing:-.02em; color:var(--ink); }
+    .install-card > p { margin:0 0 18px; color:var(--muted); font-size:14.5px; line-height:1.5; }
+    .install-steps { display:grid; gap:10px; margin:0 0 20px; padding:0; list-style:none; }
+    .install-steps li { display:grid; grid-template-columns:30px 1fr; gap:12px; align-items:start; padding:12px 13px; border:1px solid var(--line); border-radius:15px; background:rgba(233,228,217,.035); }
+    :root[data-mode="light"] .install-steps li { background:rgba(255,253,247,.7); }
+    .install-steps span { width:30px; height:30px; display:grid; place-items:center; border-radius:50%; color:var(--night); background:var(--moon); font-size:13px; font-weight:800; }
+    .install-steps div { color:var(--ink); font-size:14px; line-height:1.45; }
+    .install-steps strong { color:var(--gold-soft); }
+    :root[data-mode="light"] .install-steps strong { color:#5c4517; }
+    @media (prefers-reduced-motion: reduce) { .install-card { animation:none; } }
+
     /* Your week: seven nights on one axis. */
     .week-strip { display:grid; gap:5px; }
     .week-row { display:grid; grid-template-columns:38px 1fr 26px; align-items:center; gap:9px; }
@@ -2256,6 +2338,7 @@
                 <div class="field"><label for="settingsAge">Age group</label><select id="settingsAge"><option value="teen">13–17</option><option value="adult" selected>18–64</option><option value="older">65+</option><option value="unspecified">Prefer not to say</option></select></div>
                 <div class="field"><label for="settingsTarget">Default sleep target</label><select id="settingsTarget"><option value="420">7 hours</option><option value="450">7½ hours</option><option value="480" selected>8 hours</option><option value="510">8½ hours</option><option value="540">9 hours</option><option value="600">10 hours</option></select></div>
                 <div class="field"><label for="settingsFaith">Faith-aware options</label><select id="settingsFaith"><option value="on">Show Fajr and faith-aware planning</option><option value="off">Keep planning general</option></select></div>
+                <div class="field"><label for="settingsOpening">Opening verse</label><select id="settingsOpening"><option value="on">Open with Sūrat an-Nabaʾ 78:9</option><option value="off">Go straight to the app</option></select></div>
               </div>
               <button class="btn primary" id="saveSettings">Save settings</button>
               <p class="helper" id="ageGuidance" style="margin-top:10px">Adults commonly need around 7–9 hours, with individual variation.</p>
@@ -2322,6 +2405,29 @@
     </div>
   </div>
 
+  <div class="opening" id="opening" role="dialog" aria-label="Sūrat an-Nabaʾ, verse 9">
+    <div class="opening-inner">
+      <p class="ayah" lang="ar" dir="rtl">﴿وَجَعَلْنَا نَوْمَكُمْ سُبَاتًا﴾</p>
+      <p class="ayah-meaning">And We made your sleep a means of rest.</p>
+      <p class="ayah-ref">Sūrat an-Nabaʾ · 78:9</p>
+    </div>
+  </div>
+
+  <div class="install-sheet" id="installSheet" role="dialog" aria-modal="true" aria-labelledby="installTitle">
+    <div class="install-card">
+      <div class="welcome-badge">Put SleepSphere on your home screen</div>
+      <h2 id="installTitle">It works better as an app.</h2>
+      <p>Installed, it opens full screen with no browser bar, works with no signal, and keeps your entries between visits. It takes about ten seconds and installs nothing from the App Store.</p>
+      <ol class="install-steps">
+        <li><span>1</span><div>Tap the <strong>Share</strong> button at the bottom of Safari — the square with an arrow coming out of it.</div></li>
+        <li><span>2</span><div>Scroll down the list and tap <strong>Add to Home Screen</strong>.</div></li>
+        <li><span>3</span><div>Tap <strong>Add</strong>. SleepSphere will be on your home screen like any other app.</div></li>
+      </ol>
+      <div class="button-row"><button class="btn primary" id="installDone">Got it</button><button class="btn ghost" id="installLater">Not now</button></div>
+      <p class="welcome-note">Your entries stay on this phone either way.</p>
+    </div>
+  </div>
+
   <div class="flow" id="flow" role="dialog" aria-modal="true" aria-label="Guided check-in">
     <div class="flow-top">
       <div class="flow-bar"><span id="flowBar"></span></div>
@@ -2345,7 +2451,7 @@
     const STORAGE_KEY = 'sleepsphere_state_v2';
     const defaults = {
       version: 2,
-      settings: { name: '', age: 'adult', target: 480, faith: 'on', dim: false, intent: 'restore', welcomeSeen: false, mode: 'dark', useCycle: false, healthLinked: false, place: null, prayerMethod: 'mwl', madhab: 'standard', tradition: 'fatemi', prayerOffsets: {}, highLatRule: 'seventh', fajrEdited: false },
+      settings: { name: '', age: 'adult', target: 480, faith: 'on', installDismissed: false, openingOff: false, dim: false, intent: 'restore', welcomeSeen: false, mode: 'dark', useCycle: false, healthLinked: false, place: null, prayerMethod: 'mwl', madhab: 'standard', tradition: 'fatemi', prayerOffsets: {}, highLatRule: 'seventh', fajrEdited: false },
       plan: null,
       scans: [],
       thoughts: [],
@@ -3400,6 +3506,7 @@
       state.bioCheckins = state.bioCheckins.filter(item => item.id !== existing?.id); state.bioCheckins.push(checkin);
       state.bioCheckins.sort((a,b) => String(a.date).localeCompare(String(b.date)));
       saveState(); renderBioHarmony(); renderToday(); toast('Bio Harmony saved—next, plan tonight');
+      window.setTimeout(maybeOfferInstall, 2600);
     });
     $('#clearBio').addEventListener('click', () => { resetBioForm(); toast('Bio Harmony form cleared'); });
     $('#exportBio').addEventListener('click', () => {
@@ -3606,6 +3713,7 @@
       $('#settingsAge').value = state.settings.age || 'adult';
       $('#settingsTarget').value = String(state.settings.target || 480);
       $('#settingsFaith').value = state.settings.faith || 'on';
+      if ($('#settingsOpening')) $('#settingsOpening').value = state.settings.openingOff ? 'off' : 'on';
       $('#ageGuidance').textContent = ageGuidance[state.settings.age] || ageGuidance.unspecified;
       const showFaith = state.settings.faith !== 'off';
       $('[data-mode="fajr"]').style.display = showFaith ? '' : 'none';
@@ -3620,6 +3728,7 @@
       state.settings.age = $('#settingsAge').value;
       state.settings.target = Number($('#settingsTarget').value);
       state.settings.faith = $('#settingsFaith').value;
+      if ($('#settingsOpening')) state.settings.openingOff = $('#settingsOpening').value === 'off';
       if (state.settings.faith === 'off' && state.settings.intent === 'fajr') state.settings.intent = 'restore';
       $('#targetHours').value = String(state.settings.target);
       saveState(); applySettings(); renderAll(); toast('Personal settings saved on this device');
@@ -5100,6 +5209,73 @@
       });
     }
 
+    /* ------------------------------------------------------------------
+       Installing to the home screen.
+
+       iOS never offers this by itself — Safari has no install prompt, so an
+       app that could be installed simply never is unless it asks. This asks
+       once, only on an iPhone, only in Safari, and only after the person has
+       actually done something worth keeping. Declining is remembered.
+       ------------------------------------------------------------------ */
+    /* The opening verse. Once per launch, not once per screen — a thing you
+       have to sit through every time you glance at an app stops being
+       reverent and starts being an obstacle. A tap moves past it. */
+    function runOpening() {
+      const opening = $('#opening');
+      if (!opening) return;
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (sessionStorage.getItem('ss_opening_seen') || state.settings.openingOff) {
+        opening.remove();
+        return;
+      }
+      sessionStorage.setItem('ss_opening_seen', '1');
+
+      let closed = false;
+      const close = () => {
+        if (closed) return;
+        closed = true;
+        opening.classList.add('leaving');
+        window.setTimeout(() => opening.remove(), reduce ? 0 : 700);
+      };
+      opening.addEventListener('click', close);
+      window.setTimeout(close, reduce ? 900 : 3200);
+    }
+
+    function isStandalone() {
+      return window.navigator.standalone === true
+          || window.matchMedia('(display-mode: standalone)').matches;
+    }
+
+    function isIosSafari() {
+      const ua = navigator.userAgent;
+      const ios = /iPad|iPhone|iPod/.test(ua)
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const safari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+      return ios && safari;
+    }
+
+    function maybeOfferInstall() {
+      if (isStandalone()) { document.documentElement.dataset.installed = 'yes'; return; }
+      if (!isIosSafari()) return;
+      if (state.settings.installDismissed) return;
+      // Ask only once there is something worth keeping.
+      if (!state.bioCheckins.length && !state.mornings.some(item => !item.demo)) return;
+      $('#installSheet').classList.add('active');
+    }
+
+    function dismissInstall(remember) {
+      $('#installSheet').classList.remove('active');
+      if (remember) { state.settings.installDismissed = true; saveState(); }
+    }
+    $('#installDone')?.addEventListener('click', () => dismissInstall(true));
+    $('#installLater')?.addEventListener('click', () => dismissInstall(false));
+    $('#installSheet')?.addEventListener('click', event => {
+      if (event.target === $('#installSheet')) dismissInstall(false);
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && $('#installSheet')?.classList.contains('active')) dismissInstall(false);
+    });
+
     function closeWelcome(destination) {
       state.settings.welcomeSeen = true;
       saveState();
@@ -5112,6 +5288,8 @@
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && $('#welcomeOverlay').classList.contains('active')) closeWelcome('today'); });
 
     populateForms(); renderTimer(); renderAll();
+    if (isStandalone()) document.documentElement.dataset.installed = 'yes';
+    runOpening();
     // Home-screen shortcuts deep-link straight into a flow or a view.
     const launchTarget = new URLSearchParams(location.search).get('go');
     if (launchTarget === 'flow' || launchTarget === 'morningFlow') {
