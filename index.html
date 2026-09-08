@@ -1441,6 +1441,59 @@
     :root[data-view="today"] .page-heading { display:none; }
     :root[data-view="today"] .topbar { justify-content:flex-end; padding-top:20px; }
 
+    /* The night, drawn. The sky band is painted from the same keyframes as
+       the page background, so tonight's graphic and tonight's screen are
+       literally the same colours. */
+    .night-arc { position:relative; margin:0; }
+    .arc-sky {
+      position:relative; height:clamp(118px,29vw,158px);
+      border:1px solid var(--line); border-radius:18px; overflow:hidden;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 14px 34px rgba(0,0,0,.35);
+    }
+    .arc-sky > svg { position:absolute; inset:0; width:100%; height:100%; display:block; }
+    .arc-overlay { position:absolute; inset:0; }
+    .arc-overlay > svg { position:absolute; inset:0; width:100%; height:100%; }
+
+    /* Planned is an outline — an intention. Actual is solid — a fact. */
+    .arc-planned { fill:rgba(195,160,104,.18); stroke:var(--gold); stroke-width:1; vector-effect:non-scaling-stroke; }
+    .arc-actual { fill:var(--gold-soft); opacity:.94; }
+    :root[data-mode="light"] .arc-actual { fill:var(--gold); }
+
+    .arc-now { position:absolute; top:0; bottom:0; width:1px; background:rgba(255,255,255,.6); }
+    :root[data-mode="light"] .arc-now { background:rgba(30,26,18,.55); }
+    .arc-now em {
+      position:absolute; top:5px; left:5px; font-style:normal; font-size:8.5px; font-weight:800;
+      letter-spacing:.8px; text-transform:uppercase; color:rgba(255,255,255,.75);
+      text-shadow:0 1px 4px rgba(0,0,0,.8);
+    }
+    :root[data-mode="light"] .arc-now em { color:rgba(30,26,18,.75); text-shadow:0 1px 3px rgba(255,255,255,.85); }
+
+    /* Labels live below the picture, so they can never overprint the bands
+       or each other. Colliding marks are dropped in renderNightArc. */
+    .arc-marks { position:relative; height:34px; margin-top:7px; }
+    .arc-mark { position:absolute; top:0; transform:translateX(-50%); text-align:center; white-space:nowrap; }
+    .arc-mark:first-child { transform:translateX(-14%); }
+    .arc-mark:last-child { transform:translateX(-86%); }
+    .arc-mark b {
+      display:block; font-family:var(--font-display); font-size:13px; font-weight:500;
+      font-variant-numeric:tabular-nums; color:var(--ink);
+    }
+    .arc-mark i {
+      display:block; font-style:normal; font-size:9px; font-weight:800; letter-spacing:.7px;
+      text-transform:uppercase; color:var(--muted);
+    }
+    /* Fajr is the anchor the whole plan bends around, so it is named in brass. */
+    .arc-fajr b, .arc-fajr i { color:var(--gold); }
+
+    .arc-legend { display:flex; flex-wrap:wrap; gap:7px 14px; margin:2px 2px 0; }
+    .arc-key { display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-size:12.5px; }
+    .arc-key::before { content:""; width:14px; height:8px; border-radius:3px; }
+    .arc-key.planned::before { border:1px solid var(--gold); background:rgba(195,160,104,.18); }
+    .arc-key.actual::before { background:var(--gold-soft); }
+    :root[data-mode="light"] .arc-key.actual::before { background:var(--gold); }
+    .arc-key.delta { color:var(--ink); font-weight:700; font-variant-numeric:tabular-nums; }
+    .arc-key.delta::before, .arc-key.empty::before { display:none; }
+
     /* Restoration need: the arithmetic is the feature, so it is laid out
        to be read line by line rather than hidden behind a single number. */
     #needTotal { font-family:var(--font-display); font-size:clamp(34px,8vw,46px); line-height:1; letter-spacing:-.03em; margin:6px 0 4px; }
@@ -1549,10 +1602,8 @@
           <article class="night-console">
             <div class="console-status"><span class="live-signal">Night console ready</span><span class="console-date" id="consoleDate">Tonight</span></div>
             <div class="console-main">
-              <div class="sabat-sphere" id="sabatSphere" role="img" aria-labelledby="heroGap heroGapLabel">
-                <span class="sphere-satellite"></span>
-                <div class="sphere-reading"><strong id="heroGap">—</strong><span id="heroGapLabel">Three mornings reveal the distance between sleep opportunity and restoration.</span></div>
-              </div>
+              <figure class="night-arc" id="nightArc" aria-label="Tonight, drawn against the real sky"></figure>
+              <figcaption class="arc-legend" id="arcLegend"></figcaption>
               <div class="console-copy">
                 <h2 id="heroStatus">Ready when you are</h2>
                 <p id="heroSub">Take tonight’s check-in to see where your body actually is.</p>
@@ -2756,29 +2807,10 @@
       } else {
         $('#todayWinddown').textContent = 'Not planned'; $('#todayOpportunity').textContent = '—'; $('#todayWake').textContent = '—';
       }
-      // The sphere is the first thing anyone sees, so it must always say
-      // something true about them. Today's check-in outranks the longer-term
-      // restoration gap, and an untouched app invites rather than shrugs.
-      const records = realMornings().slice(-14);
-      const todayBio = state.bioCheckins.find(item => item.date === today);
-      if (todayBio) {
-        $('#heroGap').textContent = todayBio.harmony;
-        $('#heroGapLabel').textContent = records.length >= 3
-          ? `tonight’s alignment • ${bioStatus(todayBio.harmony)[0].toLowerCase()}`
-          : 'tonight’s visible alignment';
-        $('#sabatSphere').style.setProperty('--gap-angle',`${clamp(todayBio.harmony,8,100)*3.6}deg`);
-      } else if (records.length >= 3) {
-        const analysis = calculateCompass(records);
-        $('#heroGap').textContent = `${Math.abs(Math.round(analysis.gap))} pts`;
-        $('#heroGapLabel').textContent = analysis.gap > 8 ? 'opportunity above restoration' : analysis.gap < -8 ? 'restoration above opportunity' : 'opportunity and restoration aligned';
-        $('#sabatSphere').style.setProperty('--gap-angle',`${clamp(analysis.restoration,8,100)*3.6}deg`);
-      } else {
-        $('#heroGap').textContent = currentSky().orb;
-        $('#heroGapLabel').textContent = 'Take tonight’s check-in to see your alignment';
-        $('#sabatSphere').style.setProperty('--gap-angle','64deg');
-      }
-
+      // The sphere's reading now lives on the Bio Harmony screen; the
+      // Tonight hero shows the night itself instead.
       renderHeroStatus();
+      renderNightArc();
       renderRestoration();
 
       const hasBio = state.bioCheckins.some(item => item.date === today);
@@ -2872,6 +2904,115 @@
       }
       status.textContent = 'Ready when you are';
       sub.textContent = 'Take tonight’s check-in to see where your body actually is.';
+    }
+
+    /* ------------------------------------------------------------------
+       The night, drawn.
+
+       This is the thing the app computes every day and never showed you: a
+       real night, painted with the same sky the background uses, with the
+       sleep you planned laid over it and — once the morning is in — the
+       sleep you actually got underneath. The gap between those two bands is
+       the Restoration Twin, as a picture rather than a paragraph.
+
+       The window runs 4pm to noon so an evening plan, the whole night, a
+       Fajr interruption and a lie-in all fit without wrapping.
+       ------------------------------------------------------------------ */
+    const ARC_START = 18, ARC_SPAN = 16;
+
+    function arcPos(minutes) {
+      let hour = normalizeMinutes(minutes) / 60;
+      if (hour < ARC_START) hour += 24;
+      return clamp((hour - ARC_START) / ARC_SPAN, 0, 1) * 100;
+    }
+
+    function renderNightArc() {
+      const host = $('#nightArc');
+      if (!host) return;
+      const mode = state.settings.mode === 'light' ? 'light' : 'dark';
+      const plan = state.plan;
+      const today = new Date().toISOString().slice(0,10);
+      const morning = state.mornings.find(item => !item.demo && item.date === today);
+      const now = new Date().getHours() * 60 + new Date().getMinutes();
+
+      // The sky across the window, sampled hour by hour from the same
+      // keyframes the page background is using right now.
+      const stops = [];
+      for (let hour = ARC_START; hour <= ARC_START + ARC_SPAN; hour += 1) {
+        const sample = skySample(hour, mode);
+        stops.push(`<stop offset="${(((hour - ARC_START) / ARC_SPAN) * 100).toFixed(1)}%" stop-color="${sample.mid}"/>`);
+      }
+
+      const marks = [];
+      const band = [];
+
+      if (plan && Number.isFinite(Number(plan.sleepStart))) {
+        const wakeAt = toMinutes(plan.mode === 'fajr' ? plan.fajr : plan.wake);
+        const from = arcPos(Number(plan.sleepStart));
+        const to = arcPos(wakeAt);
+        const width = Math.max(1.5, to - from);
+        band.push(`<rect class="arc-planned" x="${from}%" y="26%" width="${width}%" height="28%" rx="7"/>`);
+        marks.push({ at:Number(plan.windStart), label:'Wind down', key:'wind' });
+        marks.push({ at:Number(plan.sleepStart), label:'Settle', key:'settle' });
+        if (plan.mode === 'fajr' && plan.fajr) marks.push({ at:toMinutes(plan.fajr), label:'Fajr', key:'fajr' });
+        marks.push({ at:wakeAt, label:'Wake', key:'wake' });
+      }
+
+      if (morning) {
+        const from = arcPos(toMinutes(morning.sleepTime || morning.bedTime));
+        const to = arcPos(toMinutes(morning.wakeTime));
+        const width = Math.max(1.5, to - from);
+        band.push(`<rect class="arc-actual" x="${from}%" y="60%" width="${width}%" height="22%" rx="6"/>`);
+      }
+
+      const nowAt = arcPos(now);
+      const showNow = nowAt > 0.5 && nowAt < 99.5;
+
+      // Labels collide often — wind-down and settle can be fifteen minutes
+      // apart. Drop by importance rather than by order: when two clash, the
+      // moment that matters survives. Settling, Fajr and waking outrank the
+      // start of the wind-down.
+      const rank = { settle:3, wake:3, fajr:3, wind:1 };
+      const placed = [];
+      marks
+        .map(mark => ({ ...mark, x:arcPos(mark.at) }))
+        .sort((a,b) => (rank[b.key] || 0) - (rank[a.key] || 0))
+        .forEach(mark => {
+          if (placed.every(other => Math.abs(other.x - mark.x) > 13)) placed.push(mark);
+        });
+      placed.sort((a,b) => a.x - b.x);
+
+      host.innerHTML = `
+        <div class="arc-sky">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <defs><linearGradient id="arcSky" x1="0" x2="1" y1="0" y2="0">${stops.join('')}</linearGradient></defs>
+            <rect x="0" y="0" width="100" height="100" fill="url(#arcSky)"/>
+          </svg>
+          <div class="arc-overlay">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none">${band.join('')}</svg>
+            ${showNow ? `<span class="arc-now" style="left:${nowAt}%"><em>now</em></span>` : ''}
+          </div>
+        </div>
+        <div class="arc-marks">
+          ${placed.map(mark => `<span class="arc-mark arc-${mark.key}" style="left:${mark.x}%">
+              <b>${formatTime(mark.at)}</b><i>${mark.label}</i></span>`).join('')}
+        </div>`;
+
+      const legend = $('#arcLegend');
+      if (!legend) return;
+      if (!plan) {
+        legend.innerHTML = '<span class="arc-key empty">Tonight is unplanned — the band appears once you save a night plan.</span>';
+      } else if (morning) {
+        const planned = Number(plan.total || plan.target || 0);
+        const actual = Number(morning.opportunityMinutes || 0);
+        const delta = actual - planned;
+        legend.innerHTML = `<span class="arc-key planned">Planned ${formatDuration(planned)}</span>
+          <span class="arc-key actual">Actual ${formatDuration(actual)}</span>
+          <span class="arc-key delta">${delta >= 0 ? '+' : '−'}${formatDuration(Math.abs(delta))}</span>`;
+      } else {
+        legend.innerHTML = `<span class="arc-key planned">Planned ${formatDuration(Number(plan.total || plan.target || 0))}</span>
+          <span class="arc-key empty">Record the morning to see what actually happened.</span>`;
+      }
     }
 
     function renderSignature(records) {
@@ -3895,6 +4036,27 @@
       const nightLength = 24 - (set - rise);
       const t = ((hour > set ? hour - set : hour + 24 - set)) / nightLength;
       return [88 - t * 80, 88 - Math.sin(t * Math.PI) * 80];
+    }
+
+    /** The interpolated sky at any hour, in either mode. Used both for the
+        live background and for painting the night graphic, so the two can
+        never drift apart. */
+    function skySample(hour, mode) {
+      const keys = skyKeys[mode === 'light' ? 'light' : 'dark'];
+      const h = ((hour % 24) + 24) % 24;
+      let i = 0;
+      while (i < keys.length - 1 && h >= keys[i+1].h) i += 1;
+      const from = keys[i];
+      const to = keys[Math.min(i + 1, keys.length - 1)];
+      const span = Math.max(0.0001, to.h - from.h);
+      const t = Math.min(1, Math.max(0, (h - from.h) / span));
+      return {
+        from, to, t,
+        top: rgbCss(mix(toRgb(from.top), toRgb(to.top), t)),
+        mid: rgbCss(mix(toRgb(from.mid), toRgb(to.mid), t)),
+        low: rgbCss(mix(toRgb(from.low), toRgb(to.low), t)),
+        stars: from.stars + (to.stars - from.stars) * t
+      };
     }
 
     function applySky() {
