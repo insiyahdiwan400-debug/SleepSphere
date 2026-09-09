@@ -901,6 +901,38 @@
       opacity:0; transition:opacity 1.6s linear;
     }
 
+    /* Lazy mode.
+       The point of this screen is that it asks nothing. It is one enormous
+       target with one word on it, dark enough to be looked at in bed, and
+       it closes itself. Anything that needs aiming at is too much on the
+       night this exists for. */
+    .lazy-veil { position:fixed; inset:0; z-index:70; display:grid; place-items:center;
+      padding:24px; background:rgba(3,7,12,.93); backdrop-filter:blur(14px);
+      animation:lazyIn .5s ease both; }
+    .lazy-veil[hidden] { display:none; }
+    @keyframes lazyIn { from { opacity:0; } to { opacity:1; } }
+    .lazy-sheet { width:min(460px,100%); display:grid; gap:14px; justify-items:center;
+      padding:44px 26px; border:0; border-radius:30px; text-align:center;
+      color:#e9e4d9; background:transparent; font:inherit; }
+    button.lazy-sheet { cursor:pointer; min-height:70vh; align-content:center; }
+    .lazy-eyebrow { color:#8a95a8; font-size:11.5px; font-weight:850; letter-spacing:1.6px; text-transform:uppercase; }
+    .lazy-word { font-family:var(--display,ui-serif,Georgia,serif); font-weight:500;
+      font-size:clamp(40px,11vw,64px); line-height:1; letter-spacing:-2px; color:#f3efe4; }
+    .lazy-note { max-width:19rem; color:#9aa6b8; font-size:14.5px; line-height:1.5; }
+    .lazy-dismiss { margin-top:18px; color:#5d6879; font-size:12px; letter-spacing:.4px; }
+    .lazy-choices { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; width:100%; margin-top:8px; }
+    .lazy-choice { display:grid; gap:7px; justify-items:center; min-height:104px; padding:16px 8px;
+      border:1px solid rgba(233,228,217,.16); border-radius:20px; color:#e9e4d9;
+      background:rgba(233,228,217,.05); font-size:14px; font-weight:800; cursor:pointer; }
+    .lazy-choice span { font-size:26px; line-height:1; }
+    .lazy-choice:hover, .lazy-choice:focus-visible { background:rgba(233,228,217,.12); }
+    .lazy-skip { margin-top:6px; border:0; background:transparent; color:#6c7787; font-size:13px; cursor:pointer; }
+    /* A lazy night is still a real night, and its times are measured rather
+       than remembered, so the record says where they came from. */
+    .lazy-tag { display:inline-block; margin-left:8px; padding:2px 7px; border-radius:99px;
+      color:#0c1620; background:var(--gold-soft,#f2e3ad); font-size:10px; font-weight:900;
+      letter-spacing:.6px; text-transform:uppercase; vertical-align:middle; }
+
     /* Film grain. This is what stops a dark screen looking like flat
        plastic — it gives the ink a surface. */
     body::after {
@@ -1710,6 +1742,31 @@
 </head>
 <body>
   <canvas id="starfield" aria-hidden="true"></canvas>
+  <!-- Lazy mode. The whole screen is the button: on a night when you have
+       nothing left, aiming at a target is itself a demand. -->
+  <div class="lazy-veil" id="lazyVeil" hidden>
+    <button type="button" class="lazy-sheet" id="lazyGoodnight">
+      <span class="lazy-eyebrow">Lazy mode</span>
+      <strong class="lazy-word" id="lazyWord">Goodnight</strong>
+      <span class="lazy-note" id="lazyNote">Bed time noted. Nothing else to do.</span>
+      <span class="lazy-dismiss">Tap anywhere to close</span>
+    </button>
+  </div>
+
+  <div class="lazy-veil" id="lazyMorningVeil" hidden>
+    <div class="lazy-sheet lazy-morning">
+      <span class="lazy-eyebrow">Last night, on one tap</span>
+      <strong class="lazy-word">How was it?</strong>
+      <span class="lazy-note" id="lazyMorningTimes">—</span>
+      <div class="lazy-choices">
+        <button type="button" class="lazy-choice" data-lazy-rate="2"><span>😮‍💨</span>Rough</button>
+        <button type="button" class="lazy-choice" data-lazy-rate="3"><span>😐</span>OK</button>
+        <button type="button" class="lazy-choice" data-lazy-rate="4"><span>🙂</span>Good</button>
+      </div>
+      <button type="button" class="lazy-skip" id="lazyMorningSkip">Not now</button>
+    </div>
+  </div>
+
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand"><div class="brand-mark">☾</div><div><strong>SleepSphere</strong><small>The Sabat Loop</small></div></div>
@@ -1748,7 +1805,10 @@
               <div class="console-copy">
                 <h2 id="heroStatus">Ready when you are</h2>
                 <p id="heroSub">Take tonight’s check-in to see where your body actually is.</p>
-                <div class="console-actions"><button class="btn primary" id="guideNext" data-go="flow">Start tonight’s check-in</button></div>
+                <div class="console-actions">
+                  <button class="btn primary" id="guideNext" data-go="flow">Start tonight’s check-in</button>
+                  <button class="btn ghost" id="lazyStart">Too tired — just go to bed</button>
+                </div>
                 <div class="guide-strip" aria-label="Your SleepSphere progress">
                   <div class="guide-step" id="guideBio"><span class="guide-number">1</span><div><strong>Check today</strong><span id="guideBioText">Not started</span></div></div>
                   <div class="guide-step" id="guidePlan"><span class="guide-number">2</span><div><strong>Plan tonight</strong><span id="guidePlanText">Waiting</span></div></div>
@@ -2449,6 +2509,8 @@
       thoughts: [],
       mornings: [],
       bioCheckins: [],
+      // An open lazy night: bed time stamped, waiting for a wake stamp.
+      lazyNight: null,
       trip: null,
       activeExperiment: null,
       experimentHistory: [],
@@ -4679,6 +4741,172 @@
     }
 
     /* ------------------------------------------------------------------
+       Lazy mode.
+
+       For the nights there is nothing left. One tap going to bed, one tap
+       in the morning, and the app does not ask a single question in
+       between — no mood, no factors, no plan, no check-in.
+
+       It is not a degraded record. It is a BETTER one in the way that
+       matters most, because the times are measured rather than
+       remembered: tapping "going to bed" timestamps the actual moment,
+       and opening the app timestamps waking. The full morning flow asks
+       you to recall both hours later, and people round to the nearest
+       half hour and guess wrong in one direction.
+
+       What it cannot know is how the night felt, so it asks exactly once,
+       with three targets big enough to hit half asleep. That answer is
+       recorded as restoration and mirrored to the other three ratings,
+       and the record says so rather than passing it off as four separate
+       judgements.
+       ------------------------------------------------------------------ */
+
+    /** Median, so one strange night cannot drag the estimate. */
+    function medianOf(values) {
+      const list = values.filter(Number.isFinite).sort((a, b) => a - b);
+      if (!list.length) return null;
+      const middle = Math.floor(list.length / 2);
+      return list.length % 2 ? list[middle] : Math.round((list[middle - 1] + list[middle]) / 2);
+    }
+
+    /** How long this person usually takes to fall asleep, from their own
+        history. Fifteen minutes is the fallback, not the assumption. */
+    function typicalLatency() {
+      const found = medianOf(realMornings().slice(-30).map(item =>
+        item.bedTime && item.sleepTime
+          ? (item.bedTime === item.sleepTime ? 0 : spanMinutes(item.bedTime, item.sleepTime))
+          : NaN));
+      return clamp(found === null ? 15 : found, 0, 90);
+    }
+
+    /** How long this person is usually awake in the night, again from their
+        own history. Assuming zero would be a guess too, and a flattering
+        one: it hands every lazy night a near-perfect efficiency and makes
+        the measured nights look better than the recalled ones for no
+        reason but the recording method. */
+    function typicalAwake() {
+      const found = medianOf(realMornings().slice(-30).map(item =>
+        Number.isFinite(Number(item.awakeMinutes)) ? Number(item.awakeMinutes) : NaN));
+      return clamp(found === null ? 12 : found, 0, 120);
+    }
+
+    const clockString = date =>
+      `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+
+    /* The night belongs to the date you woke, which is how every other
+       record in the app is keyed. Go to bed at 01:00 and the night is
+       still that morning's. */
+    function nightDateFor(wake) {
+      const d = new Date(wake.getTime());
+      return d.toISOString().slice(0,10);
+    }
+
+    function startLazyNight() {
+      const now = new Date();
+      state.lazyNight = { startedAt: now.toISOString(), bedTime: clockString(now) };
+      saveState();
+      const wake = state.plan?.wakeTime || $('#continuousWake')?.value || '';
+      $('#lazyNote').textContent = wake
+        ? `Bed time noted as ${formatTime(toMinutes(clockString(now)))}. Wake anchor ${formatTime(toMinutes(wake))}. Nothing else to do.`
+        : `Bed time noted as ${formatTime(toMinutes(clockString(now)))}. Nothing else to do — open the app when you wake.`;
+      $('#lazyVeil').hidden = false;
+      // The screen closes itself. Requiring a tap to leave a screen whose
+      // whole point is that you have nothing left would be a joke.
+      window.setTimeout(() => { $('#lazyVeil').hidden = true; }, 6500);
+      renderAll();
+    }
+
+    /** Offer the one-tap morning if a lazy night is open and enough of one
+        has passed. Called on load, so opening the app IS the wake stamp. */
+    function checkLazyMorning() {
+      const night = state.lazyNight;
+      if (!night || !night.startedAt) return;
+      const started = new Date(night.startedAt), now = new Date();
+      const elapsed = (now - started) / 60000;
+      // Under two hours is a nap or a misfire, not a night: leave it open.
+      if (elapsed < 120) return;
+      // Over twenty hours the app was simply not opened, and "now" is no
+      // longer evidence of anything. Fall back to the planned wake rather
+      // than inventing a thirty-hour night.
+      const stale = elapsed > 20 * 60;
+      const wakeTime = stale
+        ? (night.wakeGuess || state.plan?.wakeTime || '07:00')
+        : clockString(now);
+      const latency = typicalLatency();
+      const bedMinutes = toMinutes(night.bedTime);
+      const opportunity = spanMinutes(night.bedTime, wakeTime);
+      // Latency cannot swallow the night; on a very short one, scale it back.
+      const usedLatency = Math.min(latency, Math.max(0, opportunity - 30));
+      const sleepTime = `${String(Math.floor(((bedMinutes + usedLatency) % 1440) / 60)).padStart(2,'0')}:${String((bedMinutes + usedLatency) % 60).padStart(2,'0')}`;
+
+      state.lazyNight = Object.assign({}, night, { wakeTime, sleepTime, stale, date: nightDateFor(now) });
+      saveState();
+      $('#lazyMorningTimes').textContent =
+        `${formatTime(toMinutes(night.bedTime))} to ${formatTime(toMinutes(wakeTime))}` +
+        `${stale ? ' (estimated — the app was not opened)' : ''} · about ` +
+        `${formatDuration(Math.max(0, opportunity - usedLatency - typicalAwake()))} asleep`;
+      $('#lazyMorningVeil').hidden = false;
+    }
+
+    /** One tap closes the night. Everything else is already known. */
+    function finishLazyNight(rating) {
+      const night = state.lazyNight;
+      if (!night || !night.wakeTime) return;
+      $('#logDate').value = night.date;
+      $('#actualBed').value = night.bedTime;
+      $('#actualSleep').value = night.sleepTime;
+      $('#actualWake').value = night.wakeTime;
+      $('#awakeMinutes').value = Math.min(typicalAwake(),
+        Math.max(0, spanMinutes(night.sleepTime, night.wakeTime) - 60));
+      $('#napMinutes').value = 0;
+      $('#morningNote').value = night.stale
+        ? 'Lazy mode. Bed time measured; wake time estimated because the app was not opened.'
+        : 'Lazy mode. Bed and wake times measured, not recalled.';
+      morningEstimate();
+
+      // Drive the app's own controls so the record is written by exactly the
+      // handlers the full form uses, and nothing downstream has to know.
+      ['rest','energy','focus','calm'].forEach(key => {
+        const scale = document.querySelector(`[data-rating="${key}"]`);
+        if (scale) scale.querySelectorAll('button')[rating - 1]?.click();
+      });
+      $$('#factorChips .chip.active').forEach(chip => chip.click());
+
+      state.mornings = state.mornings.filter(item => item.demo || item.date !== night.date);
+      $('#saveMorning').click();
+
+      // Mark it honestly: four ratings from one answer is one answer.
+      const saved = state.mornings.find(item => !item.demo && item.date === night.date);
+      if (saved) { saved.lazy = true; saved.lazySingleTap = true; }
+      state.lazyNight = null;
+      saveState();
+      $('#lazyMorningVeil').hidden = true;
+      clearMorningForm();
+      renderAll();
+      toast(lazyVerdict(saved, rating));
+    }
+
+    /** One sentence. Not a dashboard, and never a scolding. */
+    function lazyVerdict(record, rating) {
+      if (!record) return 'Night recorded.';
+      const hours = formatDuration(record.sleepMinutes);
+      if (rating >= 4) return `Recorded — ${hours}, and it felt good.`;
+      if (rating <= 2) {
+        const target = Number(state.settings.target) || 480;
+        return record.opportunityMinutes < target - 45
+          ? `Recorded — ${hours}. That was a short window; tonight, try bed 20 minutes earlier.`
+          : `Recorded — ${hours}. Rough nights happen inside good windows too.`;
+      }
+      return `Recorded — ${hours}. Nothing to fix.`;
+    }
+
+    $('#lazyStart')?.addEventListener('click', startLazyNight);
+    $('#lazyGoodnight')?.addEventListener('click', () => { $('#lazyVeil').hidden = true; });
+    $$('[data-lazy-rate]').forEach(button => button.addEventListener('click',
+      () => finishLazyNight(Number(button.dataset.lazyRate))));
+    $('#lazyMorningSkip')?.addEventListener('click', () => { $('#lazyMorningVeil').hidden = true; });
+
+    /* ------------------------------------------------------------------
        Travel.
 
        The whole feature turns on one fact most sleep apps get wrong: light
@@ -5698,6 +5926,9 @@
     // After renderAll, so --stars already holds tonight's value and the
     // field does not start by fading in from nothing at midnight.
     startStarfield();
+    // Opening the app is the wake stamp, so this has to run on load — before
+    // anything asks the person to do something.
+    checkLazyMorning();
     runOpening();
     reconcileLocation();
     // Home-screen shortcuts deep-link straight into a flow or a view.
