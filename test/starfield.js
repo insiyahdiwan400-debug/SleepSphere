@@ -37,9 +37,23 @@ const clockAt = hour => `(()=>{const R=Date;const f=new R(2026,8,9,${hour},30,0)
 
   // Density: the whole point of the change. A field of twenty dots reads as
   // wallpaper, which is what the tiled background did.
+  const pick = (probe, id) => probe.fields.find(f => f.id === id);
   const phone = await open(23, { width:390, height:844 });
-  const a = await phone.p.evaluate(() => window.__starProbe());
+  const p0 = await phone.p.evaluate(() => window.__starProbe());
+  const a = pick(p0, 'starfield');
   check('Hundreds of stars on a phone, not dozens', a.onScreen >= 250, `${a.onScreen} on screen of ${a.count}`);
+
+  // The hero panel is a dark slab at every hour, and it used to carry a
+  // regular 74px lattice of dots — the one pattern guaranteed to read as
+  // "dots", on the largest surface in the app.
+  const panel = pick(p0, 'console-stars');
+  check('The hero panel has its own field', panel && panel.onScreen >= 90,
+        panel ? `${panel.onScreen} on the panel` : 'no panel field');
+  check('No dot lattice survives anywhere', await phone.p.evaluate(() =>
+    ![...document.styleSheets].some(sheet => {
+      try { return [...sheet.cssRules].some(r => /background-size:\s*74px/.test(r.cssText)); }
+      catch { return false; }
+    })));
   check('The canvas fills the viewport', await phone.p.evaluate(() => {
     const c = document.getElementById('starfield');
     return c.clientWidth === window.innerWidth && c.clientHeight === window.innerHeight;
@@ -51,7 +65,7 @@ const clockAt = hour => `(()=>{const R=Date;const f=new R(2026,8,9,${hour},30,0)
   // couple of pixels a second at the edge of the field.
   await phone.p.waitForTimeout(5000);
   const later = await phone.p.evaluate(() => window.__starProbe());
-  const drift = (later.spin - a.spin) * later.radius;
+  const drift = (later.spin - p0.spin) * a.radius;
   check('The field turns, slowly', drift > 4 && drift < 40, `${drift.toFixed(1)}px at the edge over 5s`);
 
   // Twinkle: individual, so the field shimmers unevenly rather than pulsing.
@@ -77,8 +91,13 @@ const clockAt = hour => `(()=>{const R=Date;const f=new R(2026,8,9,${hour},30,0)
   // anyway. This is the difference between a nice background and a battery
   // complaint.
   const day = await open(13, { width:390, height:844 });
-  const d = await day.p.evaluate(() => window.__starProbe());
-  check('Paused in daylight', d.running === false, `--stars is 0 at 13:30`);
+  const dp = await day.p.evaluate(() => window.__starProbe());
+  check('The page sky is off in daylight', pick(dp,'starfield').active === false);
+  // ...but the panel keeps its stars, because it is dark at every hour, and
+  // in daylight it is the only sky anyone can see. Looking at the app at
+  // noon and finding no stars at all is what made this look unchanged.
+  check('The panel keeps its stars in daylight', pick(dp,'console-stars').active === true,
+        `${pick(dp,'console-stars').onScreen} on the panel at 13:30`);
   await day.ctx.close();
 
   // Reduced motion: still a sky, just a still one.
@@ -88,12 +107,13 @@ const clockAt = hour => `(()=>{const R=Date;const f=new R(2026,8,9,${hour},30,0)
   const s2 = await still.p.evaluate(() => window.__starProbe());
   check('Reduced motion is honoured', s1.spin === s2.spin && s2.reduced,
         `spin held at ${s2.spin}`);
-  check('And the stars are still there', s1.onScreen >= 250, `${s1.onScreen} on screen`);
+  check('And the stars are still there', pick(s1,'starfield').onScreen >= 250,
+        `${pick(s1,'starfield').onScreen} on screen`);
   await still.ctx.close();
 
   // A wider screen gets more sky, not bigger stars.
   const wide = await open(23, { width:1440, height:900 });
-  const wsp = await wide.p.evaluate(() => window.__starProbe());
+  const wsp = pick(await wide.p.evaluate(() => window.__starProbe()), 'starfield');
   check('Density holds on a large screen', wsp.onScreen > a.onScreen,
         `${wsp.onScreen} vs ${a.onScreen} on the phone`);
   await wide.ctx.close();
