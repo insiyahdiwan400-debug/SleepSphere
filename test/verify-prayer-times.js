@@ -1,8 +1,8 @@
 /**
  * Verify the app's prayer engine against a published reference implementation.
  *
- * The reference is api.aladhan.com method 0 — Shia Ithna-Ashari, Leva
- * Institute, Qum. It shares the Fatimi Fajr (16) and Isha (14) angles, but
+ * The reference is api.aladhan.com method 7 — Institute of Geophysics,
+ * Tehran. It shares the Fatimi Fajr (17.7) and Isha (14) angles, but
  * NOT the Fatimi Maghrib or nisf al-layl, so those two are checked against
  * its Sunset and STANDARD-midnight fields instead. See FIELDS below.
  *
@@ -47,7 +47,7 @@ async function reference(lat, lon, date) {
   if (cache[key] && !isToday(date)) return cache[key];
   const url = `https://api.aladhan.com/v1/timings/${String(d).padStart(2,'0')}-`
             + `${String(m).padStart(2,'0')}-${y}?latitude=${lat}&longitude=${lon}`
-            + `&method=0&midnightMode=0`;
+            + `&method=7&midnightMode=0`;
   const res = await fetch(url);
   const json = await res.json();
   if (!json.data) throw new Error('reference fetch failed: ' + JSON.stringify(json).slice(0,200));
@@ -64,8 +64,14 @@ async function reference(lat, lon, date) {
                 quarter of an hour later.
      nisf    -> the reference's MIDNIGHT with midnightMode=0 (STANDARD),
                 which is the sunset-to-sunrise midpoint. midnightMode=1 is
-                the Ja'fari sunset-to-Fajr one, roughly half an hour early. */
-const FIELDS = [['fajr','Fajr'], ['sunrise','Sunrise'], ['dhuhr','Dhuhr'], ['asr','Asr'],
+                the Ja'fari sunset-to-Fajr one, roughly half an hour early.
+
+   Two of the app's values are deliberately absent from this comparison,
+   because no API computes them: the DISPLAYED fajr and sunrise carry the
+   two-minute ihtiyat a Dawat sheet puts on end times. sunriseTrue is the
+   unadjusted astronomy and is what gets checked here; fajr is checked
+   against the sheet itself, exactly, in fatimi-convention.js. */
+const FIELDS = [['fajrTrue','Fajr'], ['sunriseTrue','Sunrise'], ['dhuhr','Dhuhr'], ['asr','Asr'],
                 ['sunset','Sunset'], ['maghrib','Sunset'], ['isha','Isha'], ['nisf','Midnight']];
 
 (async () => {
@@ -92,7 +98,7 @@ const FIELDS = [['fajr','Fajr'], ['sunrise','Sunrise'], ['dhuhr','Dhuhr'], ['asr
         if (!mine[ours] || !ref[theirs]) continue;
         // High-latitude estimates are by definition not the reference's
         // arithmetic, so they are reported but never counted as failures.
-        if (mine.estimated && ['fajr','isha','nisf'].includes(ours)) { estimatedSkips++; continue; }
+        if (mine.estimated && ['fajrTrue','isha','nisf'].includes(ours)) { estimatedSkips++; continue; }
         // Asr is judged against canonical PrayTimes, not against aladhan:
         // the two published sources disagree with each other on Asr by up to
         // two minutes, and the timetables people actually hold are generated
@@ -127,7 +133,7 @@ const FIELDS = [['fajr','Fajr'], ['sunrise','Sunrise'], ['dhuhr','Dhuhr'], ['asr
 
   console.log('\n' + '-'.repeat(62));
   console.log(`${comparisons} comparisons against two independent references:`);
-console.log('  api.aladhan.com method 0 (Shia Ithna-Ashari, Qum) and a PrayTimes transcription');
+console.log('  api.aladhan.com method 7 (Tehran: Fajr 17.7, Isha 14) and a PrayTimes transcription');
   console.log(`${estimatedSkips} high-latitude estimates excluded (no true time exists)`);
   console.log(`worst disagreement: ${worst} minute(s)`);
   if (offenders.length) { console.log('\nOUT BY MORE THAN A MINUTE:'); offenders.forEach(o=>console.log('  '+o)); }

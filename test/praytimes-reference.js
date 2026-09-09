@@ -29,7 +29,7 @@ const fixAngle = a => a - 360 * Math.floor(a / 360);
 const fixHour  = a => a - 24 * Math.floor(a / 24);
 
 // Fatimi: Maghrib is sunset, not the Ithna-Ashari 4 degrees of depression.
-const PARAMS = { fajr: 16, isha: 14, maghrib: 0.833, asrFactor: 1 };
+const PARAMS = { fajr: 17.7, isha: 14, maghrib: 0.833, asrFactor: 1 };
 
 function julian(year, month, day) {
   if (month <= 2) { year -= 1; month += 12; }
@@ -93,9 +93,13 @@ function praytimes({ latitude, longitude, year, month, day, timezone }) {
 
   const out = {};
   for (const key of Object.keys(T)) out[key] = clock(T[key]);
-  // Nisf al-layl: the middle of the night, sunset to sunrise.
+  // Nisf al-layl opens at the middle of the night, sunset to sunrise.
   out.nisf = (T.sunset === null || T.sunrise === null) ? null
            : clock(T.sunset + fixHour(T.sunrise - T.sunset) / 2);
+  // This reference deliberately carries NO ihtiyat: it is the astronomy the
+  // app's unadjusted values are checked against.
+  out.sunriseTrue = out.sunrise;
+  out.fajrTrue = out.fajr;
   return out;
 }
 

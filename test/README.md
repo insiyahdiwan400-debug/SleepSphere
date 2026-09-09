@@ -3,7 +3,8 @@
 The times SleepSphere prints are not taken on trust. They are checked
 against **two independent references**, and have to satisfy both:
 
-1. **api.aladhan.com method 0** — Shia Ithna-Ashari (Leva Institute, Qum).
+1. **api.aladhan.com method 7** — Institute of Geophysics, Tehran, which
+   shares the Fatimi Fajr (17.7°) and Isha (14°) angles.
 2. **`praytimes-reference.js`** — a transcription of PrayTimes.js, the
    algorithm essentially every published timetable is generated from. It
    runs offline, so a wrong answer cannot hide behind the API being down.
@@ -12,12 +13,13 @@ against **two independent references**, and have to satisfy both:
 
 | | |
 |---|---|
-| Fajr | sun 16° below the horizon |
+| Fajr | sun 17.7° below the horizon |
 | Zohr | after zawal, prayed with Asr |
 | Asr | shadow factor 1 — *not* the Hanafi 2 |
 | **Maghrib** | **at sunset** — *not* the Ithna-Ashari 4° |
 | Isha | sun 14° down, prayed with Maghrib |
-| **Nisf al-layl** | **halfway from sunset to SUNRISE** — *not* to Fajr |
+| **Nisf al-layl** | **a window**: halfway from sunset to SUNRISE — *not* to Fajr — for one twelfth of that night |
+| **Ihtiyat** | **end times shown ~2 min early**; start times just rounded |
 
 The two in bold are where **Fatimi practice parts company with
 Ithna-Ashari**, and both were wrong in this app until a real timetable
@@ -27,10 +29,19 @@ plausible on screen:
 
 | | app had | timetable says | error |
 |---|---|---|---|
+| Sihori end | 04:54 (Fajr 16°) | **04:46** (17.7°) | 8 min late |
 | Maghrib | 18:44 (4° down) | **18:30** (sunset) | 14 min late, daily |
 | Nisf al-layl | 23:42 (to Fajr) | **00:16** (to sunrise) | 34 min early |
 
-*(Dubai, 9 September 2026.)* `fatimi-convention.js` asserts both of those
+*(Dubai, 9 September 2026.)* The **ihtiyat** was read off four independent
+rows of the same sheet, which all agree on about two minutes: sunrise (the
+end of Fajr's window) 06:01 against a true 06:02.6, Zuhr End 14:19 against
+14:20.8, Asr End 16:23 against 16:25.2, nisf's end 01:12 against 01:13.9.
+Start times — zawal, Maghrib, nisf's start — carry none.
+
+The precaution is a **display convention only**: `fajrTrue` and
+`sunriseTrue` keep the unadjusted astronomy, nisf is derived from those,
+and a test asserts the margin never leaks into the arithmetic. `fatimi-convention.js` asserts both of those
 exactly — not within a tolerance — because these are the two values that
 drift back to a plausible wrong answer if anyone reaches for the
 nearer-to-hand convention again.
@@ -84,13 +95,21 @@ even offline.
 
 ## Still open
 
-The Dubai timetable gives nisf al-layl as a **window, 00:16 to 01:12**. The
-00:16 is reproduced exactly. The 01:12 is not derived here: it is 402
-minutes after sunset, or 0.580 of that night, which is not a clean fraction
-(a twelfth of the night past the midpoint would be 01:14). One data point
-does not separate the candidate rules, and guessing a prayer time for a
-whole community is not worth the tidiness. The app shows the midpoint
-only.
+Every row of that one sheet is now reproduced, five of six exactly. But it
+**is one sheet, for one city, on one day**, and two things cannot be
+separated from a single sample:
+
+- **The Fajr angle and the size of its precaution.** 17.7° with a 2-minute
+  ihtiyat gives 04:45 against the sheet's 04:46. So does 17.4° with no
+  precaution, and 17.84° with none. 17.7° is the published Tehran Shia
+  parameter and the others are artifacts of fitting one point, so 17.7° is
+  what is used — but the sihori assertion allows 1 minute, not 0, and says
+  why.
+- **Whether the ihtiyat is exactly 2 minutes.** The four end rows constrain
+  it to roughly 1.7–2.1 minutes. Two is the obvious reading.
+
+One more sheet — a different city, or the same city in a different season —
+would settle both. Add it to `GROUND_TRUTH` in `fatimi-convention.js`.
 
 ## If the times disagree with your timetable
 

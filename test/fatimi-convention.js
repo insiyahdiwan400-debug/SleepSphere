@@ -15,13 +15,26 @@ const check = (n, ok, x='') => { console.log(`${ok?'PASS':'FAIL'}  ${n}${x?' :: 
 const mins = t => { const [h,m] = t.split(':').map(Number); return h*60+m; };
 const span = (a,b) => ((mins(b)-mins(a)) % 1440 + 1440) % 1440;
 
-/* Verified against a Dubai Dawat timetable. If either of these two moves,
-   the convention has been broken, not merely nudged:
-     Maghrib 18:30 — sunset. NOT the Ithna-Ashari 4-degree 18:44.
-     Nisf     00:16 — midpoint sunset to SUNRISE. NOT sunset to Fajr (23:42). */
+/* A whole Dubai Dawat timetable, 9 September 2026, row for row. Every value
+   the app shows is pinned to it. Three of these were wrong at some point,
+   each because a nearby published convention was reached for instead of the
+   Fatimi one, and each wrong answer looked entirely reasonable on screen:
+     Maghrib  18:30 — sunset. NOT the Ithna-Ashari 4-degree 18:44.
+     Nisf     00:16 — midpoint sunset to SUNRISE. NOT sunset to Fajr (23:42).
+     Sihori   04:46 — Fajr at 17.7 degrees. NOT 16 degrees (04:54).
+   `tol` is the allowed minutes of disagreement: 0 where the sheet's rule is
+   fully pinned down, 1 for sihori, where a single sheet cannot separate the
+   Fajr angle from the size of the precaution applied to it. */
 const GROUND_TRUTH = {
   city: 'Dubai', tz: 'Asia/Dubai', lat: 25.2048, lon: 55.2708, d: [2026, 9, 9],
-  maghrib: '18:30', nisf: '00:16'
+  rows: [
+    ['Sihori End', 'fajr',    '04:46', 1],
+    ['Sunrise',    'sunrise', '06:01', 0],
+    ['Zawal',      'dhuhr',   '12:16', 0],
+    ['Maghrib',    'maghrib', '18:30', 0],
+    ['Nisf start', 'nisf',    '00:16', 0],
+    ['Nisf end',   'nisfEnd', '01:12', 0]
+  ]
 };
 
 const CASES = [
@@ -43,18 +56,26 @@ const CASES = [
     return t;
   };
 
-  // The timetable, exactly.
+  // The timetable, row for row.
   const g = GROUND_TRUTH;
   const t0 = await probe(g.tz, g.lat, g.lon, g.d);
-  check(`${g.city} Maghrib matches the Dawat timetable`, t0.maghrib === g.maghrib,
-        `${t0.maghrib} (timetable ${g.maghrib})`);
-  check(`${g.city} nisf al-layl matches the Dawat timetable`, t0.nisf === g.nisf,
-        `${t0.nisf} (timetable ${g.nisf})`);
+  for (const [label, key, expected, tol] of g.rows) {
+    const off = Math.abs(mins(t0[key]) - mins(expected));
+    const wrapped = Math.min(off, 1440 - off);
+    check(`${g.city} ${label} matches the Dawat sheet`, wrapped <= tol,
+          `${t0[key]} vs ${expected}${wrapped ? ` (${wrapped}m)` : ' exact'}`);
+  }
+  // The ihtiyat must be a display convention only: it must never feed back
+  // into the arithmetic. Nisf is derived from true sunrise, so it has to sit
+  // half way between sunset and sunriseTrue, not the shown sunrise.
+  check(`${g.city} ihtiyat does not leak into nisf`,
+        Math.abs(span(t0.sunset, t0.nisf) * 2 - span(t0.sunset, t0.sunriseTrue)) <= 1,
+        `nisf ${t0.nisf}, true sunrise ${t0.sunriseTrue}, shown ${t0.sunrise}`);
 
   for (const c of CASES) {
     const t = await probe(c.tz, c.lat, c.lon, c.d);
     const near = (a, b, tol) => Math.abs(mins(a) - mins(b)) <= tol;
-    check(`${c.city} sunrise`, near(t.sunrise, c.sunrise, 3), `${t.sunrise} vs ${c.sunrise}`);
+    check(`${c.city} sunrise`, near(t.sunriseTrue, c.sunrise, 3), `${t.sunriseTrue} vs ${c.sunrise}`);
     check(`${c.city} zawal`,   near(t.dhuhr,   c.dhuhr,   3), `${t.dhuhr} vs ${c.dhuhr}`);
 
     // Fatimi Maghrib IS sunset. Not a few minutes after it.
@@ -67,12 +88,16 @@ const CASES = [
           `maghrib ${t.maghrib} -> isha ${t.isha}`);
 
     // Nisf al-layl halves sunset to SUNRISE — the whole dark part of the day.
-    const toNisf = span(t.sunset, t.nisf), night = span(t.sunset, t.sunrise);
+    const toNisf = span(t.sunset, t.nisf), night = span(t.sunset, t.sunriseTrue);
     check(`${c.city} nisf halves sunset to sunrise`, Math.abs(toNisf*2 - night) <= 2,
           `sunset ${t.sunset} -> nisf ${t.nisf} -> sunrise ${t.sunrise} (${toNisf}m of ${night}m)`);
     // And is therefore later than the Ja'fari sunset-to-Fajr midpoint, which
     // is the wrong answer this app used to give.
-    const jafari = span(t.sunset, t.fajr) / 2;
+    const jafari = span(t.sunset, t.fajrTrue) / 2;
+    // And the window closes one seasonal night hour later, less the ihtiyat.
+    check(`${c.city} nisf window is a twelfth of the night`,
+          Math.abs(span(t.nisf, t.nisfEnd) - (night/12 - 2)) <= 1,
+          `${span(t.nisf, t.nisfEnd)}m vs ${Math.round(night/12 - 2)}m`);
     check(`${c.city} nisf is not the Ja'fari midpoint`, toNisf > jafari + 5,
           `${toNisf}m vs Ja'fari ${Math.round(jafari)}m after sunset`);
 
