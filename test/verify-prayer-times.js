@@ -2,9 +2,9 @@
  * Verify the app's prayer engine against a published reference implementation.
  *
  * The reference is api.aladhan.com method 0 — Shia Ithna-Ashari, Leva
- * Institute, Qum (Fajr 16, Isha 14, Maghrib 4, Ja'fari midnight), which is
- * the convention the Fatimi timetable follows. Every time the app prints is
- * compared against it across cities, latitudes and seasons.
+ * Institute, Qum. It shares the Fatimi Fajr (16) and Isha (14) angles, but
+ * NOT the Fatimi Maghrib or nisf al-layl, so those two are checked against
+ * its Sunset and STANDARD-midnight fields instead. See FIELDS below.
  *
  * Reference responses are cached to test/.refcache.json so the suite can be
  * re-run without hammering the API.
@@ -47,7 +47,7 @@ async function reference(lat, lon, date) {
   if (cache[key] && !isToday(date)) return cache[key];
   const url = `https://api.aladhan.com/v1/timings/${String(d).padStart(2,'0')}-`
             + `${String(m).padStart(2,'0')}-${y}?latitude=${lat}&longitude=${lon}`
-            + `&method=0&midnightMode=1`;
+            + `&method=0&midnightMode=0`;
   const res = await fetch(url);
   const json = await res.json();
   if (!json.data) throw new Error('reference fetch failed: ' + JSON.stringify(json).slice(0,200));
@@ -55,9 +55,18 @@ async function reference(lat, lon, date) {
   return json.data.timings;
 }
 
-// The times the app actually prints, and what each is called in the reference.
+/* The times the app prints, and the reference field each is checked against.
+   Two do NOT map to the obviously-named field, because Fatimi practice is not
+   Ithna-Ashari practice and the API only speaks the latter:
+
+     maghrib -> the reference's SUNSET, since Fatimi Maghrib is sunset. The
+                API's own "Maghrib" is the 4-degree Ithna-Ashari one, about a
+                quarter of an hour later.
+     nisf    -> the reference's MIDNIGHT with midnightMode=0 (STANDARD),
+                which is the sunset-to-sunrise midpoint. midnightMode=1 is
+                the Ja'fari sunset-to-Fajr one, roughly half an hour early. */
 const FIELDS = [['fajr','Fajr'], ['sunrise','Sunrise'], ['dhuhr','Dhuhr'], ['asr','Asr'],
-                ['sunset','Sunset'], ['maghrib','Maghrib'], ['isha','Isha'], ['nisf','Midnight']];
+                ['sunset','Sunset'], ['maghrib','Sunset'], ['isha','Isha'], ['nisf','Midnight']];
 
 (async () => {
   const b = await chromium.launch({ executablePath:'/opt/pw-browsers/chromium', args:['--no-sandbox'] });

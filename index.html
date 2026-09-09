@@ -1896,7 +1896,7 @@
               <div id="prayerOptions" hidden style="margin-top:16px">
                 <div class="field"><label for="prayerHighLat">In summer the sun here never gets low enough for a true Fajr. Estimate it as</label><select id="prayerHighLat"><option value="seventh">One seventh of the night</option><option value="half">Middle of the night</option><option value="angle">Angle-based</option></select></div>
               </div>
-              <div class="callout" style="margin-top:14px" id="prayerNote">Worked out on this phone, Fatimi: Fajr at 16°, Maghrib when the eastern redness goes rather than at sunset, Asr with Zohr, Isha with Maghrib, and nisf al-layl halfway from sunset to Fajr. Checked against the Shia Ithna-Ashari (Qum) tables. They are here to plan sleep around — for prayer itself, your local timetable is the authority.</div>
+              <div class="callout" style="margin-top:14px" id="prayerNote">Worked out on this phone, Fatimi: Fajr at 16°, Maghrib at sunset, Asr with Zohr, Isha with Maghrib, and nisf al-layl halfway between sunset and sunrise. Checked against a Dawat timetable. They are here to plan sleep around — for prayer itself, your local timetable is the authority.</div>
             </article>
 
             <article class="card span-7">
@@ -4791,25 +4791,24 @@
          Zohr      after zawal, prayed together with Asr.
          Asr       shadow factor 1, not the Hanafi 2. Prayed with Zohr, so
                    it is worked out for completeness rather than shown.
-         Maghrib   NOT at sunset. Maghrib enters when the eastern redness
-                   has gone, which is the sun 4° below the horizon —
-                   roughly a quarter of an hour after sunset in the tropics
-                   and longer at high latitude. This is the difference that
-                   matters most: a Bohra Maghrib is never the sunset time
-                   printed on a Sunni timetable.
+         Maghrib   AT SUNSET. Bohras pray Maghrib promptly at sunset, and
+                   this is where a Fatimi timetable parts company with the
+                   Ithna-Ashari one, which waits for the eastern redness to
+                   go — the sun 4° down, about a quarter of an hour later.
+                   Taking the Ithna-Ashari rule put Maghrib 14 minutes late
+                   in Dubai, every single day, and it looked entirely
+                   plausible on screen.
          Isha      the sun 14° down, though prayed together with Maghrib.
-         Nisf      shar'i midnight, by the Ja'fari reckoning: the midpoint
-                   from SUNSET to the following Fajr. Measuring it from
-                   Maghrib instead — which is the intuitive reading, and
-                   what this app did until it was checked — runs it several
-                   minutes late every night.
+         Nisf      the midpoint of the night measured SUNSET to SUNRISE.
+                   Not sunset to Fajr — that is the Ja'fari reckoning and
+                   it lands roughly half an hour early.
 
-       These are the Shia Ithna-Ashari (Leva Institute, Qum) parameters,
-       which is the published convention the Fatimi timetable follows.
-       Every one of them is verified against that reference implementation
-       by the prayer test, city by city and date by date, rather than
-       being asserted here and hoped for. */
-    const FATIMI = { fajr: 16, maghrib: 4, isha: 14, asrFactor: 1 };
+       Checked against a Dubai Dawat timetable: Maghrib 18:30 and nisf
+       al-layl 00:16 on 9 September 2026, both of which this reproduces to
+       the minute. The prayer test pins them there so they cannot drift
+       back to the Ithna-Ashari values, which are the plausible-looking
+       wrong answer. */
+    const FATIMI = { fajr: 16, maghrib: 0.833, isha: 14, asrFactor: 1 };
 
     /* Places, with the calculation method each region's community usually
        follows already attached — picking your city should not then require
@@ -4986,9 +4985,9 @@
           dhuhr:   noonAt(t('dhuhr')),
           asr:     asrAt(t('asr'))                              ?? guess.asr,
           sunset:  angleAt(0.833,          t('sunset'),  false) ?? guess.sunset,
-          // Maghrib is the Fatimi one: the sun 4° down, not the moment of
-          // sunset. In Mumbai that is a quarter of an hour after sunset;
-          // in Manchester in December it is more than twenty minutes.
+          // Fatimi Maghrib is sunset itself. Kept as its own entry rather
+          // than aliased to sunset, so the convention stays visible here
+          // and one constant still governs it.
           maghrib: angleAt(FATIMI.maghrib, t('maghrib'), false) ?? guess.maghrib,
           // Isha is prayed with Maghrib and Asr with Zohr, but both are
           // computed so the arithmetic is complete and checkable.
@@ -5030,16 +5029,14 @@
     function prayerTimes({ latitude, longitude, date = new Date(), highLatRule = 'seventh' }) {
       const today = solarDay({ latitude, longitude, date, highLatRule });
 
-      // Shar'i midnight, Ja'fari reckoning: halfway from SUNSET to Fajr,
-      // taking the night as this date's own sunset and Fajr rather than
-      // reaching into tomorrow. That is how the published timetables
-      // compute it, and it is the difference between agreeing with the
-      // printed sheet and being two minutes off it every night near the
-      // equinoxes. Starting from Maghrib rather than sunset — the
-      // intuitive reading — is a larger error again.
+      // Nisf al-layl: the middle of the night, sunset to SUNRISE. The night
+      // here is the whole dark part of the day, not the part that ends at
+      // Fajr — running it to Fajr is the Ja'fari reckoning and lands about
+      // half an hour early. Checked against a Dubai Dawat sheet: sunset
+      // 18:30, sunrise 06:03, nisf 00:16.
       let nisf = null;
-      if (today.sunset !== null && today.fajr !== null) {
-        nisf = today.sunset + fixHour(today.fajr - today.sunset) / 2;
+      if (today.sunset !== null && today.sunrise !== null) {
+        nisf = today.sunset + fixHour(today.sunrise - today.sunset) / 2;
       }
 
       // Round once, in whole minutes, then split. Rounding the minutes on

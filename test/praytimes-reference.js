@@ -13,7 +13,8 @@
  * pins down which of the two the app is tracking, instead of loosening a
  * tolerance until the failure disappears.
  *
- * Configured for the Fatimi/Shia Ithna-Ashari parameters the app uses.
+ * Configured for the Fatimi parameters the app uses — which are NOT the
+ * Ithna-Ashari ones for Maghrib or for nisf al-layl. See index.html.
  */
 'use strict';
 
@@ -27,7 +28,8 @@ const arccot = x => Math.atan2(1, x) * 180 / Math.PI;
 const fixAngle = a => a - 360 * Math.floor(a / 360);
 const fixHour  = a => a - 24 * Math.floor(a / 24);
 
-const PARAMS = { fajr: 16, isha: 14, maghrib: 4, asrFactor: 1 };
+// Fatimi: Maghrib is sunset, not the Ithna-Ashari 4 degrees of depression.
+const PARAMS = { fajr: 16, isha: 14, maghrib: 0.833, asrFactor: 1 };
 
 function julian(year, month, day) {
   if (month <= 2) { year -= 1; month += 12; }
@@ -91,9 +93,9 @@ function praytimes({ latitude, longitude, year, month, day, timezone }) {
 
   const out = {};
   for (const key of Object.keys(T)) out[key] = clock(T[key]);
-  // Ja'fari shar'i midnight: halfway from sunset to Fajr, same date.
-  out.nisf = (T.sunset === null || T.fajr === null) ? null
-           : clock(T.sunset + fixHour(T.fajr - T.sunset) / 2);
+  // Nisf al-layl: the middle of the night, sunset to sunrise.
+  out.nisf = (T.sunset === null || T.sunrise === null) ? null
+           : clock(T.sunset + fixHour(T.sunrise - T.sunset) / 2);
   return out;
 }
 
