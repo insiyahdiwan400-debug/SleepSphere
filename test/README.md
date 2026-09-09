@@ -21,11 +21,11 @@ against **two independent references**, and have to satisfy both:
 | **Nisf al-layl** | **a window**: halfway from sunset to SUNRISE — *not* to Fajr — for one twelfth of that night |
 | **Ihtiyat** | **end times shown ~2 min early**; start times just rounded |
 
-The two in bold are where **Fatimi practice parts company with
-Ithna-Ashari**, and both were wrong in this app until a real timetable
-caught them. The Ithna-Ashari answers are the ones you land on by reaching
-for the nearest published Shia convention, and both look completely
-plausible on screen:
+The rows in bold are where **Fatimi practice parts company with
+Ithna-Ashari**, and every one of them was wrong in this app until a real
+timetable caught it. The Ithna-Ashari answers are what you land on by
+reaching for the nearest published Shia convention, and they all look
+completely plausible on screen:
 
 | | app had | timetable says | error |
 |---|---|---|---|
@@ -41,12 +41,15 @@ Start times — zawal, Maghrib, nisf's start — carry none.
 
 The precaution is a **display convention only**: `fajrTrue` and
 `sunriseTrue` keep the unadjusted astronomy, nisf is derived from those,
-and a test asserts the margin never leaks into the arithmetic. `fatimi-convention.js` asserts both of those
-exactly — not within a tolerance — because these are the two values that
-drift back to a plausible wrong answer if anyone reaches for the
-nearer-to-hand convention again.
+and a test asserts the margin never leaks into the arithmetic — otherwise
+every derived time would quietly inherit it.
 
-Note that api.aladhan.com cannot be asked for either of them directly: its
+`fatimi-convention.js` pins each row of that sheet, five of six with **no
+tolerance at all**, because these are the values that drift back to a
+plausible wrong answer if anyone reaches for the nearer-to-hand convention
+again.
+
+Note that api.aladhan.com cannot be asked for Maghrib or nisf directly: its
 `Maghrib` is the 4° one and its Ja'fari `Midnight` runs to Fajr. They are
 checked against its `Sunset` and its STANDARD `Midnight` (`midnightMode=0`)
 instead — the API is used only where it actually speaks Fatimi.
@@ -113,14 +116,17 @@ would settle both. Add it to `GROUND_TRUTH` in `fatimi-convention.js`.
 
 ## If the times disagree with your timetable
 
-Three things move them, in the order worth checking:
+Four things move them, in the order worth checking:
 
-1. **Fajr angle.** 16° here. Some communities print 17.7° (Tehran) or 18°.
-   Ten minutes of difference in Mumbai, more further north.
-2. **Maghrib.** 4° of depression. A timetable showing Maghrib *at* sunset
-   is following a different fiqh, not a different calculation.
-3. **Nisf al-layl.** Measured sunset → Fajr. Measuring it Maghrib → Fajr
-   instead moves it later by roughly half the sunset-to-Maghrib gap.
+1. **Fajr angle.** 17.7° here. Some sheets print 16° or 18°. Eight to ten
+   minutes of difference in Dubai, more further north.
+2. **Ihtiyat.** Two minutes off every end time. If a sheet's *starts* match
+   but its *ends* are all out by the same small amount, this is why.
+3. **Maghrib.** At sunset. A timetable showing Maghrib a quarter of an hour
+   later is following Ithna-Ashari fiqh, not a different calculation.
+4. **Nisf al-layl.** Sunset → sunrise, halved, then a twelfth of that night
+   wide. Running the night to Fajr instead moves the whole window earlier by
+   about half an hour.
 
-All three live in one place: the `FATIMI` constant in `index.html`. Change
-a value there, re-run both scripts, and the tests will tell you what moved.
+All four live in one place: the `FATIMI` constant in `index.html`. Change a
+value there, re-run both scripts, and the tests will tell you what moved.
