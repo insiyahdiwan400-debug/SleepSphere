@@ -127,6 +127,37 @@
     }
   };
 
+  /* Deep links: sleepsphere:// and myapp://.
+     Two cases, and missing either one is the usual bug here:
+
+       Cold launch  the app was not running, so the URL arrived before the
+                    web view existed. getLaunchUrl() replays it.
+       Running      the app was already open, so only the event fires.
+
+     Both hand the URL to the same router in index.html. The web app owns
+     the routing so a tester's link behaves identically in Safari, where
+     there is no scheme at all and it arrives as ?go=. */
+  const route = url => {
+    if (!url) return;
+    try { if (typeof window.SleepSphereOpenURL === 'function') window.SleepSphereOpenURL(url); }
+    catch (error) { console.warn('[SleepSphere] deep link failed:', error && error.message); }
+  };
+
+  if (isNative) {
+    const App = plugin('App');
+    if (App) {
+      // Already running.
+      safe(() => App.addListener('appUrlOpen', event => route(event && event.url)));
+      // Launched by the link. The router waits for the app to be ready, so
+      // this can fire immediately.
+      safe(async () => {
+        const launch = await App.getLaunchUrl();
+        if (launch && launch.url) route(launch.url);
+      });
+    }
+  }
+
+  api.openedWith = route;
   window.SleepSphereNative = api;
   if (isNative) document.documentElement.dataset.native = 'ios';
 })();

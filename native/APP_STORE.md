@@ -170,6 +170,63 @@ through a native plugin and presents a Live Activity. If a reviewer raises
 
 ---
 
+## 7b. URL schemes and tester links
+
+The app registers two custom schemes in `Info.plist`, and both are already
+wired end to end — `CFBundleURLTypes`, the `appUrlOpen` listener and the
+cold-launch replay in `scripts/native-bridge.js`, and the router in
+`index.html`.
+
+| Scheme | Use |
+|---|---|
+| `sleepsphere://` | **The one to publish and to give testers.** |
+| `myapp://` | Also registered, on request. See the warning below. |
+
+> **iOS does not reserve custom URL schemes.** If any other installed app
+> also declares `myapp` — likely, for a name that generic — iOS picks a
+> winner and the choice is undefined. It may not be this app, and it can
+> change when the person installs something else. Use `sleepsphere://`
+> anywhere it matters.
+
+**What the links open**
+
+| Link | Opens |
+|---|---|
+| `sleepsphere://` or `sleepsphere://open` | the app, on Tonight |
+| `sleepsphere://flow` | straight into tonight's check-in |
+| `sleepsphere://morningflow` | straight into the morning record |
+| `sleepsphere://lazy` | Lazy mode — stamps bed time immediately |
+| `sleepsphere://plan`, `travel`, `twin`, `compass`, `data`, `learn`, … | that screen, by its own name |
+
+`sleepsphere://lazy` is the one worth giving people: put it in an iOS
+Shortcut on a bedtime automation and going to bed costs zero taps.
+
+**Testing a scheme without building anything**
+
+```bash
+xcrun simctl openurl booted "sleepsphere://lazy"
+```
+
+On a real device, type it in Safari's address bar or tap it in a note.
+
+**Testers who cannot install the app.** Custom schemes only exist once the
+app is on the device, so for anyone testing the web prototype the same
+targets work as ordinary query links, handled by the same router:
+
+```
+https://<your-site>/?go=lazy
+https://<your-site>/?go=flow
+https://<your-site>/?go=travel
+```
+
+Hand out the `?go=` form until testers have builds, and the
+`sleepsphere://` form afterwards. Both land in the same place, which is
+the reason there is one router rather than two.
+
+Covered by `test/deep-links.js`.
+
+---
+
 ## 8. Archive and upload  [Mac]
 
 ```

@@ -5951,9 +5951,59 @@
     runOpening();
     reconcileLocation();
     // Home-screen shortcuts deep-link straight into a flow or a view.
+    /* ------------------------------------------------------------------
+       Deep links.
+
+       Three things arrive here and they all mean the same thing:
+
+         sleepsphere://plan   another app, a Shortcut, or a tester's link
+         myapp://plan         the same, on the second registered scheme
+         ?go=plan             the web build and the home-screen shortcuts
+
+       One router for all of them, so a link a tester is given works whether
+       they opened the prototype in Safari or installed the real app. The
+       native side hands the URL to goDeepLink(); see native-bridge.js.
+
+       On iOS the scheme to publish is sleepsphere://. myapp:// is also
+       registered because it was asked for, but iOS does not reserve custom
+       schemes: if another installed app declares the same generic name, the
+       winner is undefined. Anything that has to work should use the
+       specific one. */
+    const DEEP_LINKS = {
+      // Flows, which are the point of a deep link — straight into the thing.
+      flow:        () => openFlow('evening'),
+      checkin:     () => openFlow('evening'),
+      morningflow: () => openFlow('morning'),
+      lazy:        () => startLazyNight(),
+      bedtime:     () => startLazyNight(),
+      // Anything else is a view, by its own name.
+      open:        () => navigate('today'),
+      home:        () => navigate('today')
+    };
+
+    function goDeepLink(raw) {
+      if (!raw) return false;
+      let target = String(raw).trim();
+      // Accept a whole URL or a bare target. For a URL the host carries the
+      // target ("myapp://plan"), but a link written "myapp:///plan" or
+      // "myapp://open/plan" puts it in the path, so take whichever is there.
+      const match = target.match(/^[a-z][a-z0-9+.-]*:\/\/([^?#]*)/i);
+      if (match) target = match[1].split('/').filter(Boolean).pop() || 'open';
+      target = target.toLowerCase();
+      const action = DEEP_LINKS[target];
+      if (action) { window.setTimeout(action, 60); return true; }
+      if (pageMeta[target]) { navigate(target); return true; }
+      return false;
+    }
+    // The native layer calls this when the app is opened by a URL while
+    // already running, which is the common case once it is installed.
+    window.SleepSphereOpenURL = goDeepLink;
+
     const launchTarget = new URLSearchParams(location.search).get('go');
     if (launchTarget === 'flow' || launchTarget === 'morningFlow') {
       window.setTimeout(() => openFlow(launchTarget === 'flow' ? 'evening' : 'morning'), 60);
+    } else if (launchTarget && goDeepLink(launchTarget)) {
+      /* handled by the router */
     } else if (launchTarget && pageMeta[launchTarget]) {
       navigate(launchTarget);
     }
