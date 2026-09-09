@@ -8,15 +8,37 @@ against **two independent references**, and have to satisfy both:
    algorithm essentially every published timetable is generated from. It
    runs offline, so a wrong answer cannot hide behind the API being down.
 
-Both use the parameters the Fatimi timetable follows:
+**The Fatimi parameters, as verified against a Dubai Dawat timetable:**
 
 | | |
 |---|---|
 | Fajr | sun 16° below the horizon |
-| Isha | sun 14° below the horizon |
-| Maghrib | sun 4° below the horizon — *not* sunset |
+| Zohr | after zawal, prayed with Asr |
 | Asr | shadow factor 1 — *not* the Hanafi 2 |
-| Nisf al-layl | halfway from sunset to Fajr (Ja'fari) |
+| **Maghrib** | **at sunset** — *not* the Ithna-Ashari 4° |
+| Isha | sun 14° down, prayed with Maghrib |
+| **Nisf al-layl** | **halfway from sunset to SUNRISE** — *not* to Fajr |
+
+The two in bold are where **Fatimi practice parts company with
+Ithna-Ashari**, and both were wrong in this app until a real timetable
+caught them. The Ithna-Ashari answers are the ones you land on by reaching
+for the nearest published Shia convention, and both look completely
+plausible on screen:
+
+| | app had | timetable says | error |
+|---|---|---|---|
+| Maghrib | 18:44 (4° down) | **18:30** (sunset) | 14 min late, daily |
+| Nisf al-layl | 23:42 (to Fajr) | **00:16** (to sunrise) | 34 min early |
+
+*(Dubai, 9 September 2026.)* `fatimi-convention.js` asserts both of those
+exactly — not within a tolerance — because these are the two values that
+drift back to a plausible wrong answer if anyone reaches for the
+nearer-to-hand convention again.
+
+Note that api.aladhan.com cannot be asked for either of them directly: its
+`Maghrib` is the 4° one and its Ja'fari `Midnight` runs to Fajr. They are
+checked against its `Sunset` and its STANDARD `Midnight` (`midnightMode=0`)
+instead — the API is used only where it actually speaks Fatimi.
 
 ## Running the checks
 
@@ -54,10 +76,21 @@ agreeing with it.
 Reference responses are cached to `test/.refcache.json`, so re-runs need no
 network. Delete that file to re-fetch.
 
-`fatimi-convention.js` needs no network. It checks the relationships the
-convention actually asserts — Maghrib strictly after sunset, nisf halving
-sunset to Fajr, Asr on shadow factor 1 — so a regression is caught even
-offline.
+`fatimi-convention.js` needs no network. It pins the timetable values above
+exactly, and checks the relationships the convention asserts — Maghrib
+equal to sunset, nisf halving sunset to sunrise, nisf strictly later than
+the Ja'fari midpoint, Asr on shadow factor 1 — so a regression is caught
+even offline.
+
+## Still open
+
+The Dubai timetable gives nisf al-layl as a **window, 00:16 to 01:12**. The
+00:16 is reproduced exactly. The 01:12 is not derived here: it is 402
+minutes after sunset, or 0.580 of that night, which is not a clean fraction
+(a twelfth of the night past the midpoint would be 01:14). One data point
+does not separate the candidate rules, and guessing a prayer time for a
+whole community is not worth the tidiness. The app shows the midpoint
+only.
 
 ## If the times disagree with your timetable
 
