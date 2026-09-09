@@ -69,10 +69,19 @@ const clockAt = (y,mo,d,h,mi) => `(()=>{const R=Date;const f=new R(${y},${mo},${
   check('Sleep maths is complete',
         rec.opportunityMinutes > 0 && rec.sleepMinutes > 0 && rec.efficiency > 0,
         `${rec.opportunityMinutes}m window, ${rec.sleepMinutes}m asleep, ${rec.efficiency}%`);
-  check('Every rating is filled, so it pairs like any other night',
-        rec.rest === 3 && rec.energy === 3 && rec.focus === 3 && rec.calm === 3);
-  // Honest about where four ratings came from.
-  check('The record admits it came from one tap', rec.lazy === true && rec.lazySingleTap === true);
+  // One answer is one answer. "How was it" is the restoration question, so
+  // that is the only rating recorded — putting the same number into energy,
+  // focus and calm would place three judgements nobody made into the compass
+  // and the CSV export, indistinguishable from real ones.
+  check('Only the rating actually given is stored', rec.rest === 3, `rest ${rec.rest}`);
+  check('No judgements nobody made', rec.energy === null && rec.focus === null && rec.calm === null,
+        `energy ${rec.energy}, focus ${rec.focus}, calm ${rec.calm}`);
+  check('The record admits it came from one tap', rec.lazy === true);
+  // Measured and estimated values must not sit in the record looking alike.
+  check('It separates what was measured from what was inferred',
+        rec.measured.includes('bedTime') && rec.measured.includes('wakeTime') &&
+        rec.estimated.includes('sleepTime') && rec.estimated.includes('awakeMinutes'),
+        `measured ${rec.measured} / estimated ${rec.estimated}`);
   // Assuming a perfect night would flatter every lazy record against the
   // hand-filled ones, purely because of how it was recorded.
   check('Efficiency is not assumed perfect', rec.efficiency < 100 && rec.awakeMinutes > 0,

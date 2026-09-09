@@ -4262,6 +4262,9 @@
           : 'Recorded without judgement. Save a night plan tonight and tomorrow’s record will pair with it.')}</p>
         <div class="reveal-signals">
           ${line('How restored you felt', `${record.rest} / 5`)}
+          ${record.lazy ? line('Recorded in', 'Lazy mode — one tap') : ''}
+          ${record.lazy ? line('Measured', (record.measured || []).length ? (record.measured || []).map(f => f === 'bedTime' ? 'bed time' : 'wake time').join(' and ') : '—') : ''}
+          ${record.lazy ? line('Estimated from your own history', (record.estimated || []).map(f => f === 'sleepTime' ? 'sleep onset' : f === 'awakeMinutes' ? 'time awake' : 'wake time').join(', ')) : ''}
           ${line('Sleep efficiency', `${record.efficiency}%`)}
           ${line('Time in bed', formatDuration(record.opportunityMinutes))}
           ${planned ? line('You had planned', formatDuration(planned)) : ''}
@@ -4875,9 +4878,25 @@
       state.mornings = state.mornings.filter(item => item.demo || item.date !== night.date);
       $('#saveMorning').click();
 
-      // Mark it honestly: four ratings from one answer is one answer.
+      /* Now make the record tell the truth about itself.
+
+         The save path needs all four ratings, but only ONE was given, and
+         "how was it" is the restoration question — not three more. Mirroring
+         it into energy, focus and calm would put three judgements in the
+         record that nobody made, and they would then show up in the compass
+         and the exports as if they had. So they are cleared.
+
+         The same for the times. Bed and wake were measured; sleep onset is
+         bed plus this person's median latency, and night waking is their
+         median too. Those are estimates, and the record names them rather
+         than sitting them beside the measured values looking identical. */
       const saved = state.mornings.find(item => !item.demo && item.date === night.date);
-      if (saved) { saved.lazy = true; saved.lazySingleTap = true; }
+      if (saved) {
+        saved.lazy = true;
+        saved.energy = null; saved.focus = null; saved.calm = null;
+        saved.measured = ['bedTime', night.stale ? null : 'wakeTime'].filter(Boolean);
+        saved.estimated = ['sleepTime', 'awakeMinutes'].concat(night.stale ? ['wakeTime'] : []);
+      }
       state.lazyNight = null;
       saveState();
       $('#lazyMorningVeil').hidden = true;
