@@ -880,25 +880,20 @@
       background-attachment:fixed;
     }
 
-    /* A handful of stars, warm and dim. Texture, not decoration. */
-    body::before {
-      content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
-      opacity:.42; background-repeat:repeat; background-size:520px 700px;
-      background-image:
-        radial-gradient(1.3px 1.3px at 14% 16%, rgba(255,250,238,.62), transparent),
-        radial-gradient(1px 1px at 32% 38%, rgba(226,200,150,.42), transparent),
-        radial-gradient(1.1px 1.1px at 58% 12%, rgba(255,250,238,.44), transparent),
-        radial-gradient(1.4px 1.4px at 76% 30%, rgba(255,250,238,.5), transparent),
-        radial-gradient(1px 1px at 91% 19%, rgba(200,206,232,.36), transparent),
-        radial-gradient(1.2px 1.2px at 9% 58%, rgba(255,250,238,.4), transparent),
-        radial-gradient(1px 1px at 44% 66%, rgba(226,200,150,.34), transparent),
-        radial-gradient(1.3px 1.3px at 69% 54%, rgba(255,250,238,.42), transparent),
-        radial-gradient(1px 1px at 88% 72%, rgba(200,206,232,.32), transparent),
-        radial-gradient(1.1px 1.1px at 24% 86%, rgba(255,250,238,.36), transparent),
-        radial-gradient(1.2px 1.2px at 61% 92%, rgba(226,200,150,.3), transparent);
-      animation:drift 300s linear infinite;
+    /* The night sky is a canvas, not a tiled image.
+       Eleven repeating dots read as wallpaper: the eye finds the tile and
+       stops looking. Real stars are unevenly scattered, most of them faint,
+       a few bright, and the whole field turns. That needs per-star state,
+       so it is drawn rather than styled. See the starfield module in the
+       script for the motion; this only places and fades it. */
+    #starfield {
+      position:fixed; inset:0; z-index:0; pointer-events:none;
+      /* A canvas is a replaced element: with inset:0 and width:auto it
+         resolves to its intrinsic 300x150, not to the viewport. The
+         explicit sizes are what make it full-screen. */
+      display:block; width:100%; height:100%;
+      opacity:0; transition:opacity 1.6s linear;
     }
-    @keyframes drift { from { background-position:0 0; } to { background-position:0 -700px; } }
 
     /* Film grain. This is what stops a dark screen looking like flat
        plastic — it gives the ink a surface. */
@@ -1360,8 +1355,8 @@
         linear-gradient(179deg, var(--sky-top) 0%, var(--sky-mid) 56%, var(--sky-low) 100%);
       background-attachment:fixed;
     }
-    body::before { opacity:var(--stars); }
-    body.dim::before { opacity:calc(var(--stars) * .45); }
+    #starfield { opacity:var(--stars); }
+    body.dim #starfield { opacity:calc(var(--stars) * .5); }
     .sphere-satellite { background:var(--orb); box-shadow:0 0 16px color-mix(in srgb, var(--orb) 55%, transparent); }
 
     /* The sky is the point, so the surfaces have to let it through.
@@ -1708,6 +1703,7 @@
   </style>
 </head>
 <body>
+  <canvas id="starfield" aria-hidden="true"></canvas>
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand"><div class="brand-mark">☾</div><div><strong>SleepSphere</strong><small>The Sabat Loop</small></div></div>
@@ -4384,6 +4380,248 @@
     }
 
     /* ------------------------------------------------------------------
+       The starfield.
+
+       Three things separate a night sky from a field of dots, and all three
+       need per-star state rather than CSS:
+
+         Scatter    Real stars clump. Uniform random already beats a tiled
+                    pattern, but a band of extra density across the field —
+                    a galactic plane — is what makes the eye read "sky"
+                    instead of "texture".
+         Twinkle    Each star has its own phase and rate, so the field
+                    shimmers unevenly. A shared animation would pulse in
+                    unison, which reads as a blinking light, not a star.
+         Turning    The whole field rotates about a point off-screen, the
+                    way the real sky turns about the pole. Slowly: a full
+                    revolution takes about two hours, so it is motion you
+                    notice only if you rest on it. This is a sleep app; the
+                    sky should never be busy.
+
+       Cost is kept honest: star count scales with viewport area, the
+       device pixel ratio is capped at 2, and the loop stops entirely when
+       the tab is hidden or the sky has faded to daylight — which is most
+       of the time the app is open.
+       ------------------------------------------------------------------ */
+    function startStarfield() {
+      const canvas = document.getElementById('starfield');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d', { alpha: true });
+      if (!ctx) return;
+
+      const calm = window.matchMedia('(prefers-reduced-motion: reduce)');
+      let stars = [], meteors = [], sprites = [], w = 0, h = 0, cx = 0, cy = 0, radius = 0;
+      let frame = null, last = 0, spin = 0, nextMeteor = 9000;
+
+      // Cream, old gold, and a cold blue-white: the palette the rest of the
+      // app already uses, so the sky belongs to it.
+      const HUES = [[255,250,238], [236,216,174], [202,212,242], [255,246,226]];
+
+      /* One glow sprite per hue, drawn once. The bright stars need a halo,
+         and building a radial gradient for each of them on every frame is
+         the single most expensive thing this loop could do. */
+      const makeSprites = () => {
+        sprites = HUES.map(([r, g, b]) => {
+          const size = 64, off = document.createElement('canvas');
+          off.width = off.height = size;
+          const octx = off.getContext('2d');
+          const grad = octx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+          grad.addColorStop(0,   `rgba(${r},${g},${b},1)`);
+          grad.addColorStop(0.12,`rgba(${r},${g},${b},.55)`);
+          grad.addColorStop(0.35,`rgba(${r},${g},${b},.12)`);
+          grad.addColorStop(1,   `rgba(${r},${g},${b},0)`);
+          octx.fillStyle = grad;
+          octx.fillRect(0, 0, size, size);
+          return off;
+        });
+      };
+
+      const build = () => {
+        const ratio = Math.min(2, window.devicePixelRatio || 1);
+        w = canvas.clientWidth; h = canvas.clientHeight;
+        if (!w || !h) return;
+        canvas.width = Math.round(w * ratio);
+        canvas.height = Math.round(h * ratio);
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+        /* The field turns about a point just above the middle of the screen,
+           so what you see is a slow swirl rather than everything sliding one
+           way. Keeping that centre ON screen also keeps the field small: put
+           the pole far below the viewport and the circle that has to be
+           filled grows tenfold, so ninety per cent of the stars are drawn
+           where nobody can see them and the sky looks empty. */
+        cx = w * 0.5; cy = h * 0.42;
+        radius = Math.hypot(Math.max(cx, w - cx), Math.max(cy, h - cy)) * 1.04;
+
+        // Density is per unit of FIELD, not of viewport, so the number on
+        // screen stays the same whatever the geometry above does.
+        const field = Math.PI * radius * radius;
+        const count = Math.max(260, Math.min(1500, Math.round(field / 780)));
+        const bandAngle = -0.58;
+        stars = [];
+        for (let i = 0; i < count; i++) {
+          // Two in five sit in the galactic band: same field, but pulled
+          // tight against one line. Clumping is what reads as sky.
+          const inBand = i % 5 < 2;
+          let x, y;
+          if (inBand) {
+            const along = (Math.random() - 0.5) * radius * 2.1;
+            const across = (Math.random() + Math.random() - 1) * radius * 0.17;
+            x = cx + Math.cos(bandAngle) * along - Math.sin(bandAngle) * across;
+            y = cy + Math.sin(bandAngle) * along + Math.cos(bandAngle) * across;
+          } else {
+            const a = Math.random() * Math.PI * 2;
+            const r = radius * Math.sqrt(Math.random());
+            x = cx + Math.cos(a) * r; y = cy + Math.sin(a) * r;
+          }
+          const dx = x - cx, dy = y - cy;
+          // Squaring a uniform keeps bright stars in the minority without
+          // making them so rare the field turns to dust.
+          const weight = Math.pow(Math.random(), 2.2);
+          stars.push({
+            angle: Math.atan2(dy, dx),
+            dist: Math.hypot(dx, dy),
+            size: inBand ? 0.5 + weight * 0.9 : 0.6 + weight * 1.9,
+            base: inBand ? 0.3 + weight * 0.45 : 0.36 + weight * 0.62,
+            hue: (Math.random() * HUES.length) | 0,
+            phase: Math.random() * Math.PI * 2,
+            // Faint stars scintillate hardest — true, and it also leaves the
+            // bright anchors steady while everything around them shimmers.
+            rate: 0.4 + Math.random() * 1.9,
+            swing: 0.3 + (1 - weight) * 0.45,
+            depth: 0.65 + weight * 0.35
+          });
+        }
+        if (!sprites.length) makeSprites();
+      };
+
+      const draw = (time) => {
+        const dt = Math.min(120, time - last || 16);
+        last = time;
+        // A full turn in about half an hour. Slow enough that it never
+        // competes with the screen, fast enough that resting your eyes on it
+        // shows the sky moving — roughly a pixel and a half a second at the
+        // edge of the field, so ten seconds of looking is a visible shift.
+        if (!calm.matches) spin += dt * 0.0000035;
+
+        ctx.clearRect(0, 0, w, h);
+
+        // The band's haze, so the dense stripe sits on something. Very faint
+        // and drawn first, under every star.
+        const ba = -0.58 + spin;
+        const hx = cx + Math.cos(ba) * radius * 0.2, hy = cy + Math.sin(ba) * radius * 0.2;
+        const haze = ctx.createRadialGradient(hx, hy, 0, hx, hy, radius * 0.9);
+        haze.addColorStop(0, 'rgba(150,170,220,.07)');
+        haze.addColorStop(1, 'rgba(150,170,220,0)');
+        ctx.fillStyle = haze;
+        ctx.fillRect(0, 0, w, h);
+
+        const t = time * 0.001;
+        for (const star of stars) {
+          const a = star.angle + spin * star.depth;
+          const x = cx + Math.cos(a) * star.dist;
+          const y = cy + Math.sin(a) * star.dist;
+          if (x < -6 || x > w + 6 || y < -6 || y > h + 6) continue;
+          const twinkle = calm.matches ? 1
+            : 1 - star.swing + star.swing * Math.sin(t * star.rate + star.phase);
+          const alpha = star.base * twinkle;
+          if (alpha <= 0.015) continue;
+          const [r, g, b] = HUES[star.hue];
+
+          if (star.size > 1.25) {
+            // Bright enough to earn a halo: one scaled sprite, no per-frame
+            // gradient. The core dot goes on top so it still reads as a point.
+            const d = star.size * 9;
+            ctx.globalAlpha = alpha * 0.5;
+            ctx.drawImage(sprites[star.hue], x - d / 2, y - d / 2, d, d);
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = `rgba(${r},${g},${b},${alpha.toFixed(3)})`;
+            ctx.beginPath();
+            ctx.arc(x, y, star.size * 0.62, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            ctx.fillStyle = `rgba(${r},${g},${b},${alpha.toFixed(3)})`;
+            const px = Math.max(1, star.size * 1.5);
+            ctx.fillRect(x - px / 2, y - px / 2, px, px);
+          }
+        }
+
+        // A meteor now and then. Rare enough to be a small gift rather than a
+        // feature — one every few seconds would just be an animation.
+        if (!calm.matches) {
+          nextMeteor -= dt;
+          if (nextMeteor <= 0) {
+            nextMeteor = 24000 + Math.random() * 40000;
+            const a = Math.PI * (0.6 + Math.random() * 0.32);
+            meteors.push({ x: w * (0.15 + Math.random() * 0.8), y: Math.random() * h * 0.4,
+                           vx: Math.cos(a) * 0.5, vy: Math.abs(Math.sin(a)) * 0.34,
+                           life: 1, len: 70 + Math.random() * 110 });
+          }
+          for (let i = meteors.length - 1; i >= 0; i--) {
+            const m = meteors[i];
+            m.x += m.vx * dt; m.y += m.vy * dt; m.life -= dt / 1300;
+            if (m.life <= 0) { meteors.splice(i, 1); continue; }
+            const tx = m.x - m.vx * m.len, ty = m.y - m.vy * m.len;
+            const tail = ctx.createLinearGradient(m.x, m.y, tx, ty);
+            const fade = Math.sin(Math.PI * m.life) * 0.55;
+            tail.addColorStop(0, `rgba(255,250,238,${fade.toFixed(3)})`);
+            tail.addColorStop(1, 'rgba(255,250,238,0)');
+            ctx.strokeStyle = tail; ctx.lineWidth = 1.2; ctx.lineCap = 'round';
+            ctx.beginPath(); ctx.moveTo(m.x, m.y); ctx.lineTo(tx, ty); ctx.stroke();
+          }
+        }
+        frame = requestAnimationFrame(draw);
+      };
+
+      /* Daylight is most of the app's waking life, and an invisible canvas
+         still costs a repaint every frame, so the loop only runs when the sky
+         is actually showing stars. */
+      const visible = () => {
+        const v = parseFloat(getComputedStyle(document.documentElement)
+                    .getPropertyValue('--stars')) || 0;
+        return v > 0.01 && !document.hidden;
+      };
+      const sync = () => {
+        if (visible()) {
+          if (frame === null) { last = performance.now(); frame = requestAnimationFrame(draw); }
+        } else if (frame !== null) {
+          cancelAnimationFrame(frame); frame = null;
+          meteors = [];
+          ctx.clearRect(0, 0, w, h);
+        }
+      };
+
+      let resizeTimer = null;
+      const onResize = () => {
+        clearTimeout(resizeTimer);
+        // Rebuilding on every resize event thrashes on a phone that is only
+        // showing and hiding its address bar.
+        resizeTimer = setTimeout(() => { build(); sync(); }, 180);
+      };
+
+      // Test probe, like the prayer one: the field's real state, so motion
+      // and density can be asserted instead of eyeballed. Reading pixels
+      // cannot do it — every star twinkles, so the brightest point on screen
+      // is a different star from one sample to the next.
+      window.__starProbe = () => ({
+        count: stars.length, spin, running: frame !== null,
+        radius, reduced: calm.matches,
+        onScreen: stars.filter(st => {
+          const a = st.angle + spin * st.depth;
+          const x = cx + Math.cos(a) * st.dist, y = cy + Math.sin(a) * st.dist;
+          return x >= 0 && x <= w && y >= 0 && y <= h;
+        }).length
+      });
+
+      build();
+      sync();
+      setInterval(sync, 4000);
+      window.addEventListener('resize', onResize);
+      document.addEventListener('visibilitychange', sync);
+      if (calm.addEventListener) calm.addEventListener('change', () => { build(); sync(); });
+    }
+
+    /* ------------------------------------------------------------------
        Travel.
 
        The whole feature turns on one fact most sleep apps get wrong: light
@@ -5400,6 +5638,9 @@
 
     populateForms(); renderTimer(); renderAll();
     if (isStandalone()) document.documentElement.dataset.installed = 'yes';
+    // After renderAll, so --stars already holds tonight's value and the
+    // field does not start by fading in from nothing at midnight.
+    startStarfield();
     runOpening();
     reconcileLocation();
     // Home-screen shortcuts deep-link straight into a flow or a view.
