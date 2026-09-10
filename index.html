@@ -2440,18 +2440,28 @@
             </article>
 
             <article class="card span-7">
-              <form id="feedbackForm">
-                <div class="feedback-row"><label>The purpose of SleepSphere is immediately clear.</label><div class="scale feedback-scale" data-feedback="clarity"><button type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">4</button><button type="button">5</button></div></div>
-                <div class="feedback-row"><label>Bio Harmony feels useful and different from an ordinary sleep score.</label><div class="scale feedback-scale" data-feedback="distinctive"><button type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">4</button><button type="button">5</button></div></div>
-                <div class="feedback-row"><label>The Fajr Bridge feels respectful and realistic.</label><div class="scale feedback-scale" data-feedback="faith"><button type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">4</button><button type="button">5</button></div></div>
-                <div class="feedback-row"><label>The app explains patterns without sounding diagnostic or judgemental.</label><div class="scale feedback-scale" data-feedback="trust"><button type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">4</button><button type="button">5</button></div></div>
-                <div class="feedback-row"><label>I could realistically complete the short nightly and morning steps.</label><div class="scale feedback-scale" data-feedback="use"><button type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">4</button><button type="button">5</button></div></div>
+              <div class="callout teal" style="margin-bottom:14px">
+                <strong>This is the one thing that leaves your phone.</strong>
+                Sending feedback sends the five ratings, the two dropdowns and
+                whatever you type here — and nothing else. Your sleep records,
+                times and plans stay on this device, as always. It is only sent
+                when you tap Send.
+              </div>
+              <form id="feedbackForm" name="sleepsphere-feedback" method="POST"
+                    data-netlify="true" netlify-honeypot="fax-number">
+                <input type="hidden" name="form-name" value="sleepsphere-feedback" />
+                <p hidden><label>Leave this empty: <input name="fax-number" /></label></p>
+                <div class="feedback-row"><label>The purpose of SleepSphere is immediately clear.</label><div class="scale feedback-scale" data-feedback="clarity"><input type="hidden" name="clarity" value="" /><button type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">4</button><button type="button">5</button></div></div>
+                <div class="feedback-row"><label>Bio Harmony feels useful and different from an ordinary sleep score.</label><div class="scale feedback-scale" data-feedback="distinctive"><input type="hidden" name="distinctive" value="" /><button type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">4</button><button type="button">5</button></div></div>
+                <div class="feedback-row"><label>The Fajr Bridge feels respectful and realistic.</label><div class="scale feedback-scale" data-feedback="faith"><input type="hidden" name="faith" value="" /><button type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">4</button><button type="button">5</button></div></div>
+                <div class="feedback-row"><label>The app explains patterns without sounding diagnostic or judgemental.</label><div class="scale feedback-scale" data-feedback="trust"><input type="hidden" name="trust" value="" /><button type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">4</button><button type="button">5</button></div></div>
+                <div class="feedback-row"><label>I could realistically complete the short nightly and morning steps.</label><div class="scale feedback-scale" data-feedback="use"><input type="hidden" name="use" value="" /><button type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">4</button><button type="button">5</button></div></div>
                 <div class="form-grid" style="margin-top:14px">
-                  <div class="field"><label for="mostUseful">Most useful element</label><select id="mostUseful"><option>Restoration Twin</option><option>Bio Harmony</option><option>Restoration gap</option><option>Fajr Bridge</option><option>Context scan</option><option>Mind unload</option><option>Sabat Compass</option><option>Experiment studio</option><option>Data export</option><option>None yet</option></select></div>
-                  <div class="field"><label for="leastUseful">Least useful or most confusing</label><select id="leastUseful"><option>Nothing yet</option><option>Restoration Twin</option><option>Bio Harmony</option><option>Restoration gap</option><option>Fajr Bridge</option><option>Context scan</option><option>Mind unload</option><option>Sabat Compass</option><option>Experiment studio</option><option>Data export</option></select></div>
+                  <div class="field"><label for="mostUseful">Most useful element</label><select id="mostUseful" name="most_useful"><option>Restoration Twin</option><option>Bio Harmony</option><option>Restoration gap</option><option>Fajr Bridge</option><option>Context scan</option><option>Mind unload</option><option>Sabat Compass</option><option>Experiment studio</option><option>Data export</option><option>None yet</option></select></div>
+                  <div class="field"><label for="leastUseful">Least useful or most confusing</label><select id="leastUseful" name="least_useful"><option>Nothing yet</option><option>Restoration Twin</option><option>Bio Harmony</option><option>Restoration gap</option><option>Fajr Bridge</option><option>Context scan</option><option>Mind unload</option><option>Sabat Compass</option><option>Experiment studio</option><option>Data export</option></select></div>
                 </div>
-                <div class="field"><label for="feedbackText">What felt intrusive, confusing, unrealistic or unnecessary?</label><textarea id="feedbackText" placeholder="Honest criticism decides what deserves to remain..."></textarea></div>
-                <div class="button-row"><button class="btn primary" type="submit">Save tester feedback</button><button class="btn ghost" type="button" id="exportFeedback">Export feedback CSV</button></div>
+                <div class="field"><label for="feedbackText">What felt intrusive, confusing, unrealistic or unnecessary?</label><textarea id="feedbackText" name="comment" placeholder="Honest criticism decides what deserves to remain..."></textarea></div>
+                <div class="button-row"><button class="btn primary" type="submit">Send feedback</button><button class="btn ghost" type="button" id="exportFeedback">Export feedback CSV</button></div>
                 <p class="helper" id="feedbackCount">No tester feedback saved in this browser.</p>
               </form>
             </article>
@@ -3885,18 +3895,125 @@
 
     $$('.feedback-scale').forEach(scale => scale.querySelectorAll('button').forEach(button => button.addEventListener('click', () => {
       const key = scale.dataset.feedback; feedbackRatings[key] = Number(button.textContent);
+      // Keep the hidden field in step, or a Netlify submission arrives with
+      // five blank ratings and nobody notices until the first one lands.
+      const mirror = scale.querySelector('input[type="hidden"]');
+      if (mirror) mirror.value = button.textContent;
       scale.querySelectorAll('button').forEach(item => item.classList.toggle('selected', item === button));
     })));
 
     function renderFeedbackCount() {
       $('#feedbackCount').textContent = state.feedback.length ? `${state.feedback.length} tester feedback record${state.feedback.length === 1 ? '' : 's'} saved in this browser.` : 'No tester feedback saved in this browser.';
     }
-    $('#feedbackForm').addEventListener('submit', event => {
+    /* ------------------------------------------------------------------
+       Getting feedback off the device.
+
+       This is the ONE place anything leaves the phone, and only because a
+       person deliberately tapped Send. Sleep records never travel.
+
+       Two routes, because either alone has a hole:
+
+         Netlify Forms  a same-origin POST the host turns into an email.
+                        Frictionless, and it keeps the address out of the
+                        page — but it only exists once the site is deployed
+                        on Netlify, so it does nothing on a local file or
+                        any other host.
+         mailto:        opens the tester's own mail app with everything
+                        already written. Works anywhere, needs no server,
+                        and cannot silently fail — but it costs a second
+                        tap and puts the address in the page source.
+
+       So the POST goes first and the mail app catches what it drops. What
+       must never happen is the quiet third option: a Send button that
+       looks like it worked and posted into nothing. The feedback is saved
+       locally first, every time, so nothing is lost while this is decided. */
+    const FEEDBACK_TO = 'insiyahdiwan400@gmail.com';   // change this to move where feedback lands
+
+    function feedbackAsText(entry) {
+      return [
+        'SleepSphere prototype feedback',
+        `Sent: ${new Date(entry.createdAt).toLocaleString()}`,
+        '',
+        `Purpose is clear:            ${entry.ratings.clarity} / 5`,
+        `Bio Harmony feels different: ${entry.ratings.distinctive} / 5`,
+        `Fajr Bridge feels right:     ${entry.ratings.faith} / 5`,
+        `Explains without judging:    ${entry.ratings.trust} / 5`,
+        `Could realistically do it:   ${entry.ratings.use} / 5`,
+        '',
+        `Most useful:  ${entry.most}`,
+        `Least useful: ${entry.least}`,
+        '',
+        'Comments:',
+        entry.comment || '(none)'
+      ].join('\n');
+    }
+
+    function openMailFallback(entry) {
+      const url = `mailto:${FEEDBACK_TO}`
+        + `?subject=${encodeURIComponent('SleepSphere prototype feedback')}`
+        + `&body=${encodeURIComponent(feedbackAsText(entry))}`;
+      // A real click, because assigning location can be blocked outside a
+      // gesture on iOS and would then fail as quietly as the thing this is
+      // here to catch.
+      const link = document.createElement('a');
+      link.href = url; link.style.display = 'none';
+      document.body.appendChild(link); link.click(); link.remove();
+    }
+
+    async function sendFeedback(entry) {
+      const body = new URLSearchParams({
+        'form-name': 'sleepsphere-feedback',
+        clarity: entry.ratings.clarity, distinctive: entry.ratings.distinctive,
+        faith: entry.ratings.faith, trust: entry.ratings.trust, use: entry.ratings.use,
+        most_useful: entry.most, least_useful: entry.least, comment: entry.comment || ''
+      });
+      try {
+        const response = await fetch('/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: body.toString()
+        });
+        // Netlify answers 200 when it accepts the submission. Anywhere else
+        // this is a 404, a 405, or a thrown network error — all of which mean
+        // the same thing here: it did not arrive, so use the mail app.
+        return response.ok;
+      } catch { return false; }
+    }
+
+    $('#feedbackForm').addEventListener('submit', async event => {
       event.preventDefault();
       const required = ['clarity','distinctive','faith','trust','use'];
       if (required.some(key => !feedbackRatings[key])) { toast('Choose a rating for all five statements'); return; }
-      state.feedback.push({ id:uid(), createdAt:new Date().toISOString(), ratings:{...feedbackRatings}, most:$('#mostUseful').value, least:$('#leastUseful').value, comment:$('#feedbackText').value.trim() });
-      saveState(); feedbackRatings = {}; $$('.feedback-scale button').forEach(button => button.classList.remove('selected')); $('#feedbackText').value = ''; renderFeedbackCount(); toast('Tester feedback saved locally');
+
+      const entry = { id:uid(), createdAt:new Date().toISOString(), ratings:{...feedbackRatings},
+                      most:$('#mostUseful').value, least:$('#leastUseful').value,
+                      comment:$('#feedbackText').value.trim(), sent:false };
+      // Saved before anything is attempted, so a failed send is never a lost
+      // answer — and the CSV export still has it either way.
+      state.feedback.push(entry);
+      saveState();
+
+      const button = event.target.querySelector('button[type="submit"]');
+      const label = button.textContent;
+      button.textContent = 'Sending…'; button.disabled = true;
+
+      const delivered = await sendFeedback(entry);
+      entry.sent = delivered;
+      saveState();
+
+      button.textContent = label; button.disabled = false;
+      feedbackRatings = {};
+      $$('.feedback-scale button').forEach(item => item.classList.remove('selected'));
+      $$('.feedback-scale input[type="hidden"]').forEach(input => { input.value = ''; });
+      $('#feedbackText').value = '';
+      renderFeedbackCount();
+
+      if (delivered) {
+        toast('Sent — thank you, this genuinely shapes the next version');
+      } else {
+        toast('Opening your mail app to send it — just press send');
+        openMailFallback(entry);
+      }
     });
     $('#exportFeedback').addEventListener('click', () => {
       if (!state.feedback.length) { toast('Save tester feedback before exporting it'); return; }
