@@ -933,6 +933,15 @@
       color:#0c1620; background:var(--gold-soft,#f2e3ad); font-size:10px; font-weight:900;
       letter-spacing:.6px; text-transform:uppercase; vertical-align:middle; }
 
+    .storage-warning { position:sticky; top:0; z-index:45; display:grid; gap:8px;
+      padding:14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+      color:#2a1410; background:linear-gradient(135deg,#f6d9a8,#eab993);
+      border-bottom:1px solid rgba(60,30,16,.22); font-size:13px; line-height:1.5; }
+    .storage-warning[hidden] { display:none; }
+    .storage-warning strong { font-size:15px; }
+    .storage-warning .storage-fix { color:#5a3320; }
+    .storage-warning .btn { justify-self:start; }
+
     /* Film grain. This is what stops a dark screen looking like flat
        plastic — it gives the ink a surface. */
     body::after {
@@ -1767,6 +1776,16 @@
     </div>
   </div>
 
+  <!-- Shown only when storage is genuinely not working. An app that
+       promises your data stays on your device has to say when it cannot
+       keep that promise. -->
+  <div class="storage-warning" id="storageWarning" hidden role="alert">
+    <strong>Nothing is being saved.</strong>
+    <span id="storageWarningWhy">This browser is not letting SleepSphere store anything, so tonight’s entries will disappear when you close this tab.</span>
+    <span class="storage-fix">Try opening the link in its own browser tab rather than inside another app, or add it to your Home Screen. If you are in Private Browsing, use a normal window.</span>
+    <button type="button" class="btn small light" id="storageWarningExport">Save what I have now</button>
+  </div>
+
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand"><div class="brand-mark">☾</div><div><strong>SleepSphere</strong><small>The Sabat Loop</small></div></div>
@@ -2521,8 +2540,74 @@
     const clone = value => JSON.parse(JSON.stringify(value));
     const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
 
+    /* ------------------------------------------------------------------
+       Storage, and admitting when there isn't any.
+
+       This app's whole promise is that your entries stay on your device. So
+       the one unacceptable failure is to look like it is saving when it is
+       not — and that is exactly what a bare localStorage call does here.
+
+       Reading window.localStorage THROWS outright, before you touch a key,
+       in several ordinary situations: Safari Private Browsing, a browser
+       set to block site data, and — the one that bites this app — an
+       embedded frame on a browser with cross-site tracking prevention,
+       where storage is partitioned or refused. The app still rendered
+       perfectly in every one of those cases, so a person could plan a week
+       of nights into a void and only find out when they came back for the
+       pattern.
+
+       So: never throw, fall back to memory so the session still works, and
+       say so on screen rather than pretending. A page that has lost its
+       storage is not a page that should stay quiet. */
+    const store = (() => {
+      let backing = null, healthy = false;
+      const memory = new Map();
+      try {
+        const probe = '__sleepsphere_probe__';
+        window.localStorage.setItem(probe, '1');
+        // A write that does not read back is worse than one that throws:
+        // some browsers accept the call and discard the value.
+        healthy = window.localStorage.getItem(probe) === '1';
+        window.localStorage.removeItem(probe);
+        if (healthy) backing = window.localStorage;
+      } catch { healthy = false; }
+
+      return {
+        healthy,
+        get(key) {
+          try { return backing ? backing.getItem(key) : (memory.has(key) ? memory.get(key) : null); }
+          catch { return memory.has(key) ? memory.get(key) : null; }
+        },
+        set(key, value) {
+          memory.set(key, value);
+          if (!backing) return false;
+          try { backing.setItem(key, value); return true; }
+          catch {
+            // Quota, or storage revoked mid-session. Keep the session alive
+            // in memory and stop claiming the disk is working.
+            backing = null;
+            document.documentElement.dataset.storage = 'unavailable';
+            return false;
+          }
+        },
+        remove(key) {
+          memory.delete(key);
+          try { if (backing) backing.removeItem(key); } catch { /* nothing to undo */ }
+        }
+      };
+    })();
+    if (!store.healthy) document.documentElement.dataset.storage = 'unavailable';
+
+    /** Show the banner when, and only when, saving is genuinely broken. */
+    function renderStorageWarning() {
+      const node = document.getElementById('storageWarning');
+      if (!node) return;
+      const broken = !store.healthy || document.documentElement.dataset.storage === 'unavailable';
+      node.hidden = !broken;
+    }
+
     function loadState() {
-      const stored = safeParse(localStorage.getItem(STORAGE_KEY), null);
+      const stored = safeParse(store.get(STORAGE_KEY), null);
       if (stored && stored.version === 2) {
         return {
           ...clone(defaults), ...stored,
@@ -2538,10 +2623,10 @@
       }
 
       const migrated = clone(defaults);
-      const oldPlan = safeParse(localStorage.getItem('ss_plan'), null);
-      const oldThoughts = safeParse(localStorage.getItem('ss_thoughts'), []);
-      const oldMornings = safeParse(localStorage.getItem('ss_mornings'), []);
-      const oldFeedback = safeParse(localStorage.getItem('ss_feedback'), []);
+      const oldPlan = safeParse(store.get('ss_plan'), null);
+      const oldThoughts = safeParse(store.get('ss_thoughts'), []);
+      const oldMornings = safeParse(store.get('ss_mornings'), []);
+      const oldFeedback = safeParse(store.get('ss_feedback'), []);
       if (oldPlan) {
         migrated.plan = {
           mode: 'continuous', wake: oldPlan.wake || '05:15', reason: oldPlan.reason || 'Fajr',
@@ -2580,7 +2665,17 @@
     const stddev = values => { if (values.length < 2) return null; const avg = mean(values); return Math.sqrt(mean(values.map(value => (value - avg) ** 2))); };
     const escapeHtml = text => { const div = document.createElement('div'); div.textContent = text ?? ''; return div.innerHTML; };
 
-    function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    function saveState() {
+      const written = store.set(STORAGE_KEY, JSON.stringify(state));
+      // One warning, the first time a save does not reach the disk. Silence
+      // here is how a week of entries disappears.
+      if (!written && !saveState.warned) {
+        saveState.warned = true;
+        renderStorageWarning();
+        toast('This browser is not letting SleepSphere save — see the banner');
+      }
+      return written;
+    }
     function toast(message) { const node = $('#toast'); node.textContent = message; node.classList.add('show'); window.clearTimeout(toast.handle); toast.handle = window.setTimeout(() => node.classList.remove('show'), 2200); }
     function toMinutes(time) { if (!time || !time.includes(':')) return 0; const [hours, minutes] = time.split(':').map(Number); return hours * 60 + minutes; }
     function normalizeMinutes(minutes) { return ((Math.round(minutes) % 1440) + 1440) % 1440; }
@@ -3750,7 +3845,7 @@
     $('#printSummary').addEventListener('click', () => window.print());
     $('#eraseData').addEventListener('click', () => {
       if (!window.confirm('Erase every SleepSphere plan, Bio Harmony check-in, diary entry, thought, experiment and feedback record stored in this browser? This cannot be undone without a backup.')) return;
-      ['ss_plan','ss_thoughts','ss_mornings','ss_feedback',STORAGE_KEY].forEach(key => localStorage.removeItem(key));
+      ['ss_plan','ss_thoughts','ss_mornings','ss_feedback',STORAGE_KEY].forEach(key => store.remove(key));
       state = clone(defaults); demoMode = false; selectedExperiment = null; resetScan(); clearMorningForm(); saveState(); populateForms(); renderAll(); toast('All SleepSphere local data erased');
     });
 
@@ -5944,6 +6039,10 @@
     if (isStandalone()) document.documentElement.dataset.installed = 'yes';
     // After renderAll, so --stars already holds tonight's value and the
     // field does not start by fading in from nothing at midnight.
+    renderStorageWarning();
+    // The escape hatch has to work even when nothing can be written to disk:
+    // a download is the one way off a device that refuses to remember.
+    $('#storageWarningExport')?.addEventListener('click', () => $('#exportBackup')?.click());
     startStarfield();
     // Opening the app is the wake stamp, so this has to run on load — before
     // anything asks the person to do something.
