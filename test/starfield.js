@@ -85,14 +85,25 @@ const clockAt = hour => `(()=>{const R=Date;const f=new R(2026,8,9,${hour},30,0)
   }));
   check('Stars twinkle', shimmer.changed > 500, `${shimmer.changed} pixels changed in 0.9s`);
   check('No console errors', phone.errs.length === 0, phone.errs.join(' | '));
+  // Kept for the daylight comparison below, before this context is closed.
+  const phoneStarsAtNight = await phone.p.evaluate(() =>
+    parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stars')));
   await phone.ctx.close();
 
-  // The loop must not run through the day, when the canvas is invisible
-  // anyway. This is the difference between a nice background and a battery
-  // complaint.
+  /* In daylight the page sky is faint rather than absent. It used to be
+     switched off entirely to save the loop; the cost was that opening the
+     app at noon showed no sky at all, which is most of when people open it.
+     Faint is the compromise: present, and well under the night's brightness
+     so it never competes with the text sitting on top of it. */
   const day = await open(13, { width:390, height:844 });
   const dp = await day.p.evaluate(() => window.__starProbe());
-  check('The page sky is off in daylight', pick(dp,'starfield').active === false);
+  const dayStars = await day.p.evaluate(() =>
+    parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stars')));
+  const nightStars = phoneStarsAtNight;
+  check('There is still a sky at midday', pick(dp,'starfield').active === true,
+        `${pick(dp,'starfield').onScreen} on screen at 13:30`);
+  check('But a much fainter one than at night', dayStars > 0 && dayStars < nightStars * 0.35,
+        `${dayStars} at 13:30 against ${nightStars} at night`);
   // ...but the panel keeps its stars, because it is dark at every hour, and
   // in daylight it is the only sky anyone can see. Looking at the app at
   // noon and finding no stars at all is what made this look unchanged.

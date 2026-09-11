@@ -4648,9 +4648,9 @@
         { h:0,    top:'#05070f', mid:'#080d1a', low:'#0f1a2e', halo:[214,224,255,.13], glow:[150,175,225,.09], stars:1,   orb:'#e8e2d6' },
         { h:4,    top:'#070a1c', mid:'#161230', low:'#2b1c3a', halo:[236,170,150,.10], glow:[190,130,140,.12], stars:.7,  orb:'#dcd3e4' },
         { h:6,    top:'#0d1030', mid:'#231a3f', low:'#4a2a48', halo:[255,168,116,.26], glow:[226,124,92,.20],  stars:.2,  orb:'#ffcf9a' },
-        { h:8,    top:'#0d2440', mid:'#164059', low:'#256b83', halo:[255,224,164,.20], glow:[255,212,148,.14], stars:0,   orb:'#ffe8b4' },
-        { h:12,   top:'#12395c', mid:'#1a5578', low:'#2b7a97', halo:[255,247,214,.22], glow:[196,230,250,.13], stars:0,   orb:'#fff6d6' },
-        { h:16,   top:'#153350', mid:'#274664', low:'#4d5a72', halo:[255,226,170,.20], glow:[236,180,130,.14], stars:0,   orb:'#ffe6ae' },
+        { h:8,    top:'#0d2440', mid:'#164059', low:'#256b83', halo:[255,224,164,.20], glow:[255,212,148,.14], stars:.18,   orb:'#ffe8b4' },
+        { h:12,   top:'#12395c', mid:'#1a5578', low:'#2b7a97', halo:[255,247,214,.22], glow:[196,230,250,.13], stars:.15,   orb:'#fff6d6' },
+        { h:16,   top:'#153350', mid:'#274664', low:'#4d5a72', halo:[255,226,170,.20], glow:[236,180,130,.14], stars:.18,   orb:'#ffe6ae' },
         { h:18.5, top:'#1a1020', mid:'#3a1e2c', low:'#6b3430', halo:[255,158,84,.26],  glow:[240,146,74,.19],  stars:.08, orb:'#ffb46e' },
         { h:20.5, top:'#090b22', mid:'#141438', low:'#2a2450', halo:[206,132,150,.16], glow:[138,110,196,.15], stars:.6,  orb:'#d6cee9' },
         { h:22,   top:'#05070f', mid:'#080d1a', low:'#0f1a2e', halo:[214,224,255,.13], glow:[150,175,225,.09], stars:1,   orb:'#e8e2d6' }
@@ -4829,9 +4829,9 @@
         const ctx = canvas.getContext('2d', { alpha: true });
         if (!ctx) return null;
         const opt = Object.assign({
-          density: 780,       // one star per this many square px of field
-          maxStars: 1500,
-          minStars: 220,
+          density: 420,       // one star per this many square px of field
+          maxStars: 2800,
+          minStars: 420,
           centre: [0.5, 0.42],
           meteors: false,
           gain: 1,            // overall brightness
@@ -5043,8 +5043,8 @@
       // out. This is the surface most people look at in daylight, and it is
       // where a regular lattice of dots used to live.
       const panel = document.querySelector('.console-stars');
-      if (panel) StarSky.add(panel, { alwaysOn: true, density: 430, maxStars: 700,
-                                      minStars: 200, centre: [0.72, 0.3], gain: 0.9 });
+      if (panel) StarSky.add(panel, { alwaysOn: true, density: 240, maxStars: 1300,
+                                      minStars: 340, centre: [0.72, 0.3], gain: 0.9 });
       window.__starProbe = StarSky.probe;
     }
 
