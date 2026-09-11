@@ -87,6 +87,26 @@ const FREEZE = () => {
     constructor(...a) { return a.length ? new Real(...a) : new Real(fixed); }
     static now() { return fixed.getTime(); }
   };
+  /* The clock can also be driven, which is what the opening shot is. The sky
+     is interpolated from the hour, so running a day past in three seconds is
+     not an effect added in an editor — it is the app's own background, shown
+     faster than you would ever see it. */
+  window.__setHour = h => {
+    fixed.setHours(Math.floor(h), Math.round((h % 1) * 60), 0, 0);
+    window.__applySky();
+  };
+  window.__sweepHours = (from, to, ms) => new Promise(done => {
+    const t0 = performance.now();
+    const step = now => {
+      const k = Math.min(1, (now - t0) / ms);
+      /* Nearly linear, with only a slight settle at the end. A real ease-out
+         rushes the daylight — half the shot was already dark at the halfway
+         point — and daylight is where the colour is. */
+      window.__setHour(from + (to - from) * (1 - Math.pow(1 - k, 1.15)));
+      k < 1 ? requestAnimationFrame(step) : done();
+    };
+    requestAnimationFrame(step);
+  });
 };
 
 /* Title cards and camera moves both live inside the page, so one recording
@@ -97,7 +117,8 @@ const FREEZE = () => {
 const CINEMA = () => {
   const el = document.createElement('div');
   el.id = '__cine';
-  el.innerHTML = '<div><p class="__l1"></p><p class="__l2"></p></div>';
+  el.innerHTML = '<div><span class="__mark" hidden></span>'
+               + '<p class="__l1"></p><p class="__l2"></p></div>';
   const css = document.createElement('style');
   css.textContent = `
     #__cine { position:fixed; inset:0; z-index:99999; display:flex;
@@ -118,12 +139,17 @@ const CINEMA = () => {
     #__cine.on > div { transform:none; }
     #__cine.full > div { padding-bottom:0; }
     #__cine .__l1 { margin:0; font-family:var(--font-display); font-weight:500;
-      font-size:31px; line-height:1.22; letter-spacing:-.02em; color:#f4f1ea;
+      font-size:35px; line-height:1.18; letter-spacing:-.025em; color:#f4f1ea;
       text-wrap:balance; text-shadow:0 2px 30px rgba(0,0,0,.95); }
+    /* One warm colour in an otherwise blue-black film. The app's own gold,
+       on the word that carries the line. */
+    #__cine .__l1 em { font-style:normal; color:var(--gold-soft); }
+    #__cine .__mark { display:block; margin:0 0 14px; font-size:34px;
+      color:var(--gold-soft); text-shadow:0 0 30px rgba(216,185,104,.45); }
     #__cine .__l2 { margin:12px 0 0; font-size:14.5px; line-height:1.5;
       color:rgba(226,222,212,.8); white-space:pre-line;
       text-shadow:0 2px 22px rgba(0,0,0,.9); }
-    #__cine.full .__l1 { font-size:35px; }
+    #__cine.full .__l1 { font-size:40px; }
 
     /* A tap you cannot see is a cut that looks like a glitch. */
     .__tap { position:fixed; z-index:99998; width:26px; height:26px; margin:-13px 0 0 -13px;
@@ -135,8 +161,11 @@ const CINEMA = () => {
   document.body.appendChild(el);
   const shell = document.querySelector('.app-shell');
 
-  window.__card = (l1, l2, full) => {
-    el.querySelector('.__l1').textContent = l1 || '';
+  // l1 takes <em> for the one gold word, so it is markup rather than text.
+  window.__card = (l1, l2, full, mark) => {
+    el.querySelector('.__l1').innerHTML = l1 || '';
+    el.querySelector('.__mark').textContent = mark || '';
+    el.querySelector('.__mark').hidden = !mark;
     el.querySelector('.__l2').textContent = l2 || '';
     el.classList.toggle('full', !!full);
     el.classList.add('on');
@@ -222,31 +251,53 @@ const wait = async (p, ms, label) => {
     window.__pop();
   }, [view, y]);
 
-  // ---- The verse. The one still moment, and it earns the pace that follows.
-  await wait(p, 2500, 'verse');
+  // ---- The verse, on the app's own opening. Kept short: it is the reason
+  //      this app exists, but it is not the hook.
+  await p.evaluate(() => window.__shell(false));
+  await wait(p, 1700, 'verse');
 
-  // ---- Tonight, drifting in.
-  await p.evaluate(() => { window.__push(1.05, 9000); window.__card('Made for our nights.'); });
-  await wait(p, 1700, 'tonight');
+  /* ---- The hook. A whole day of sky in three seconds: dawn, noon, the
+     orange of maghrib, then night with the stars coming up through it. This
+     is not a video effect — the app interpolates its background from the
+     hour, all day, every day. Almost nobody will ever sit and watch it
+     happen, which is exactly why it belongs in a trailer. */
+  // Night to night, so the whole arc reads as one turn of the day.
+  await p.evaluate(() => { document.getElementById('opening')?.click(); window.__setHour(4.2); });
+  await wait(p, 600, 'predawn');
+  /* evaluate awaits the returned promise, so this call blocks for the whole
+     sweep — which is what we want, and also why a beat still taken part way
+     through it would land after it rather than inside it. */
+  await p.evaluate(() => window.__sweepHours(4.2, 23.2, 3800));
+  await wait(p, 550, 'night-arrived');
+  await p.evaluate(() => window.__card('Every hour has its own <em>sky</em>.'));
+  await wait(p, 1500, 'nightfall');
+
+  // ---- The app arrives on the night it just built.
+  await p.evaluate(() => {
+    window.__uncard(); window.__shell(true); window.__push(1.05, 9000);
+  });
+  await wait(p, 500);
+  await p.evaluate(() => window.__card('Made for <em>our</em> nights.'));
+  await wait(p, 1500, 'tonight');
 
   // ---- Our times.
   await go('plan');
   await p.evaluate(() => {
     document.getElementById('prayerTimes').scrollIntoView({ behavior:'instant', block:'center' });
     window.__push(1.06, 6000);
-    window.__card('Our times. On your own phone.');
+    window.__card('<em>Our</em> times. On your own phone.');
   });
   await wait(p, 2100, 'prayer');
 
   // ---- The tap. This is the beat the whole app is really about.
   await go('today');
-  await p.evaluate(() => window.__card('Too tired to log it?'));
+  await p.evaluate(() => window.__card('Too tired to <em>log</em> it?'));
   await wait(p, 1400, 'too-tired');
   await p.evaluate(() => { window.__uncard(); window.__tap('#lazyStart'); });
   await wait(p, 380);
   await p.locator('#lazyStart').click();
   await wait(p, 1300, 'goodnight');
-  await p.evaluate(() => window.__card('One tap. Put the phone down.'));
+  await p.evaluate(() => window.__card('One tap. Then <em>put the phone down</em>.'));
   await wait(p, 1700, 'one-tap');
 
   /* ---- The burst. Screens the trailer is otherwise keeping back, each on
@@ -258,7 +309,7 @@ const wait = async (p, ms, label) => {
     document.getElementById('lazyVeil').hidden = true;
   });
   await wait(p, 420);
-  await p.evaluate(() => window.__card('Stay with it and it starts noticing things.'));
+  await p.evaluate(() => window.__card('Stay with it and it starts <em>noticing</em> things.'));
   for (const [view, y] of [['compass', 360], ['twin', 420], ['data', 520], ['compass', 60]]) {
     await go(view, y);
     await wait(p, 520, `burst-${view}`);
@@ -268,19 +319,20 @@ const wait = async (p, ms, label) => {
   //      meet for the first time in the app, not in a video.
   await p.evaluate(() => { window.__uncard(); window.__shell(false); });
   await wait(p, 700);
-  await p.evaluate(() => window.__card('In the morning it asks you one question.',
+  await p.evaluate(() => window.__card('In the morning it asks you <em>one</em> question.',
                                        'That is the whole of it.', true));
   await wait(p, 2200, 'morning');
 
   // ---- End card.
   await p.evaluate(link => {
-    window.__card('SleepSphere', 'Prototype · now testing' + (link ? '\n' + link : ''), true);
-    document.querySelector('#__cine .__l1').style.fontSize = '44px';
+    window.__card('SleepSphere', 'Prototype · now testing' + (link ? '\n' + link : ''),
+                  true, '\u263E');
+    document.querySelector('#__cine .__l1').style.fontSize = '46px';
   }, LINK);
   await wait(p, 2300, 'endcard');
   await p.evaluate(() => {
     document.querySelector('#__cine .__l1').style.fontSize = '';
-    window.__card('Tell me what it gets wrong.',
+    window.__card('Tell me what it gets <em>wrong</em>.',
                   'Every answer changes the next version.', true);
   });
   await wait(p, 2300, 'ask');

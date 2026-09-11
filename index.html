@@ -5058,6 +5058,11 @@
       if (panel) StarSky.add(panel, { alwaysOn: true, density: 240, maxStars: 1300,
                                       minStars: 340, centre: [0.72, 0.3], gain: 0.9 });
       window.__starProbe = StarSky.probe;
+      /* Repainting the sky on demand rather than on its own timer. The tests
+         and the trailer both need to see an hour that is not the current one;
+         applySky reads the clock, so with the clock held or driven this is
+         the whole of it. */
+      window.__applySky = applySky;
     }
 
     /* ------------------------------------------------------------------
