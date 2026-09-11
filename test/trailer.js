@@ -6,10 +6,20 @@
  * because a trailer that shows something the app can't do is a promise you
  * then have to break in front of the person testing it.
  *
- * What it deliberately does NOT show: My pattern, Trends, the sleep guide,
- * the apnea screen, records, experiments. Those are the payoff. A tester who
- * has already watched the payoff has nothing left to discover, and discovery
- * is most of what you are testing for.
+ * The first cut of this was a slideshow with captions: ten still frames, each
+ * held three seconds, forty seconds long. It was boring, and the reasons are
+ * worth writing down because they are the whole design of this file now.
+ *
+ *   - Nothing moved inside a shot. A screen recording where the screen never
+ *     moves is a screenshot that takes longer.
+ *   - The cards did the talking and the app just sat behind them.
+ *   - It gave nothing to want. Holding back the payoff was right; holding it
+ *     back *silently* meant there was no reason to open the app.
+ *
+ * So: half the length, shots under two seconds, a push on every held frame,
+ * taps you can see land, and a burst of the held-back screens too fast to
+ * read. Withholding and teasing are different things — the flashes are the
+ * tease, and what those screens actually do is still only findable in the app.
  *
  *   python3 -m http.server 8099        (in the repo root)
  *   node test/trailer.js               (add TRAILER_SHOTS=1 for beat stills)
@@ -27,16 +37,35 @@ const OUT  = process.env.TRAILER_OUT  || path.join(__dirname, '..', 'trailer');
 // Dawat sheet — so what the video shows is the case that is known correct.
 const PLACE = { latitude: 25.2048, longitude: 55.2708, name: 'Dubai' };
 
-// Three nights. Enough that the app looks lived in rather than empty, not so
-// much that the trailer starts showing patterns the tester should find.
-const night = (date, bed, sleep, wake, rest) => ({
-  id: 'demo-' + date, date, createdAt: date + 'T07:00:00.000Z',
-  bedTime: bed, sleepTime: sleep, wakeTime: wake, awakeMinutes: 10, napMinutes: 0,
-  rest, energy: rest, focus: rest, calm: rest, fajr: 'woke_on_time',
-  factors: [], note: '', targetMinutes: 480, intent: 'restore',
-  planSnapshot: null, bioHarmonyId: null, bioHarmonySnapshot: null,
-  experimentId: null, adherence: 'not_applicable', demo: false
-});
+/* Two weeks of nights, so the screens that flash past have shape in them
+   rather than an empty state. The derived fields have to be written too: the
+   app stores them at save time and does not recompute on load, so a seed that
+   leaves them out reports "about 0m of sleep a night" in the summary. */
+const mins = hhmm => (+hhmm.slice(0, 2)) * 60 + (+hhmm.slice(3));
+const night = (date, bed, sleep, wake, rest, awake) => {
+  const span = (from, to) => (mins(to) - mins(from) + 1440) % 1440;
+  const opportunityMinutes = span(bed, wake);
+  const sleepMinutes = Math.max(0, span(sleep, wake) - awake);
+  return {
+    id: 'demo-' + date, date, createdAt: date + 'T07:00:00.000Z',
+    bedTime: bed, sleepTime: sleep, wakeTime: wake, awakeMinutes: awake, napMinutes: 0,
+    opportunityMinutes, sleepMinutes,
+    efficiency: Math.round((sleepMinutes / opportunityMinutes) * 100),
+    rest, energy: Math.max(1, rest - 1), focus: rest, calm: Math.min(5, rest + 1),
+    fajr: 'woke_on_time', factors: [], note: '', targetMinutes: 480, intent: 'restore',
+    planSnapshot: null, bioHarmonyId: null, bioHarmonySnapshot: null,
+    experimentId: null, adherence: 'not_applicable', demo: false
+  };
+};
+const NIGHTS = [
+  ['2026-08-29','22:50','23:12','06:20',3,14], ['2026-08-30','23:40','00:05','06:15',2,26],
+  ['2026-08-31','22:35','22:58','06:30',4,11], ['2026-09-01','23:10','23:35','06:10',3,18],
+  ['2026-09-02','22:20','22:40','06:35',5,8],  ['2026-09-03','00:10','00:38','06:05',2,24],
+  ['2026-09-04','22:45','23:05','06:25',4,12], ['2026-09-05','22:30','22:52','06:40',4,10],
+  ['2026-09-06','23:25','23:52','06:12',3,19], ['2026-09-07','22:15','22:34','06:45',5,7],
+  ['2026-09-08','23:05','23:30','06:18',3,16], ['2026-09-09','22:40','23:02','06:28',4,13],
+  ['2026-09-10','23:50','00:18','06:02',2,27]
+].map(row => night(...row));
 
 const SEED = `(()=>{localStorage.setItem('sleepsphere_state_v2', JSON.stringify(${JSON.stringify({
   version: 2,
@@ -44,9 +73,7 @@ const SEED = `(()=>{localStorage.setItem('sleepsphere_state_v2', JSON.stringify(
               openingOff:false, lastZone:'Asia/Dubai', locationGranted:true, dim:false,
               intent:'restore', welcomeSeen:true, mode:'dark', useCycle:false,
               healthLinked:false, place:PLACE, highLatRule:'seventh', fajrEdited:false },
-  mornings: [ night('2026-09-08','22:50','23:15','06:20',3),
-              night('2026-09-09','23:30','23:55','06:15',2),
-              night('2026-09-10','22:40','23:00','06:30',4) ],
+  mornings: NIGHTS,
   bioCheckins: [], thoughts: [], scans: [], feedback: [], experimentHistory: []
 })}));})()`;
 
@@ -62,14 +89,11 @@ const FREEZE = () => {
   };
 };
 
-/* Title cards live inside the page, so one recording captures both the app
-   and the words — no editing step and no second tool.
-
-   The scrim is the part that matters. Type laid straight over a working
-   screen reads as a mistake: the first cut had a sentence sitting across the
-   buttons. Darkening the bottom of the frame under the words separates the
-   two, and the app's own display serif keeps the cards feeling like the app
-   rather than like a caption added later. */
+/* Title cards and camera moves both live inside the page, so one recording
+   captures the app and the words together — no editing step, no second tool.
+   The app's own display serif keeps the cards feeling like the app rather
+   than like captions added afterwards, and the scrim under them is what stops
+   type laid over a working screen reading as a mistake. */
 const CINEMA = () => {
   const el = document.createElement('div');
   el.id = '__cine';
@@ -78,7 +102,7 @@ const CINEMA = () => {
   css.textContent = `
     #__cine { position:fixed; inset:0; z-index:99999; display:flex;
       align-items:flex-end; justify-content:center; pointer-events:none;
-      opacity:0; transition:opacity .55s ease; }
+      opacity:0; transition:opacity .26s ease; }
     #__cine.on { opacity:1; }
     #__cine::before { content:''; position:absolute; inset:0;
       background:linear-gradient(to top, rgba(4,5,12,.985) 0%, rgba(4,5,12,.965) 38%,
@@ -90,19 +114,26 @@ const CINEMA = () => {
     #__cine.full::before {
       background:radial-gradient(120% 78% at 50% 46%, rgba(3,4,10,.32), rgba(3,4,10,.78)); }
     #__cine > div { position:relative; text-align:center; max-width:330px;
-      padding:0 22px 116px; }
+      padding:0 22px 116px; transform:translateY(15px); transition:transform .3s ease; }
+    #__cine.on > div { transform:none; }
     #__cine.full > div { padding-bottom:0; }
     #__cine .__l1 { margin:0; font-family:var(--font-display); font-weight:500;
-      font-size:29px; line-height:1.24; letter-spacing:-.02em; color:#f4f1ea;
+      font-size:31px; line-height:1.22; letter-spacing:-.02em; color:#f4f1ea;
       text-wrap:balance; text-shadow:0 2px 30px rgba(0,0,0,.95); }
-    #__cine .__l2 { margin:13px 0 0; font-size:14.5px; line-height:1.55;
+    #__cine .__l2 { margin:12px 0 0; font-size:14.5px; line-height:1.5;
       color:rgba(226,222,212,.8); white-space:pre-line;
       text-shadow:0 2px 22px rgba(0,0,0,.9); }
-    #__cine.full .__l1 { font-size:34px; }
-    /* Nothing should be mid-fade when a beat is meant to be still. */
-    #__cine * { transition:none; }`;
+    #__cine.full .__l1 { font-size:35px; }
+
+    /* A tap you cannot see is a cut that looks like a glitch. */
+    .__tap { position:fixed; z-index:99998; width:26px; height:26px; margin:-13px 0 0 -13px;
+      border-radius:50%; background:rgba(255,255,255,.5); pointer-events:none;
+      animation:__ripple .62s cubic-bezier(.2,.7,.3,1) forwards; }
+    @keyframes __ripple { from { transform:scale(.3); opacity:.65; }
+                          to   { transform:scale(4.6); opacity:0; } }`;
   document.head.appendChild(css);
   document.body.appendChild(el);
+  const shell = document.querySelector('.app-shell');
 
   window.__card = (l1, l2, full) => {
     el.querySelector('.__l1').textContent = l1 || '';
@@ -112,19 +143,43 @@ const CINEMA = () => {
   };
   window.__uncard = () => el.classList.remove('on');
 
+  // A slow drift on a held frame. Without it, a recording of a screen nobody
+  // is touching is a screenshot that takes longer.
+  window.__push = (to, ms) => {
+    shell.style.transition = `transform ${ms}ms linear`;
+    shell.style.transform = `scale(${to})`;
+  };
+  // A quick settle, for the cuts in the burst.
+  window.__pop = () => {
+    shell.style.transition = 'none';
+    shell.style.transform = 'scale(1.055)';
+    requestAnimationFrame(() => {
+      shell.style.transition = 'transform .42s cubic-bezier(.2,.8,.3,1)';
+      shell.style.transform = 'scale(1)';
+    });
+  };
+  window.__tap = sel => {
+    const box = document.querySelector(sel).getBoundingClientRect();
+    const dot = document.createElement('div');
+    dot.className = '__tap';
+    dot.style.left = (box.left + box.width / 2) + 'px';
+    dot.style.top  = (box.top + box.height / 2) + 'px';
+    document.body.appendChild(dot);
+    setTimeout(() => dot.remove(), 700);
+  };
   // Everything except the sky. The app's own canvas sits outside .app-shell,
   // so fading the shell leaves the starfield running underneath.
   window.__shell = on => {
-    const shell = document.querySelector('.app-shell');
-    shell.style.transition = 'opacity .75s ease';
+    shell.style.transition = 'opacity .6s ease, transform .6s ease';
     shell.style.opacity = on ? '1' : '0';
   };
 };
 
-/* Checking a trailer by watching it back is slow, and a decoded webm frame is
+/* Checking a trailer by watching it back is slow, and a decoded frame is
    awkward to look at from a script. TRAILER_SHOTS=1 drops a still at each beat
    instead, which is what you actually want to check: what is on screen, and
-   whether the words sit clear of it. */
+   whether the words sit clear of it. The stills add about a second each to
+   the recording, so the cut you ship is the one recorded without them. */
 const SHOTS = process.env.TRAILER_SHOTS === '1';
 let beat = 0;
 const wait = async (p, ms, label) => {
@@ -161,73 +216,76 @@ const wait = async (p, ms, label) => {
   await p.goto('http://localhost:8099/index.html', { waitUntil: 'networkidle' });
   await p.evaluate(CINEMA);
 
-  // ---- 1. The verse. The app's own opening, left to run at its own pace —
-  //         it closes itself after 3.2s, which is the pace it was designed at.
-  await wait(p, 1900, 'verse');
-  await wait(p, 2100);
+  const go = (view, y = 0) => p.evaluate(([v, top]) => {
+    document.querySelector(`.nav button[data-view="${v}"]`).click();
+    window.scrollTo({ top, behavior: 'instant' });
+    window.__pop();
+  }, [view, y]);
 
-  // ---- 2. Tonight, with the sky behind it.
-  await p.evaluate(() => window.__card('A sleep app built around our nights.'));
-  await wait(p, 2600, 'tonight');
-  await p.evaluate(() => window.__uncard());
-  await wait(p, 700);
+  // ---- The verse. The one still moment, and it earns the pace that follows.
+  await wait(p, 2500, 'verse');
 
-  // ---- 3. The prayer times. A glance, not a tour.
-  await p.evaluate(() => document.querySelector('.nav button[data-view="plan"]').click());
-  await wait(p, 900);
-  await p.evaluate(() => document.getElementById('prayerTimes')
-    ?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
-  await wait(p, 1300);
-  await p.evaluate(() => window.__card('Our times, on your own phone.',
-                                       'Nothing is sent anywhere.'));
-  await wait(p, 3100, 'prayer');
-  await p.evaluate(() => window.__uncard());
-  await wait(p, 700);
+  // ---- Tonight, drifting in.
+  await p.evaluate(() => { window.__push(1.05, 9000); window.__card('Made for our nights.'); });
+  await wait(p, 1700, 'tonight');
 
-  // ---- 4 & 5. The two kinds of night.
+  // ---- Our times.
+  await go('plan');
   await p.evaluate(() => {
-    document.querySelector('.nav button[data-view="today"]').click();
-    window.scrollTo({ top: 0 });
+    document.getElementById('prayerTimes').scrollIntoView({ behavior:'instant', block:'center' });
+    window.__push(1.06, 6000);
+    window.__card('Our times. On your own phone.');
   });
-  await wait(p, 1100);
-  await p.evaluate(() => window.__card('Some nights you have it in you to plan.'));
-  await wait(p, 2200, 'plan-night');
-  await p.evaluate(() => window.__card('Some nights you really don’t.'));
-  await wait(p, 2100, 'tired-night');
-  await p.evaluate(() => window.__uncard());
-  await wait(p, 600);
+  await wait(p, 2100, 'prayer');
 
-  const tired = p.locator('#lazyStart');
-  await tired.scrollIntoViewIfNeeded();
-  await wait(p, 800);
-  await tired.click();
-  await wait(p, 2600, 'goodnight');           // the Goodnight sheet, held
-  await p.evaluate(() => window.__card('One tap. Then put the phone down.'));
-  await wait(p, 2300, 'one-tap');
-  await p.evaluate(() => { window.__uncard(); document.getElementById('lazyVeil').hidden = true; });
-  await wait(p, 900);
+  // ---- The tap. This is the beat the whole app is really about.
+  await go('today');
+  await p.evaluate(() => window.__card('Too tired to log it?'));
+  await wait(p, 1400, 'too-tired');
+  await p.evaluate(() => { window.__uncard(); window.__tap('#lazyStart'); });
+  await wait(p, 380);
+  await p.locator('#lazyStart').click();
+  await wait(p, 1300, 'goodnight');
+  await p.evaluate(() => window.__card('One tap. Put the phone down.'));
+  await wait(p, 1700, 'one-tap');
 
-  // ---- 6. The morning, named but not shown. This is the part the tester
-  //         should meet for the first time in the app, not in a video.
-  await p.evaluate(() => window.__shell(false));
-  await wait(p, 800);
+  /* ---- The burst. Screens the trailer is otherwise keeping back, each on
+     for half a second — long enough to register as something, far too short
+     to read. That is the difference between withholding and teasing: what
+     these screens actually do is still only findable in the app. */
+  await p.evaluate(() => {
+    window.__uncard();
+    document.getElementById('lazyVeil').hidden = true;
+  });
+  await wait(p, 420);
+  await p.evaluate(() => window.__card('Stay with it and it starts noticing things.'));
+  for (const [view, y] of [['compass', 360], ['twin', 420], ['data', 520], ['compass', 60]]) {
+    await go(view, y);
+    await wait(p, 520, `burst-${view}`);
+  }
+
+  // ---- The morning, named but not shown. This is the part the tester should
+  //      meet for the first time in the app, not in a video.
+  await p.evaluate(() => { window.__uncard(); window.__shell(false); });
+  await wait(p, 700);
   await p.evaluate(() => window.__card('In the morning it asks you one question.',
                                        'That is the whole of it.', true));
-  await wait(p, 2700, 'morning');
+  await wait(p, 2200, 'morning');
 
-  // ---- 7. End card.
-  await p.evaluate(link => window.__card('SleepSphere',
-    'Prototype · now testing' + (link ? '\n' + link : ''), true), LINK);
-  await p.evaluate(() => { document.querySelector('#__cine .__l1').style.fontSize = '42px'; });
-  await wait(p, 2700, 'endcard');
+  // ---- End card.
+  await p.evaluate(link => {
+    window.__card('SleepSphere', 'Prototype · now testing' + (link ? '\n' + link : ''), true);
+    document.querySelector('#__cine .__l1').style.fontSize = '44px';
+  }, LINK);
+  await wait(p, 2300, 'endcard');
   await p.evaluate(() => {
     document.querySelector('#__cine .__l1').style.fontSize = '';
     window.__card('Tell me what it gets wrong.',
                   'Every answer changes the next version.', true);
   });
-  await wait(p, 2800, 'ask');
+  await wait(p, 2300, 'ask');
   await p.evaluate(() => window.__uncard());
-  await wait(p, 900);
+  await wait(p, 700);
 
   const video = p.video();
   await ctx.close();
@@ -246,16 +304,15 @@ const wait = async (p, ms, label) => {
      The trim matters as much as the format: recording starts when the page
      does, so the first second is the app mid-load, and the first frame is
      the thumbnail everyone sees before they press play. There is no fade in
-     for the same reason: the trim already lands on the verse, and a fade
-     would make frame zero black — which is the frame a messaging app picks
-     as the preview. */
+     for the same reason — it would make frame zero black, which is the frame
+     a messaging app picks as the preview. */
   try {
     const { execFileSync } = require('child_process');
     // 1.5s in, the opening overlay is reliably opaque; earlier than that and
     // the app is still showing through it, which reads as a rendering fault
     // rather than as depth. Load timing varies a little between runs, so the
     // trim is set where it is safe rather than where it is tightest.
-    const HEAD = 1.5, OUT_FADE = 0.7;
+    const HEAD = 1.5, OUT_FADE = 0.6;
     const probe = execFileSync('ffprobe', ['-v','error','-show_entries','format=duration',
       '-of','default=nw=1:nk=1', final], { encoding:'utf8' });
     const end = parseFloat(probe) - HEAD - OUT_FADE;
