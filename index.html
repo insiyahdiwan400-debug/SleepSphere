@@ -58,6 +58,18 @@
     }
 
     * { box-sizing: border-box; }
+
+    /* The `hidden` attribute is only a browser default of display:none, and
+       any class that sets display of its own beats it. That is how the
+       coordinate entry fields and a stray "Save location" button came to sit
+       on the prayer card for everyone who already had a location saved:
+       .form-grid sets display:grid and .button-row sets display:flex, so
+       `hidden` did nothing at all. Settle it once, for every element in the
+       file, rather than hunting them one at a time. */
+    [hidden] { display: none !important; }
+    /* One deliberate exception: this link keeps its space so the row it sits
+       in does not jump as it appears and disappears. */
+    .flow-link[hidden] { display: inline-block !important; visibility: hidden; }
     html { min-height: 100%; background: var(--night); }
     body {
       margin: 0;
