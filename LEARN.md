@@ -76,11 +76,37 @@ Do these in order. They take about an hour total and each one is real.
 
 ### Change 1 — words
 
-Search for `Rest is more than hours.` That is the headline on the first
-screen. Change it to anything. Save. Refresh.
+Search for `Too tired` — that's the Lazy mode button. Change the words
+between `>` and `<`, leaving the pointy brackets alone:
 
-**You just edited the app.** That is genuinely the same act as everything
-else; the rest is only a matter of what you are editing.
+```html
+<button class="btn ghost" id="lazyStart">Too tired — just go to bed</button>
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                         only this part
+```
+
+Save. Refresh. **You just edited the app.**
+
+> **If nothing changes, you have not done anything wrong.** Two things in
+> this app can eat your edit, and both are worth meeting now rather than at
+> midnight some other day.
+>
+> **The app caches itself** so it works offline, so the browser may be
+> showing you an older copy. Try **Cmd+Shift+R** instead of Cmd+R. If that
+> fails, stop the server (Ctrl+C) and restart it on a different port —
+> `python3 -m http.server 8100` — then use `localhost:8100`. A new port is a
+> new address, so there is nothing cached to fight.
+>
+> **Some text is written by JavaScript, not by the HTML.** If you edit the
+> HTML version of something JavaScript controls, it gets overwritten a
+> split second after the page loads and you will never see your change. The
+> headline on the Tonight screen is one of these — `pageTitle` looks
+> editable in the HTML but line 2721 rewrites it every time you navigate.
+>
+> **How to tell which you are looking at:** search the file for the `id`
+> (like `lazyStart` or `pageTitle`). Find it once → it is static, safe to
+> edit. Find it in the JavaScript too → the JavaScript is the boss of that
+> text, and that is where you change it.
 
 ### Change 2 — a number that changes a feeling
 
