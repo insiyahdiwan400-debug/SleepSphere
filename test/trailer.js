@@ -148,6 +148,9 @@ const wait = async (p, ms, label) => {
     // who knows the times would spot it instantly.
     timezoneId: 'Asia/Dubai',
     locale: 'en-GB',
+    // The video size has to match the viewport in CSS pixels. Asking for a
+    // larger frame does not render the page at 2x — it draws the same 390pt
+    // surface into the corner of a bigger canvas and leaves the rest grey.
     recordVideo: { dir: OUT, size: { width: 390, height: 844 } }
   });
   const p = await ctx.newPage();
@@ -161,11 +164,11 @@ const wait = async (p, ms, label) => {
   // ---- 1. The verse. The app's own opening, left to run at its own pace —
   //         it closes itself after 3.2s, which is the pace it was designed at.
   await wait(p, 1900, 'verse');
-  await wait(p, 2400);
+  await wait(p, 2100);
 
   // ---- 2. Tonight, with the sky behind it.
   await p.evaluate(() => window.__card('A sleep app built around our nights.'));
-  await wait(p, 3000, 'tonight');
+  await wait(p, 2600, 'tonight');
   await p.evaluate(() => window.__uncard());
   await wait(p, 700);
 
@@ -177,7 +180,7 @@ const wait = async (p, ms, label) => {
   await wait(p, 1300);
   await p.evaluate(() => window.__card('Our times, on your own phone.',
                                        'Nothing is sent anywhere.'));
-  await wait(p, 3600, 'prayer');
+  await wait(p, 3100, 'prayer');
   await p.evaluate(() => window.__uncard());
   await wait(p, 700);
 
@@ -188,9 +191,9 @@ const wait = async (p, ms, label) => {
   });
   await wait(p, 1100);
   await p.evaluate(() => window.__card('Some nights you have it in you to plan.'));
-  await wait(p, 2600, 'plan-night');
+  await wait(p, 2200, 'plan-night');
   await p.evaluate(() => window.__card('Some nights you really don’t.'));
-  await wait(p, 2400, 'tired-night');
+  await wait(p, 2100, 'tired-night');
   await p.evaluate(() => window.__uncard());
   await wait(p, 600);
 
@@ -198,9 +201,9 @@ const wait = async (p, ms, label) => {
   await tired.scrollIntoViewIfNeeded();
   await wait(p, 800);
   await tired.click();
-  await wait(p, 3000, 'goodnight');           // the Goodnight sheet, held
+  await wait(p, 2600, 'goodnight');           // the Goodnight sheet, held
   await p.evaluate(() => window.__card('One tap. Then put the phone down.'));
-  await wait(p, 2700, 'one-tap');
+  await wait(p, 2300, 'one-tap');
   await p.evaluate(() => { window.__uncard(); document.getElementById('lazyVeil').hidden = true; });
   await wait(p, 900);
 
@@ -210,21 +213,21 @@ const wait = async (p, ms, label) => {
   await wait(p, 800);
   await p.evaluate(() => window.__card('In the morning it asks you one question.',
                                        'That is the whole of it.', true));
-  await wait(p, 3000, 'morning');
+  await wait(p, 2700, 'morning');
 
   // ---- 7. End card.
   await p.evaluate(link => window.__card('SleepSphere',
     'Prototype · now testing' + (link ? '\n' + link : ''), true), LINK);
   await p.evaluate(() => { document.querySelector('#__cine .__l1').style.fontSize = '42px'; });
-  await wait(p, 3000, 'endcard');
+  await wait(p, 2700, 'endcard');
   await p.evaluate(() => {
     document.querySelector('#__cine .__l1').style.fontSize = '';
     window.__card('Tell me what it gets wrong.',
                   'Every answer changes the next version.', true);
   });
-  await wait(p, 3000, 'ask');
+  await wait(p, 2800, 'ask');
   await p.evaluate(() => window.__uncard());
-  await wait(p, 1200);
+  await wait(p, 900);
 
   const video = p.video();
   await ctx.close();
@@ -235,4 +238,35 @@ const wait = async (p, ms, label) => {
 
   console.log(errs.length ? `page errors: ${errs.join(' | ')}` : 'no page errors');
   console.log(`${final}  (${(fs.statSync(final).size / 1024).toFixed(0)} KB)`);
+
+  /* Playwright writes VP8 in a .webm, which plenty of phones and most
+     messaging apps will not play. H.264 in an .mp4 plays everywhere, so the
+     thing you actually send people is the mp4 — the webm is the master.
+
+     The trim matters as much as the format: recording starts when the page
+     does, so the first second is the app mid-load, and the first frame is
+     the thumbnail everyone sees before they press play. There is no fade in
+     for the same reason: the trim already lands on the verse, and a fade
+     would make frame zero black — which is the frame a messaging app picks
+     as the preview. */
+  try {
+    const { execFileSync } = require('child_process');
+    // 1.5s in, the opening overlay is reliably opaque; earlier than that and
+    // the app is still showing through it, which reads as a rendering fault
+    // rather than as depth. Load timing varies a little between runs, so the
+    // trim is set where it is safe rather than where it is tightest.
+    const HEAD = 1.5, OUT_FADE = 0.7;
+    const probe = execFileSync('ffprobe', ['-v','error','-show_entries','format=duration',
+      '-of','default=nw=1:nk=1', final], { encoding:'utf8' });
+    const end = parseFloat(probe) - HEAD - OUT_FADE;
+    const mp4 = path.join(OUT, 'sleepsphere-trailer.mp4');
+    execFileSync('ffmpeg', ['-y','-loglevel','error','-ss', String(HEAD), '-i', final,
+      '-vf', `scale=780:1688:flags=lanczos,unsharp=5:5:0.35:5:5:0,`
+           + `fade=t=out:st=${end.toFixed(2)}:d=${OUT_FADE}`,
+      '-c:v','libx264','-profile:v','high','-pix_fmt','yuv420p','-crf','20',
+      '-preset','slow','-movflags','+faststart','-an', mp4]);
+    console.log(`${mp4}  (${(fs.statSync(mp4).size / 1024).toFixed(0)} KB)`);
+  } catch (e) {
+    console.log('no mp4 — ffmpeg not available; the webm above is the trailer');
+  }
 })().catch(e => { console.error('FATAL', e); process.exit(1); });
