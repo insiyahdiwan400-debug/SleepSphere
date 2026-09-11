@@ -177,6 +177,47 @@ public class SleepSphereHealthPlugin: CAPPlugin, CAPBridgedPlugin {
             if asleepMinutes > 0 { payload["asleepMinutes"] = Int(asleepMinutes.rounded()) }
             payload["awakeMinutes"] = Int(awakeMinutes.rounded())
 
+            /* Stages, kept separate rather than summed away.
+
+               The app cannot MEASURE REM or deep sleep — no phone can. But a
+               watch or ring already wrote them here, and folding them into one
+               asleepMinutes total threw away the only part a person actually
+               wants to see. These are reported exactly as the device recorded
+               them, so the app can label them "recorded by your watch" rather
+               than passing an estimate off as a measurement.
+
+               Only iOS 16 and later distinguishes the stages. Before that
+               every asleep sample is asleepUnspecified, and the honest answer
+               is to send nothing rather than to guess a split. */
+            if #available(iOS 16.0, *) {
+                let minutes = { (value: Int) -> Int in
+                    let total = samples
+                        .filter { $0.value == value }
+                        .reduce(0.0) { $0 + $1.endDate.timeIntervalSince($1.startDate) } / 60
+                    return Int(total.rounded())
+                }
+                let rem = minutes(HKCategoryValueSleepAnalysis.asleepREM.rawValue)
+                let deep = minutes(HKCategoryValueSleepAnalysis.asleepDeep.rawValue)
+                let core = minutes(HKCategoryValueSleepAnalysis.asleepCore.rawValue)
+                // A device that recorded no stages at all reports zeros, which
+                // would draw an empty chart and look like a bug. Send the split
+                // only when there is genuinely one to send.
+                if rem + deep + core > 0 {
+                    payload["remMinutes"] = rem
+                    payload["deepMinutes"] = deep
+                    payload["coreMinutes"] = core
+                    payload["hasStages"] = true
+                }
+            }
+
+            /* Fragmentation: how many times the night broke, not just how many
+               minutes were lost. Two people can each be awake twenty minutes —
+               one in a single stretch, one in eight — and those are different
+               nights. Only gaps of a minute or more count, because a watch
+               registers brief stirrings that nobody experienced as waking. */
+            let awakenings = awake.filter { $0.endDate.timeIntervalSince($0.startDate) >= 60 }.count
+            payload["awakenings"] = awakenings
+
             DispatchQueue.main.async { call.resolve(payload) }
         }
         store.execute(query)

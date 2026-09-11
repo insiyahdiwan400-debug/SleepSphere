@@ -55,10 +55,11 @@ const SEED = `(()=>{localStorage.setItem('sleepsphere_state_v2', JSON.stringify(
     return { ctx, p, errs, posts, mails };
   };
 
-  const fillAndSend = async (p, comment) => {
+  const fillAndSend = async (p, comment, name) => {
     await p.evaluate(() => document.querySelectorAll('.feedback-scale')
       .forEach(s => s.querySelectorAll('button')[3].click()));
     await p.locator('#feedbackText').fill(comment);
+    if (name !== undefined) await p.locator('#feedbackName').fill(name);
     await p.locator('#feedbackForm button[type="submit"]').click();
     await p.waitForTimeout(900);
   };
@@ -67,13 +68,18 @@ const SEED = `(()=>{localStorage.setItem('sleepsphere_state_v2', JSON.stringify(
   const good = await open('accept');
   check('The screen says what leaves the device', /one thing that leaves/i.test(
     await good.p.locator('#test .callout.teal').first().innerText()));
-  await fillAndSend(good.p, 'The stars are lovely');
+  await good.p.selectOption('#feedbackDevice', 'apple watch');
+  await fillAndSend(good.p, 'The stars are lovely', 'Insiyah');
   check('It posts the feedback', good.posts.length === 1, `${good.posts.length} post(s)`);
   const body = new URLSearchParams(good.posts[0] || '');
   check('Netlify can tell which form it is', body.get('form-name') === 'sleepsphere-feedback');
   check('The ratings actually arrive', body.get('clarity') === '4' && body.get('use') === '4',
         `clarity ${body.get('clarity')}, use ${body.get('use')}`);
   check('The comment arrives', body.get('comment') === 'The stars are lovely');
+  // A field that does not reach the inbox is decoration. Both of these are
+  // new, and both have to survive the trip.
+  check('An optional name arrives when given', body.get('name') === 'Insiyah', body.get('name'));
+  check('The device answer arrives', body.get('device') === 'apple watch', body.get('device'));
   check('No sleep data is sent', !/bedTime|wakeTime|sleepMinutes|mornings/.test(good.posts[0] || ''));
   check('It does not also open a mail app', (await good.p.evaluate(() => window.__mail.length)) === 0);
   const savedOk = await good.p.evaluate(() =>
@@ -85,11 +91,15 @@ const SEED = `(()=>{localStorage.setItem('sleepsphere_state_v2', JSON.stringify(
   // ---- Not on Netlify: the POST 404s. This is the case that must not fail
   // silently, because it is every host that is not Netlify.
   const notNetlify = await open('reject');
-  await fillAndSend(notNetlify.p, 'Sent from somewhere that is not Netlify');
+  await fillAndSend(notNetlify.p, 'Sent from somewhere that is not Netlify', '');
   const mailed = await notNetlify.p.evaluate(() => window.__mail);
   check('A rejected post falls back to the mail app', mailed.length === 1, `${mailed.length} mail(s)`);
   check('The mail is addressed somewhere real',
         /^mailto:[^@\s]+@[^@\s]+\.[^@\s]+/.test(mailed[0] || ''), (mailed[0] || '').slice(0, 40));
+  // Leaving the name blank must stay anonymous, not send an empty line that
+  // looks like a failure.
+  check('A blank name reads as anonymous, not as missing',
+        /anonymous/i.test(decodeURIComponent(mailed[0] || '')));
   check('The mail carries the answers, not an empty draft',
         /4\s*\/\s*5/.test(decodeURIComponent(mailed[0] || '')) &&
         /not Netlify/.test(decodeURIComponent(mailed[0] || '')));

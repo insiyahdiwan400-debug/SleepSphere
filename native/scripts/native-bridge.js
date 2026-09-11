@@ -81,7 +81,15 @@
       return {
         bedTime: result.inBedStart, sleepTime: result.asleepStart,
         wakeTime: result.inBedEnd, asleepMinutes: result.asleepMinutes ?? null,
-        awakeMinutes: result.awakeMinutes ?? null, source: 'HealthKit'
+        awakeMinutes: result.awakeMinutes ?? null,
+        // Stages and fragmentation, present only when a device actually
+        // recorded them. Null means "nobody measured this", which is a
+        // different thing from zero and must stay tellable apart.
+        rem: result.remMinutes ?? null, deep: result.deepMinutes ?? null,
+        core: result.coreMinutes ?? null,
+        hasStages: Boolean(result.hasStages),
+        awakenings: result.awakenings ?? null,
+        source: 'HealthKit'
       };
     },
 
