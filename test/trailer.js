@@ -73,6 +73,10 @@ const SEED = `(()=>{localStorage.setItem('sleepsphere_state_v2', JSON.stringify(
               openingOff:false, lastZone:'Asia/Dubai', locationGranted:true, dim:false,
               intent:'restore', welcomeSeen:true, mode:'dark', useCycle:false,
               healthLinked:false, place:PLACE, highLatRule:'seventh', fajrEdited:false },
+  // Enrolled, so the recording does not open into fieldwork onboarding.
+  study: { participantId:'P001', startDate:'2026-09-01', enrolledAt:'2026-09-01T06:00:00.000Z',
+           consentAck:true, consentAt:'2026-09-01T06:00:00.000Z', onboarded:true,
+           cohort:'jamea-v1', schemaVersion:3, storageMode:'local', lastSeenDay:1 },
   mornings: NIGHTS,
   bioCheckins: [], thoughts: [], scans: [], feedback: [], experimentHistory: []
 })}));})()`;

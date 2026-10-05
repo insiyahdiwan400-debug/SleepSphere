@@ -14,8 +14,12 @@ const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 let fails = 0;
 const check = (n, ok, x='') => { console.log(`${ok?'PASS':'FAIL'}  ${n}${x?' :: '+x:''}`); if (!ok) fails++; };
 
+// Seeded as an enrolled device: without a study block the app opens into
+// fieldwork onboarding, which is correct behaviour and would block every
+// check below. The seed stays at version 2 on purpose, so each run also
+// exercises the v2 -> v3 migration.
 const SEED = `(()=>{localStorage.setItem('sleepsphere_state_v2', JSON.stringify({
-  version:2, settings:{welcomeSeen:true, openingOff:true, mode:'dark'},
+  version:2, settings:{welcomeSeen:true, openingOff:true, mode:'dark'}, study:{onboarded:true, participantId:'P001', startDate:'2026-09-01', enrolledAt:'2026-09-01T06:00:00.000Z', consentAck:true, consentAt:'2026-09-01T06:00:00.000Z', cohort:'jamea-v1', schemaVersion:3, storageMode:'local', lastSeenDay:1},
   bioCheckins:[], mornings:[], thoughts:[], scans:[], feedback:[], experimentHistory:[]
 }));})()`;
 

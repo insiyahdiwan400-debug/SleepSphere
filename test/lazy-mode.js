@@ -11,7 +11,7 @@ const check = (n, ok, x='') => { console.log(`${ok?'PASS':'FAIL'}  ${n}${x?' :: 
 
 const KEY = 'sleepsphere_state_v2';
 const seed = extra => `(()=>{localStorage.setItem('${KEY}', JSON.stringify(Object.assign({
-  version:2, settings:{welcomeSeen:true, openingOff:true, mode:'dark', target:480},
+  version:2, settings:{welcomeSeen:true, openingOff:true, mode:'dark', target:480}, study:{onboarded:true, participantId:'P001', startDate:'2026-09-01', enrolledAt:'2026-09-01T06:00:00.000Z', consentAck:true, consentAt:'2026-09-01T06:00:00.000Z', cohort:'jamea-v1', schemaVersion:3, storageMode:'local', lastSeenDay:1},
   bioCheckins:[], mornings:[], thoughts:[], scans:[], feedback:[], experimentHistory:[]
 }, ${JSON.stringify(extra || {})})));})()`;
 

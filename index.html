@@ -1445,6 +1445,56 @@
     :root[data-mode="light"] .twin-line { background:rgba(56,50,38,.1); }
     :root[data-mode="light"] .segmented { background:rgba(56,50,38,.08); }
     :root[data-mode="light"] .welcome-overlay { background:rgba(214,209,198,.7); }
+
+    /* ---- Fieldwork onboarding. Borrows the welcome card wholesale so it is
+       the same object the participant already trusts, and adds only the few
+       pieces a study needs: a quiet progress rail, a plain-language list, an
+       ID field and a storage verdict. */
+    .fw-rail { display:flex; gap:6px; margin-bottom:18px; }
+    .fw-rail i { flex:1 1 0; height:3px; border-radius:2px; background:var(--line); }
+    .fw-rail i.on { background:var(--gold); }
+    .fw-list { display:grid; gap:11px; margin:20px 0 4px; padding:0; list-style:none; }
+    /* The marker is positioned rather than laid out as a grid column: with a
+       grid, the bold lead-in and the sentence after it become two separate
+       items and the sentence wraps one word per line. */
+    .fw-list li { position:relative; padding-left:19px;
+                  color:var(--muted); font-size:14.5px; line-height:1.5; }
+    .fw-list li b { color:var(--ink); font-weight:600; }
+    .fw-list li::before { content:"·"; position:absolute; left:3px; top:-3px;
+                          color:var(--gold); font-size:22px; line-height:1.4; }
+    .fw-ack { display:grid; grid-template-columns:26px 1fr; gap:12px; align-items:start;
+              margin-top:20px; padding:15px; border:1px solid var(--line); border-radius:15px;
+              background:rgba(233,228,217,.035); cursor:pointer; }
+    .fw-ack input { width:22px; height:22px; margin:1px 0 0; accent-color:var(--gold); }
+    .fw-ack span { color:var(--ink); font-size:14.5px; line-height:1.45; }
+    .fw-id { width:100%; margin-top:18px; padding:16px 18px; border-radius:15px;
+             border:1px solid var(--line); background:rgba(233,228,217,.04); color:var(--ink);
+             font-family:var(--font-display); font-size:30px; letter-spacing:.06em;
+             text-align:center; text-transform:uppercase; }
+    .fw-id:focus { outline:2px solid var(--gold); outline-offset:2px; }
+    .fw-say { margin-top:11px; min-height:19px; font-size:13.5px; color:var(--muted); text-align:center; }
+    .fw-say.bad { color:#e0897c; }
+    .fw-say.good { color:var(--gold); }
+    .fw-verdict { display:grid; grid-template-columns:30px 1fr; gap:13px; align-items:start;
+                  margin:20px 0 0; padding:17px; border-radius:15px; border:1px solid var(--line);
+                  background:rgba(233,228,217,.035); }
+    .fw-verdict .mark { font-size:21px; line-height:1; }
+    .fw-verdict strong { display:block; color:var(--ink); font-size:15.5px; margin-bottom:4px; }
+    .fw-verdict span { color:var(--muted); font-size:14px; line-height:1.5; }
+    .fw-verdict.bad { border-color:rgba(224,137,124,.45); }
+    .fw-verdict.bad .mark { color:#e0897c; }
+    .fw-day { font-family:var(--font-display); font-size:clamp(46px,12vw,72px); line-height:1;
+              color:var(--gold-soft); letter-spacing:-.03em; margin:26px 0 8px; }
+    /* Five facts for troubleshooting, not five achievements. Kept to a tight
+       grid so the whole study status is one glance rather than a column of
+       tiles that reads like a scoreboard. */
+    #studyPanel .metric-row { grid-template-columns:repeat(auto-fit,minmax(96px,1fr)); gap:9px; }
+    #studyPanel .metric-tile { padding:11px 12px; border-radius:13px; }
+    #studyPanel .metric-tile strong { font-size:18px; }
+    :root[data-mode="light"] .fw-list li b, :root[data-mode="light"] .fw-ack span,
+    :root[data-mode="light"] .fw-verdict strong { color:var(--ink); }
+    :root[data-mode="light"] .fw-ack, :root[data-mode="light"] .fw-verdict,
+    :root[data-mode="light"] .fw-id { background:rgba(255,255,255,.6); }
     :root[data-mode="light"] body::after { opacity:.03; }
 
     html, body { background:var(--sky-top); }
@@ -2456,6 +2506,27 @@
         <section class="view" id="data">
           <div class="section-head"><div><div class="eyebrow">Private data vault</div><h2>Own your record</h2></div><p>Export a readable diary, back up the full app, print a concise conversation summary or erase everything. Nothing is sent anywhere automatically.</p></div>
           <div class="grid">
+            <!-- Fieldwork. Deliberately quiet: a status line for troubleshooting
+                 and one obvious button, with no streaks and nothing to beat. -->
+            <article class="card span-12 no-print" id="studyPanel" hidden>
+              <div class="card-label">Field study</div><h3>Your study data is ready</h3>
+              <div class="metric-row" style="margin-top:15px">
+                <div class="metric-tile"><span>Participant</span><strong id="studyParticipant">—</strong></div>
+                <div class="metric-tile"><span>Study day</span><strong id="studyDay">—</strong></div>
+                <div class="metric-tile"><span>Started</span><strong id="studyStarted">—</strong></div>
+                <div class="metric-tile"><span>Storage</span><strong id="studyStorage">—</strong></div>
+                <div class="metric-tile"><span>Entries recorded</span><strong id="studyEntries">0</strong></div>
+              </div>
+              <div class="button-row" style="margin-top:16px">
+                <button class="btn primary" id="exportStudy">Export study data</button>
+                <button class="btn ghost" id="exportStudyJson">Export full copy for safekeeping</button>
+              </div>
+              <p class="helper" id="studyExportNote" style="margin-top:12px">Ready to export whenever your researcher asks for it.</p>
+              <div class="callout" style="margin-top:13px"><strong>Nothing is sent automatically.</strong>
+                The study export contains your answers and timings — never your written notes,
+                your thoughts, or anything that identifies you by name.</div>
+            </article>
+
             <article class="card span-8">
               <div class="card-label">Fourteen-day conversation summary</div><h3 id="reportTitle">Not enough records yet</h3><p class="helper" id="reportIntro">Add morning records to build a summary you can use for personal reflection or take to a qualified professional.</p>
               <div class="metric-row" style="margin-top:15px">
@@ -2569,6 +2640,96 @@
     </div>
   </div>
 
+  <!-- Fieldwork onboarding. Shown once, before anything else, when a study
+       has not yet been joined on this device. Five screens, about ninety
+       seconds, and the only one that can be failed is storage. -->
+  <div class="welcome-overlay" id="fieldwork" role="dialog" aria-modal="true" aria-labelledby="fwTitle">
+    <div class="welcome-card">
+      <div class="fw-rail" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+
+      <div class="fw-panel" data-fw="1">
+        <span class="welcome-badge">SleepSphere field study</span>
+        <h2 id="fwTitle">Thank you for testing this.</h2>
+        <p>You are helping test an early prototype built to understand sleep,
+           restoration and daily demands in the Jamea context — what actually
+           leaves people rested enough to learn.</p>
+        <p style="margin-top:14px">It takes about a minute a day. There are no right answers,
+           and a difficult night is useful information rather than a failure.</p>
+        <div class="button-row" style="margin-top:24px"><button class="btn primary" data-fw-next>Continue</button></div>
+      </div>
+
+      <div class="fw-panel" data-fw="2" hidden>
+        <span class="welcome-badge">Before you agree</span>
+        <h2>What this is, plainly.</h2>
+        <ul class="fw-list">
+          <li><b>Taking part is voluntary.</b> You can stop at any time, without giving a reason.</li>
+          <li><b>This is a student research prototype, not medical care.</b> It does not diagnose sleep apnea, insomnia or any other condition.</li>
+          <li><b>Your entries stay on this device.</b> There is no account and no server.</li>
+          <li><b>Nothing is sent automatically.</b> At the end of the study you choose to export your data and send it.</li>
+          <li><b>You can erase everything</b> from My records, whenever you like.</li>
+        </ul>
+        <label class="fw-ack" for="fwConsent">
+          <input type="checkbox" id="fwConsent" />
+          <span>I have read this and I am taking part voluntarily.</span>
+        </label>
+        <p class="welcome-note">This acknowledgement records your choice inside the app. It does not
+           replace any separate institutional, parental or ethical approval your study requires.</p>
+        <div class="button-row" style="margin-top:20px">
+          <button class="btn primary" id="fwConsentNext" disabled>Continue</button>
+          <button class="btn ghost" data-fw-back>Back</button>
+        </div>
+      </div>
+
+      <div class="fw-panel" data-fw="3" hidden>
+        <span class="welcome-badge">Step 3 of 5</span>
+        <h2>Your participant code.</h2>
+        <p>Enter the code you were given. It is how your records are identified in the
+           study, and it is the only identifier SleepSphere keeps — no name, no email,
+           no phone number.</p>
+        <input class="fw-id" id="fwId" type="text" inputmode="numeric" autocomplete="off"
+               autocapitalize="characters" spellcheck="false" placeholder="P014" aria-label="Participant code" />
+        <p class="fw-say" id="fwIdSay">Typing 14 is enough — it becomes P014.</p>
+        <div class="button-row" style="margin-top:16px">
+          <button class="btn primary" id="fwIdNext">Continue</button>
+          <button class="btn ghost" data-fw-back>Back</button>
+        </div>
+      </div>
+
+      <div class="fw-panel" data-fw="4" hidden>
+        <span class="welcome-badge">Step 4 of 5</span>
+        <h2>Can this device remember?</h2>
+        <p>SleepSphere keeps everything on the device itself, so it needs somewhere
+           reliable to write. This checks that it has one.</p>
+        <div class="fw-verdict" id="fwStorage">
+          <span class="mark" aria-hidden="true">◴</span>
+          <div><strong>Checking…</strong><span>One moment.</span></div>
+        </div>
+        <div id="fwInstall" hidden>
+          <ol class="install-steps" style="margin-top:18px">
+            <li><span>1</span><div>Tap the <strong>Share</strong> button at the bottom of Safari — the square with an arrow coming out of it.</div></li>
+            <li><span>2</span><div>Scroll down and tap <strong>Add to Home Screen</strong>.</div></li>
+            <li><span>3</span><div>Open SleepSphere from the Home Screen icon, not from Safari, for the rest of the study.</div></li>
+          </ol>
+        </div>
+        <div class="button-row" style="margin-top:20px">
+          <button class="btn primary" id="fwStorageNext">Continue</button>
+          <button class="btn ghost" id="fwStorageRetry">Check again</button>
+        </div>
+      </div>
+
+      <div class="fw-panel" data-fw="5" hidden>
+        <span class="welcome-badge">Ready</span>
+        <h2>You’re set.</h2>
+        <div class="fw-day" id="fwDay">Day 1</div>
+        <p>Begins today. Open SleepSphere once in the evening and once in the morning —
+           that is the whole commitment.</p>
+        <p style="margin-top:14px">Your code and study information live in <strong>My records</strong>
+           if you ever need them.</p>
+        <div class="button-row" style="margin-top:24px"><button class="btn primary" id="fwDone">Enter SleepSphere</button></div>
+      </div>
+    </div>
+  </div>
+
   <div class="welcome-overlay" id="welcomeOverlay" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
     <div class="welcome-card">
       <span class="welcome-badge">Private prototype • about 30 seconds to start</span>
@@ -2627,10 +2788,50 @@
   (() => {
     'use strict';
 
+    /* The key never changes, even as the schema does. Renaming it would
+       orphan every existing record on every existing device, which is the
+       exact failure the v3 migration exists to prevent. */
     const STORAGE_KEY = 'sleepsphere_state_v2';
+    const SCHEMA_VERSION = 3;
+    const APP_VERSION = 'jamea-v1';
+
+    /* The six demands a day can make of a brain. Declared now so the schema
+       can carry the field through fieldwork, and so Phase 1 adds an
+       interface rather than another migration. Nothing writes these yet:
+       every record created before Brain Day exists keeps brainDay: null,
+       which is the honest value, not 'normal'. */
+    const BRAIN_DAY = Object.freeze({
+      heavy_learning: 'Heavy learning',
+      hifz:           'Hifz or revision',
+      exam:           'Exam or high-focus day',
+      normal:         'Normal day',
+      travel:         'Travel or unusual schedule',
+      recovery:       'Recovery day'
+    });
+
     const defaults = {
-      version: 2,
+      version: SCHEMA_VERSION,
       settings: { name: '', age: 'adult', target: 480, faith: 'on', installDismissed: false, openingOff: false, lastZone: '', locationGranted: false, dim: false, intent: 'restore', welcomeSeen: false, mode: 'dark', useCycle: false, healthLinked: false, place: null, highLatRule: 'seventh', fajrEdited: false },
+
+      /* Fieldwork metadata. Separate from settings on purpose: settings are
+         the participant's preferences and they may change them freely, while
+         this block is the study's own record and is written in two places
+         only — onboarding, and the study-day calculation. */
+      study: {
+        participantId: '',      // 'P014'. Assigned by the researcher, not derived from anything about the person.
+        startDate: '',          // Local calendar date of day 1, 'YYYY-MM-DD'.
+        enrolledAt: '',         // ISO timestamp of onboarding completion.
+        consentAck: false,      // Voluntary-participation acknowledgement in-app.
+        consentAt: '',          // ISO timestamp of that acknowledgement.
+        onboarded: false,       // Gate for the fieldwork onboarding overlay.
+        cohort: APP_VERSION,
+        schemaVersion: SCHEMA_VERSION,
+        storageMode: '',        // 'persistent' | 'local' | 'memory', as measured at onboarding.
+        // The highest study day ever observed. A phone clock that moves
+        // backwards must not walk a participant back to day 2 in week three.
+        lastSeenDay: 0
+      },
+
       plan: null,
       scans: [],
       thoughts: [],
@@ -2714,20 +2915,73 @@
       node.hidden = !broken;
     }
 
+    /* ------------------------------------------------------------------
+       Migration.
+
+       The previous loader accepted a saved state ONLY if version === 2 and
+       fell through to defaults otherwise. That is fine while there is only
+       ever one version; the moment a second one exists it means "every
+       participant silently loses the study" — the single most expensive bug
+       this app could ship during fieldwork.
+
+       So versions are now handled explicitly, newest first, and the rule is
+       that no recognisable state is ever thrown away. Anything unreadable
+       falls back to defaults and says so, rather than pretending.
+
+       Idempotent by construction: migrating an already-migrated state is the
+       same merge again, and `study` is merged rather than replaced so a
+       participant's ID survives every future pass.
+       ------------------------------------------------------------------ */
+    function shapeState(stored) {
+      return {
+        ...clone(defaults), ...stored,
+        version: SCHEMA_VERSION,
+        settings: { ...defaults.settings, ...(stored.settings || {}) },
+        study:    { ...defaults.study,    ...(stored.study    || {}) },
+        scans: Array.isArray(stored.scans) ? stored.scans : [],
+        thoughts: Array.isArray(stored.thoughts) ? stored.thoughts : [],
+        mornings: Array.isArray(stored.mornings) ? stored.mornings : [],
+        bioCheckins: Array.isArray(stored.bioCheckins) ? stored.bioCheckins : [],
+        trip: stored.trip && typeof stored.trip === 'object' ? stored.trip : null,
+        experimentHistory: Array.isArray(stored.experimentHistory) ? stored.experimentHistory : [],
+        feedback: Array.isArray(stored.feedback) ? stored.feedback : []
+      };
+    }
+
+    /* v2 → v3. Every v2 field is carried across untouched; the only additions
+       are the study block and an explicit null Brain Day on records that
+       predate it. Null means "never asked", which is true, and is what the
+       export must show rather than a guessed category. */
+    function migrateTwoToThree(stored) {
+      const next = shapeState(stored);
+      next.mornings = next.mornings.map(record =>
+        'brainDay' in record ? record : { ...record, brainDay: null });
+      if (next.plan && !('brainDay' in next.plan)) next.plan = { ...next.plan, brainDay: null };
+      next.study.schemaVersion = SCHEMA_VERSION;
+      return next;
+    }
+
     function loadState() {
-      const stored = safeParse(store.get(STORAGE_KEY), null);
-      if (stored && stored.version === 2) {
-        return {
-          ...clone(defaults), ...stored,
-          settings: { ...defaults.settings, ...(stored.settings || {}) },
-          scans: Array.isArray(stored.scans) ? stored.scans : [],
-          thoughts: Array.isArray(stored.thoughts) ? stored.thoughts : [],
-          mornings: Array.isArray(stored.mornings) ? stored.mornings : [],
-          bioCheckins: Array.isArray(stored.bioCheckins) ? stored.bioCheckins : [],
-          trip: stored.trip && typeof stored.trip === 'object' ? stored.trip : null,
-          experimentHistory: Array.isArray(stored.experimentHistory) ? stored.experimentHistory : [],
-          feedback: Array.isArray(stored.feedback) ? stored.feedback : []
-        };
+      const raw = store.get(STORAGE_KEY);
+      const stored = safeParse(raw, null);
+
+      // Something is there but it is not an object: corrupt, truncated, or
+      // written by something that is not this app. Do not try to read it.
+      if (raw && (!stored || typeof stored !== 'object' || Array.isArray(stored))) {
+        loadState.corrupt = true;
+        return clone(defaults);
+      }
+
+      if (stored && Number(stored.version) === 3) return shapeState(stored);
+      if (stored && Number(stored.version) === 2) {
+        loadState.migratedFrom = 2;
+        return migrateTwoToThree(stored);
+      }
+      // A future version, written by a newer build on the same device. Keep
+      // the data rather than discarding it; the shape is additive so far.
+      if (stored && Number(stored.version) > 3) {
+        loadState.futureVersion = Number(stored.version);
+        return shapeState(stored);
       }
 
       const migrated = clone(defaults);
@@ -2748,7 +3002,7 @@
         awakeMinutes: 20, napMinutes: 0, opportunityMinutes: 480, sleepMinutes: 430,
         rest: Number(item.rest || 3), energy: Number(item.energy || item.rest || 3), focus: Number(item.energy || item.rest || 3),
         fajr: item.wake === 'Yes' ? 'ready' : 'not_applicable', factors: item.barrier ? [item.barrier] : [], note: item.note || '',
-        experimentId: null, adherence: 'not_applicable', demo: Boolean(item.demo), migrated: true, order: index
+        experimentId: null, adherence: 'not_applicable', brainDay: null, demo: Boolean(item.demo), migrated: true, order: index
       })) : [];
       migrated.feedback = Array.isArray(oldFeedback) ? oldFeedback : [];
       return migrated;
@@ -2795,6 +3049,88 @@
     function dateLabel(value) { const date = new Date(`${String(value).slice(0,10)}T12:00:00`); return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString(undefined,{month:'short',day:'numeric'}); }
     function download(filename, content, type) { const blob = new Blob([content], { type }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = filename; document.body.appendChild(link); link.click(); link.remove(); window.setTimeout(() => URL.revokeObjectURL(link.href), 500); }
 
+    /* ==================================================================
+       FIELDWORK
+
+       Four small things the study needs and the app did not have: an
+       anonymous ID, a start date, a day number, and an honest answer to
+       "can this device actually remember anything".
+
+       Everything here is calculated, never incremented. A counter that is
+       nudged forward on each launch drifts the moment someone skips a day
+       or opens the app twice before midnight.
+       ================================================================== */
+
+    // The whole app dates records by UTC-sliced ISO. The study block uses the
+    // same convention deliberately: a study day that disagreed with the date
+    // on the records it counts would be worse than one that is occasionally
+    // a few hours out at either end of the day.
+    const studyToday = () => new Date().toISOString().slice(0, 10);
+
+    /* Participant IDs are assigned by the researcher and mean nothing on
+       their own. Typing '14', 'p14' or 'P014' all land on P014, because the
+       alternative is a dataset with three spellings of one participant. */
+    function normaliseParticipantId(raw) {
+      const text = String(raw ?? '').trim().toUpperCase();
+      if (!text) return null;
+      const digits = text.replace(/^P/, '');
+      if (!/^\d{1,4}$/.test(digits)) return null;
+      const number = Number(digits);
+      if (!Number.isFinite(number) || number < 1) return null;
+      return `P${String(number).padStart(3, '0')}`;
+    }
+
+    // Whole days between two ISO dates, counted at UTC midnight so that a
+    // clock change or a daylight-saving boundary cannot produce 0.96 days.
+    function daysBetween(fromISO, toISO) {
+      const from = Date.parse(`${fromISO}T00:00:00Z`);
+      const to = Date.parse(`${toISO}T00:00:00Z`);
+      if (!Number.isFinite(from) || !Number.isFinite(to)) return null;
+      return Math.floor((to - from) / 86400000);
+    }
+
+    /* The day number, and the one piece of defensive state in the block.
+
+       A phone clock that moves backwards — a manual change, a timezone
+       flight, a device that lost its battery — must not walk someone from
+       day 11 back to day 2 and make the export disagree with itself. The
+       highest day ever seen is remembered, and the number never goes down.
+       It is allowed to go UP by any amount, because missing a week is a
+       normal thing to do and the dataset should say so. */
+    function studyDay(onDate = studyToday()) {
+      const start = state.study?.startDate;
+      if (!start) return null;
+      const elapsed = daysBetween(start, onDate);
+      if (elapsed == null) return null;
+      return Math.max(1, elapsed + 1);
+    }
+
+    function currentStudyDay() {
+      const day = studyDay();
+      if (day == null) return null;
+      const seen = Number(state.study.lastSeenDay) || 0;
+      if (day > seen) { state.study.lastSeenDay = day; saveState(); return day; }
+      // The clock reads earlier than a day we have already been on. Trust the
+      // record, not the clock, and keep going.
+      return Math.max(day, seen);
+    }
+
+    /* What this device can actually promise. store.healthy already proves a
+       write survives a read-back; persist() asks the browser not to evict it,
+       which is the difference between a fortnight of data and seven days of
+       it on an uninstalled iOS web app. */
+    async function measureStorage() {
+      if (!store.healthy) return { ok: false, mode: 'memory', persisted: false };
+      let persisted = false;
+      try {
+        if (navigator.storage?.persisted) persisted = await navigator.storage.persisted();
+        if (!persisted && navigator.storage?.persist) persisted = await navigator.storage.persist();
+      } catch { /* Safari and older browsers simply do not offer this. */ }
+      return { ok: true, mode: persisted ? 'persistent' : 'local', persisted };
+    }
+
+    const inFieldwork = () => Boolean(state.study?.onboarded && state.study?.participantId);
+
     const pageMeta = {
       today: ['Start here', 'Your simple sleep loop.', 'Check today, plan tonight and return tomorrow.'],
       twin: ['My pattern', 'What helped me feel restored?', 'See the difference between the night you planned and the morning you experienced.'],
@@ -2822,7 +3158,7 @@
       if (id === 'twin') { renderTwin(); renderWeekStrip(); }
       if (id === 'bio') renderBioHarmony();
       if (id === 'experiment') renderExperiment();
-      if (id === 'data') renderDataSummary();
+      if (id === 'data') { renderDataSummary(); renderStudyPanel(); }
       if (id === 'travel') renderTravel();
       if (id === 'plan') renderPrayer();
       if (window.innerWidth <= 900) {
@@ -3137,6 +3473,10 @@
         factors:[...selectedFactors], note:$('#morningNote').value.trim(),
         targetMinutes:Number(state.settings.target) || 480,
         intent:state.settings.intent || 'restore', planSnapshot:state.plan ? clone(state.plan) : null,
+        /* Carried from the night plan this morning belongs to. Until Phase 1
+           builds the Brain Day question nothing sets it, so it stays null —
+           which the export prints as empty rather than guessing 'normal'. */
+        brainDay: (existing && 'brainDay' in existing ? existing.brainDay : null) ?? state.plan?.brainDay ?? null,
         bioHarmonyId:pairedBio?.id || null, bioHarmonySnapshot:pairedBio ? clone(pairedBio) : null,
         experimentId:preservesBaseline ? (existing.experimentId || null) : (state.activeExperiment?.id || null),
         adherence:preservesBaseline ? (existing.adherence || 'not_applicable') : (state.activeExperiment ? $('#experimentAdherence').value : 'not_applicable'), demo:false
@@ -3933,6 +4273,170 @@
       return [headers,...rows].map(row => row.map(csvCell).join(',')).join('\n');
     }
 
+    /* ==================================================================
+       RESEARCH EXPORT
+
+       The diary CSV above is a personal document: one row per night a person
+       recorded, free text included. That is the wrong shape for analysis and
+       the wrong contents for a dataset that leaves the device.
+
+       This is the fieldwork dataset instead:
+
+         · one row per participant per STUDY DAY, including days with no
+           entry, because a missing day is the adherence measurement;
+         · stable column names, flat types, no nested values;
+         · empty means missing. Never 0, never 'N/A', never a guess;
+         · value basis is recorded, so measured, estimated and calculated
+           numbers are never mistaken for one another;
+         · no free text at all — notes, thoughts and feedback stay on the
+           device unless the participant exports them separately.
+       ================================================================== */
+    const STUDY_COLUMNS = [
+      ['participant_id',       'Anonymous code assigned by the researcher',                 'study'],
+      ['cohort',               'Build the participant was enrolled on',                      'study'],
+      ['schema_version',       'State schema the record was written under',                  'study'],
+      ['study_day',            'Whole days since day 1, inclusive (day 1 = start date)',     'calculated'],
+      ['date',                 'Calendar date of the night, YYYY-MM-DD',                      'calculated'],
+      ['completed',            '1 if a morning record exists for this date, else 0',          'calculated'],
+      ['entry_method',         'full = morning flow or form, lazy = one-tap Lazy Mode',       'calculated'],
+      ['brain_day',            'Demand category for the day ahead; empty before Phase 1',     'entered'],
+      ['plan_available',       '1 if a night plan was saved for this night',                  'calculated'],
+      ['plan_mode',            'continuous or fajr (Fajr Bridge)',                            'entered'],
+      ['plan_wind_down',       'Planned wind-down start, minutes past midnight',              'calculated'],
+      ['plan_sleep_start',     'Planned settle time, minutes past midnight',                  'calculated'],
+      ['plan_wake_anchor',     'Planned wake or Fajr time, HH:MM',                            'entered'],
+      ['plan_total_minutes',   'Planned total sleep opportunity in minutes',                  'calculated'],
+      ['bed_time',             'Got into bed, HH:MM',                                         'entered'],
+      ['sleep_time',           'Estimated sleep onset, HH:MM',                                'entered'],
+      ['wake_time',            'Final wake, HH:MM',                                           'entered'],
+      ['awake_minutes',        'Minutes awake during the night',                              'entered'],
+      ['nap_minutes',          'Daytime sleep in minutes',                                    'entered'],
+      ['opportunity_minutes',  'Bed to final wake, in minutes',                               'calculated'],
+      ['sleep_minutes',        'Opportunity minus latency and night waking, in minutes',      'calculated'],
+      ['efficiency_percent',   'sleep_minutes / opportunity_minutes as a percentage',         'calculated'],
+      ['value_basis',          'Which fields were measured vs estimated on a Lazy night',     'calculated'],
+      ['restoration_1_5',      'How restored, 1 = not at all to 5 = very',                    'entered'],
+      ['energy_1_5',           'Energy on waking, 1 to 5',                                    'entered'],
+      ['focus_1_5',            'Concentration on waking, 1 to 5',                             'entered'],
+      ['calm_1_5',             'Mental calm on waking, 1 to 5',                               'entered'],
+      ['fajr_status',          'ready, woke_tired, late, not_applicable or prefer_not',       'entered'],
+      ['factors',              'Factors tagged for the night, pipe-separated',                'entered'],
+      ['bio_checkin_present',  '1 if an evening Bio Harmony check-in exists for this date',   'calculated'],
+      ['bio_light',            'Daylight exposure, 0 to 100',                                 'entered'],
+      ['bio_caffeine',         'Caffeine timing, 0 to 100 (higher = earlier or none)',        'entered'],
+      ['bio_movement',         'Physical movement, 0 to 100',                                 'entered'],
+      ['bio_meal',             'Meal spacing before bed, 0 to 100',                           'entered'],
+      ['bio_stress',           'Mental load, 0 to 100 (higher = quieter)',                    'entered'],
+      ['bio_body',             'Physical comfort, 0 to 100',                                  'entered'],
+      ['bio_environment',      'Sleep environment, 0 to 100',                                 'entered'],
+      ['experiment_id',        'Identifier of the personal experiment running, if any',       'calculated'],
+      ['experiment_name',      'Name of that experiment',                                     'calculated'],
+      ['adherence',            'yes, no or not_applicable for the experiment that night',     'entered'],
+      ['exported_at',          'ISO timestamp the file was produced',                         'calculated']
+    ];
+
+    // Empty string is the only representation of missing. Zero is a value.
+    const cell = value => (value === null || value === undefined || value === '' || Number.isNaN(value)) ? '' : value;
+
+    function studyRows() {
+      const study = state.study || {};
+      const start = study.startDate;
+      if (!start) return [];
+      const lastDay = Math.max(1, currentStudyDay() || 1);
+      const exportedAt = new Date().toISOString();
+      const byDate = new Map(realMornings().map(record => [record.date, record]));
+      const bioByDate = new Map();
+      state.bioCheckins.forEach(item => bioByDate.set(item.date, item));
+
+      const rows = [];
+      for (let day = 1; day <= lastDay; day += 1) {
+        const date = new Date(Date.parse(`${start}T00:00:00Z`) + (day - 1) * 86400000)
+          .toISOString().slice(0, 10);
+        const record = byDate.get(date) || null;
+        const bio = bioByDate.get(date) || record?.bioHarmonySnapshot || null;
+        const plan = record?.planSnapshot || null;
+        const inputs = bio?.inputs || {};
+        const experiment = record?.experimentId
+          ? [state.activeExperiment, ...state.experimentHistory].find(item => item?.id === record.experimentId)
+          : null;
+        const basis = record?.lazy
+          ? `measured: ${(record.measured || []).join(' ')}; estimated: ${(record.estimated || []).join(' ')}`
+          : (record ? 'all entered' : '');
+
+        rows.push([
+          study.participantId, study.cohort, study.schemaVersion,
+          day, date, record ? 1 : 0, record ? (record.lazy ? 'lazy' : 'full') : '',
+          cell(record?.brainDay),
+          plan ? 1 : 0, cell(plan?.mode), cell(plan?.windStart), cell(plan?.sleepStart),
+          cell(plan?.wakeAnchor), cell(plan?.total),
+          cell(record?.bedTime), cell(record?.sleepTime), cell(record?.wakeTime),
+          cell(record?.awakeMinutes), cell(record?.napMinutes),
+          cell(record?.opportunityMinutes), cell(record?.sleepMinutes), cell(record?.efficiency),
+          basis,
+          cell(record?.rest), cell(record?.energy), cell(record?.focus), cell(record?.calm),
+          cell(record?.fajr), (record?.factors || []).join(' | '),
+          bio ? 1 : 0,
+          cell(inputs.light), cell(inputs.caffeine), cell(inputs.movement), cell(inputs.meal),
+          cell(inputs.stress), cell(inputs.body), cell(inputs.environment),
+          cell(record?.experimentId), cell(experiment?.name), cell(record?.adherence),
+          exportedAt
+        ]);
+      }
+      return rows;
+    }
+
+    function studyCsv() {
+      const header = STUDY_COLUMNS.map(column => column[0]);
+      return [header, ...studyRows()].map(row => row.map(csvCell).join(',')).join('\n');
+    }
+
+    // Shipped beside the CSV so the columns are readable by someone who did
+    // not build the app — including the researcher, three months later.
+    function studyDictionaryCsv() {
+      return [['column','meaning','source'], ...STUDY_COLUMNS]
+        .map(row => row.map(csvCell).join(',')).join('\n');
+    }
+
+    const studyFilename = (kind, extension) =>
+      `sleepsphere-study-${state.study?.participantId || 'PXXX'}-${studyToday()}${kind}.${extension}`;
+
+    function renderStudyPanel() {
+      const panel = $('#studyPanel');
+      if (!panel) return;
+      const study = state.study || {};
+      if (!study.onboarded) { panel.hidden = true; return; }
+      panel.hidden = false;
+      const day = currentStudyDay();
+      const entries = realMornings().length;
+      const storage = !store.healthy ? 'Not saving'
+        : study.storageMode === 'persistent' ? 'Protected' : 'Working';
+      $('#studyParticipant').textContent = study.participantId || '—';
+      $('#studyDay').textContent = day ? `Day ${day}` : '—';
+      $('#studyStarted').textContent = study.startDate ? dateLabel(study.startDate) : '—';
+      $('#studyStorage').textContent = storage;
+      $('#studyStorage').style.color = store.healthy ? '' : '#e0897c';
+      $('#studyEntries').textContent = String(entries);
+      $('#studyExportNote').textContent = entries
+        ? 'Ready to export whenever your researcher asks for it.'
+        : 'Nothing recorded yet — the file will still export, showing the days as missing.';
+    }
+
+    $('#exportStudy')?.addEventListener('click', () => {
+      if (!state.study?.participantId) { toast('No participant code on this device yet'); return; }
+      download(studyFilename('', 'csv'), studyCsv(), 'text/csv;charset=utf-8');
+      // The dictionary follows a moment later so the two downloads do not
+      // collide, and so the researcher always has the key with the data.
+      window.setTimeout(() => download(studyFilename('-dictionary', 'csv'), studyDictionaryCsv(), 'text/csv;charset=utf-8'), 700);
+      window.setTimeout(() => {
+        $('#studyExportNote').textContent = 'Exported. Send both files to your researcher — the data and the key to it.';
+      }, 900);
+    });
+
+    $('#exportStudyJson')?.addEventListener('click', () => {
+      if (!state.study?.participantId) { toast('No participant code on this device yet'); return; }
+      download(studyFilename('-full', 'json'), JSON.stringify(state, null, 2), 'application/json');
+    });
+
     $('#exportDiary').addEventListener('click', () => {
       if (!realMornings().length) { toast('Add a morning record before exporting the diary'); return; }
       download('SleepSphere_Sleep_Diary.csv',diaryCsv(),'text/csv;charset=utf-8');
@@ -3943,9 +4447,10 @@
       const file = event.target.files?.[0]; if (!file) return;
       try {
         const incoming = JSON.parse(await file.text());
-        if (incoming?.version !== 2 || !Array.isArray(incoming.mornings) || !Array.isArray(incoming.thoughts) || typeof incoming.settings !== 'object') throw new Error('Invalid structure');
+        const incomingVersion = Number(incoming?.version);
+        if (![2,3].includes(incomingVersion) || !Array.isArray(incoming.mornings) || !Array.isArray(incoming.thoughts) || typeof incoming.settings !== 'object') throw new Error('Invalid structure');
         if (!window.confirm('Replace the data currently stored in this browser with the imported backup?')) return;
-        state = { ...clone(defaults), ...incoming, settings:{...defaults.settings,...incoming.settings}, scans:Array.isArray(incoming.scans) ? incoming.scans : [], thoughts:incoming.thoughts, mornings:incoming.mornings, bioCheckins:Array.isArray(incoming.bioCheckins) ? incoming.bioCheckins : [], experimentHistory:Array.isArray(incoming.experimentHistory) ? incoming.experimentHistory : [], feedback:Array.isArray(incoming.feedback) ? incoming.feedback : [] };
+        state = incomingVersion === 2 ? migrateTwoToThree(incoming) : shapeState(incoming);
         saveState(); populateForms(); renderAll(); toast('Private backup imported');
       } catch { toast('This file is not a valid SleepSphere backup'); }
       finally { event.target.value = ''; }
@@ -3954,7 +4459,12 @@
     $('#eraseData').addEventListener('click', () => {
       if (!window.confirm('Erase every SleepSphere plan, Bio Harmony check-in, diary entry, thought, experiment and feedback record stored in this browser? This cannot be undone without a backup.')) return;
       ['ss_plan','ss_thoughts','ss_mornings','ss_feedback',STORAGE_KEY].forEach(key => store.remove(key));
-      state = clone(defaults); demoMode = false; selectedExperiment = null; resetScan(); clearMorningForm(); saveState(); populateForms(); renderAll(); toast('All SleepSphere local data erased');
+      state = clone(defaults); demoMode = false; selectedExperiment = null; resetScan(); clearMorningForm(); saveState(); populateForms(); renderAll();
+      // Back to a blank device, which means onboarding again — the only way a
+      // second participant can be enrolled on the same phone without
+      // inheriting the first one's code.
+      showFw(1); $('#fieldwork').classList.add('active');
+      toast('All SleepSphere local data erased');
     });
 
     const ageGuidance = {
@@ -4154,7 +4664,7 @@
     }
 
     function renderAll() {
-      renderToday(); renderTwin(); renderBioHarmony(); renderActiveExperiment(); renderThoughts(); renderExperiment(); renderCompass(); renderDataSummary(); renderFeedbackCount(); renderTravel(); renderRestoration(); renderPrayer(); renderWeekStrip(); applySettings();
+      renderToday(); renderTwin(); renderBioHarmony(); renderActiveExperiment(); renderThoughts(); renderExperiment(); renderCompass(); renderDataSummary(); renderStudyPanel(); renderFeedbackCount(); renderTravel(); renderRestoration(); renderPrayer(); renderWeekStrip(); applySettings();
       if (window.SleepSphereNative) { refreshHealthAvailability(); syncWindDownActivity(); }
     }
 
@@ -6355,6 +6865,121 @@
       if (event.key === 'Escape' && $('#installSheet')?.classList.contains('active')) dismissInstall(false);
     });
 
+    /* ==================================================================
+       FIELDWORK ONBOARDING
+
+       Five panels in one card. The only one that can block is storage,
+       because a participant who cannot save is a participant who produces
+       nothing and does not find out for a fortnight.
+       ================================================================== */
+    let fwStep = 1;
+    let fwStorageState = null;
+
+    function showFw(step) {
+      fwStep = step;
+      $$('#fieldwork .fw-panel').forEach(panel => { panel.hidden = Number(panel.dataset.fw) !== step; });
+      $$('#fieldwork .fw-rail i').forEach((bar, index) => bar.classList.toggle('on', index < step));
+      $('#fieldwork .welcome-card').scrollTop = 0;
+      if (step === 3) window.setTimeout(() => $('#fwId').focus(), 120);
+      if (step === 4) checkFwStorage();
+      if (step === 5) $('#fwDay').textContent = 'Day 1';
+    }
+
+    async function checkFwStorage() {
+      const box = $('#fwStorage');
+      const mark = box.querySelector('.mark');
+      const title = box.querySelector('strong');
+      const text = box.querySelector('span:not(.mark)');
+      box.classList.remove('bad');
+      mark.textContent = '◴'; title.textContent = 'Checking…'; text.textContent = 'One moment.';
+
+      fwStorageState = await measureStorage();
+      const installed = isStandalone();
+      // The Home Screen prompt is for iOS Safari, where an uninstalled web
+      // app loses its storage after seven unused days. Everywhere else it
+      // would be noise, so it stays hidden.
+      $('#fwInstall').hidden = !(isIosSafari() && !installed);
+
+      if (!fwStorageState.ok) {
+        box.classList.add('bad');
+        mark.textContent = '✕';
+        title.textContent = 'This browser will not save anything';
+        text.textContent = 'You are most likely in Private Browsing, or site data is blocked. '
+          + 'Open SleepSphere in a normal window and come back to this screen.';
+        $('#fwStorageNext').disabled = true;
+        return;
+      }
+      $('#fwStorageNext').disabled = false;
+      if (isIosSafari() && !installed) {
+        mark.textContent = '◐';
+        title.textContent = 'Saving works — but add it to your Home Screen';
+        text.textContent = 'On iPhone and iPad, Safari deletes a website’s data after seven days '
+          + 'without a visit. Installed to the Home Screen, it is kept for the whole study.';
+        return;
+      }
+      mark.textContent = '✓';
+      title.textContent = fwStorageState.persisted ? 'Saving works, and is protected' : 'Saving works';
+      text.textContent = fwStorageState.persisted
+        ? 'This device has agreed to keep SleepSphere’s data rather than clearing it to free space.'
+        : 'Entries will be kept on this device. Avoid clearing site data during the study.';
+    }
+
+    function fwIdSay(message, tone) {
+      const say = $('#fwIdSay');
+      say.textContent = message;
+      say.className = `fw-say${tone ? ` ${tone}` : ''}`;
+    }
+
+    function finishFieldwork() {
+      const id = normaliseParticipantId($('#fwId').value);
+      if (!id) { showFw(3); fwIdSay('A participant code is needed before the study can start.', 'bad'); return; }
+      const now = new Date();
+      state.study = {
+        ...defaults.study, ...state.study,
+        participantId: id,
+        startDate: studyToday(),
+        enrolledAt: now.toISOString(),
+        consentAck: true,
+        consentAt: state.study.consentAt || now.toISOString(),
+        onboarded: true,
+        cohort: APP_VERSION,
+        schemaVersion: SCHEMA_VERSION,
+        storageMode: fwStorageState?.mode || (store.healthy ? 'local' : 'memory'),
+        lastSeenDay: 1
+      };
+      // The general welcome tour is redundant once a participant has been
+      // through this; two introductions in a row is one too many.
+      state.settings.welcomeSeen = true;
+      const written = saveState();
+      $('#fieldwork').classList.remove('active');
+      $('#welcomeOverlay').classList.remove('active');
+      renderAll();
+      if (!written) toast('Saved in memory only — this device is not writing to disk');
+    }
+
+    $$('#fieldwork [data-fw-next]').forEach(button => button.addEventListener('click', () => showFw(fwStep + 1)));
+    $$('#fieldwork [data-fw-back]').forEach(button => button.addEventListener('click', () => showFw(fwStep - 1)));
+    $('#fwConsent').addEventListener('change', event => {
+      $('#fwConsentNext').disabled = !event.target.checked;
+      if (event.target.checked) state.study.consentAt = new Date().toISOString();
+    });
+    $('#fwConsentNext').addEventListener('click', () => { state.study.consentAck = true; showFw(3); });
+    $('#fwId').addEventListener('input', () => {
+      const id = normaliseParticipantId($('#fwId').value);
+      if (!$('#fwId').value.trim()) fwIdSay('Typing 14 is enough — it becomes P014.');
+      else if (id) fwIdSay(`Reads as ${id}.`, 'good');
+      else fwIdSay('A code looks like P014 — the letter P and a number.', 'bad');
+    });
+    $('#fwIdNext').addEventListener('click', () => {
+      const id = normaliseParticipantId($('#fwId').value);
+      if (!id) { fwIdSay('Enter the code you were given before continuing.', 'bad'); $('#fwId').focus(); return; }
+      $('#fwId').value = id;
+      showFw(4);
+    });
+    $('#fwStorageRetry').addEventListener('click', checkFwStorage);
+    $('#fwStorageNext').addEventListener('click', () => { if (!$('#fwStorageNext').disabled) showFw(5); });
+    $('#fwDone').addEventListener('click', finishFieldwork);
+
     function closeWelcome(destination) {
       state.settings.welcomeSeen = true;
       saveState();
@@ -6440,7 +7065,15 @@
     }
 
     const testerMode = new URLSearchParams(location.search).get('tester') === '1';
-    if (!state.settings.welcomeSeen || (testerMode && !sessionStorage.getItem('ss_tester_welcome_seen'))) $('#welcomeOverlay').classList.add('active');
+    /* Fieldwork onboarding comes first and replaces the general welcome: a
+       participant who has just been told what the study is does not also
+       need the tour. Everyone else sees exactly what they saw before. */
+    if (!state.study?.onboarded) {
+      showFw(1);
+      $('#fieldwork').classList.add('active');
+    } else if (!state.settings.welcomeSeen || (testerMode && !sessionStorage.getItem('ss_tester_welcome_seen'))) {
+      $('#welcomeOverlay').classList.add('active');
+    }
     if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
       window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=5').then(registration => registration.update()).catch(() => {}));
     }

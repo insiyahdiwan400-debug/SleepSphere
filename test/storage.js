@@ -36,6 +36,12 @@ const DISCARDS = `(()=>{const m={};Object.defineProperty(window,'localStorage',{
     await p.evaluate(() => {
       document.getElementById('opening')?.remove();
       document.getElementById('welcomeOverlay')?.classList.remove('active');
+      /* When storage is broken the seed never lands, so the app correctly
+         treats this as an unenrolled device and opens fieldwork onboarding —
+         which, equally correctly, refuses to let a study begin here. That
+         refusal is tested in fieldwork.js; this suite is about whether the
+         app itself keeps working in memory, so the overlay is dismissed. */
+      document.getElementById('fieldwork')?.classList.remove('active');
     });
     await p.waitForTimeout(200);
     return { ctx, p, errs };
@@ -68,7 +74,7 @@ const DISCARDS = `(()=>{const m={};Object.defineProperty(window,'localStorage',{
   const fine = await open(null);
   check('No banner when storage works', !(await bannerUp(fine.p)));
   await fine.p.evaluate(() => localStorage.setItem('sleepsphere_state_v2', JSON.stringify({
-    version:2, settings:{welcomeSeen:true, openingOff:true, mode:'dark', target:480},
+    version:2, settings:{welcomeSeen:true, openingOff:true, mode:'dark', target:480}, study:{onboarded:true, participantId:'P001', startDate:'2026-09-01', enrolledAt:'2026-09-01T06:00:00.000Z', consentAck:true, consentAt:'2026-09-01T06:00:00.000Z', cohort:'jamea-v1', schemaVersion:3, storageMode:'local', lastSeenDay:1},
     mornings:[{id:'a', date:'2026-09-09', bedTime:'23:30', sleepTime:'23:45', wakeTime:'07:00',
                opportunityMinutes:450, sleepMinutes:420, efficiency:93, rest:4,
                awakeMinutes:12, demo:false, factors:[]}],

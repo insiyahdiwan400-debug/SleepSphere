@@ -10,7 +10,16 @@ let fails=0; const check=(n,ok,x='')=>{console.log(`${ok?'PASS':'FAIL'}  ${n}${x
  await p.addInitScript(()=>{const R=Date;const f=new R(2026,11,15,21,0,0);class D extends R{constructor(...a){if(!a.length)return super(f.getTime());return super(...a);}static now(){return f.getTime();}}window.Date=D;});
  await p.goto('http://localhost:8099/index.html',{waitUntil:'networkidle'});
  await p.waitForTimeout(700);
- await p.locator('#welcomeExplore').click(); await p.waitForTimeout(400);
+ /* A genuinely fresh device now meets fieldwork onboarding first, so this
+    test walks through it rather than seeding around it — which also keeps one
+    suite exercising the real first-run path end to end. */
+ await p.locator('[data-fw="1"] [data-fw-next]').click();
+ await p.locator('#fwConsent').check();
+ await p.locator('#fwConsentNext').click();
+ await p.locator('#fwId').fill('P001');
+ await p.locator('#fwIdNext').click(); await p.waitForTimeout(500);
+ await p.locator('#fwStorageNext').click();
+ await p.locator('#fwDone').click(); await p.waitForTimeout(400);
  await p.evaluate(()=>document.querySelector('.nav button[data-view="plan"]').click());
  await p.waitForTimeout(500);
 
