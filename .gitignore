@@ -1,3 +1,10 @@
 test/.refcache.json
 trailer/beat-*.png
 trailer/*.webm
+
+# Per-commit deploy builds, e.g. SleepSphere-8af4ce6.zip. Reproduce one with:
+#   git archive <commit> | tar -x -C <dir> && (cd <dir> && zip -r ../out.zip index.html …)
+# The checked-in site zip is the exception, since it is what gets dropped on
+# Netlify by hand.
+SleepSphere-*.zip
+!SleepSphere-website.zip
