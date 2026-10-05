@@ -185,6 +185,92 @@ const THROWS = `Object.defineProperty(window,'localStorage',{configurable:true,
         await returning.p.locator('#fieldwork').evaluate(n => !n.classList.contains('active')));
   await returning.ctx.close();
 
+  /* ------------------------------------------------- participant codes
+
+     Reported from real-device testing as "only 14 works". The normalisation
+     was in fact correct for every value; the screen was the problem — the
+     placeholder said P014 and the hint said "typing 14 is enough", so the
+     interface named one specific number twice and read as an instruction.
+     The field also carried inputmode="numeric", which on iOS raises a
+     digits-only keypad, making the P in that placeholder a character the
+     keyboard cannot type.
+
+     These checks exist so the claim is never a matter of opinion again:
+     every code is driven through the real input, the real handler and the
+     real Continue button, exactly as a participant would. */
+  const idCase = async (typed, expected) => {
+    const run = await open();
+    await run.p.locator('[data-fw="1"] [data-fw-next]').click();
+    await run.p.locator('#fwConsent').check();
+    await run.p.locator('#fwConsentNext').click();
+    await run.p.waitForTimeout(200);
+    await run.p.locator('#fwId').fill(typed);
+    await run.p.waitForTimeout(120);
+    const hint = await run.p.locator('#fwIdSay').innerText();
+    await run.p.locator('#fwIdNext').click();
+    await run.p.waitForTimeout(220);
+    const moved = !(await run.p.locator('[data-fw="4"]').isHidden());
+
+    if (expected === null) {
+      check(`"${typed}" is rejected`, !moved, hint.slice(0, 48));
+      await run.ctx.close();
+      return;
+    }
+
+    check(`"${typed}" is accepted and reads as ${expected}`,
+          moved && new RegExp(expected).test(hint), `${moved ? 'moved on' : 'BLOCKED'} · ${hint}`);
+
+    // ...and all the way through, so the code is not merely displayed.
+    await run.p.locator('#fwStorageNext').click();
+    await run.p.waitForTimeout(150);
+    await run.p.locator('#fwDone').click();
+    await run.p.waitForTimeout(400);
+    const disk = await run.p.evaluate(() =>
+      JSON.parse(localStorage.getItem('sleepsphere_state_v2')).study.participantId);
+    check(`  ${expected} is stored on the device`, disk === expected, disk);
+
+    // Survives closing and reopening the app.
+    await run.p.reload({ waitUntil: 'networkidle' });
+    await run.p.waitForTimeout(900);
+    const afterReload = await run.p.evaluate(() =>
+      JSON.parse(localStorage.getItem('sleepsphere_state_v2')).study.participantId);
+    check(`  ${expected} survives a reopen`, afterReload === expected, afterReload);
+
+    // Appears in the Field study panel.
+    await run.p.evaluate(() => document.querySelector('.nav button[data-view="data"]').click());
+    await run.p.waitForTimeout(400);
+    check(`  ${expected} appears in the study panel`,
+          (await run.p.locator('#studyParticipant').innerText()).trim() === expected);
+
+    // Names the export file, and fills the column inside it.
+    const exported = await run.p.evaluate(() => new Promise(resolve => {
+      const names = [];
+      const realClick = HTMLAnchorElement.prototype.click;
+      HTMLAnchorElement.prototype.click = function () { names.push(this.download); realClick.call(this); };
+      const seen = [];
+      const original = URL.createObjectURL;
+      URL.createObjectURL = blob => { seen.push(blob); return original(blob); };
+      document.getElementById('exportStudy').click();
+      setTimeout(async () => resolve({ names, texts: await Promise.all(seen.map(b => b.text())) }), 1300);
+    }));
+    check(`  ${expected} names the export file`,
+          (exported.names[0] || '').startsWith(`sleepsphere-study-${expected}-`), exported.names[0]);
+    const rows = (exported.texts[0] || '').trim().split('\n').slice(1);
+    check(`  ${expected} is in every exported row`,
+          rows.length > 0 && rows.every(row => row.startsWith(`"${expected}"`)),
+          `${rows.length} row(s), first starts "${(rows[0] || '').slice(0, 14)}"`);
+    await run.ctx.close();
+  };
+
+  for (const [typed, expected] of [
+    ['1', 'P001'], ['2', 'P002'], ['7', 'P007'], ['14', 'P014'],
+    ['25', 'P025'], ['99', 'P099'], ['100', 'P100'], ['999', 'P999'],
+    ['007', 'P007'], ['p14', 'P014'], ['P014', 'P014'], ['P14', 'P014'], ['P1', 'P001']
+  ]) await idCase(typed, expected);
+
+  for (const bad of ['', '   ', 'banana', 'P', 'abc', '14a', '-5', '0', '1.5', '1000', 'PP14'])
+    await idCase(bad, null);
+
   /* ---------------------------------------------------------------- 6 */
   const studyAt = async (startDate, nowISO) => {
     const run = await open({
