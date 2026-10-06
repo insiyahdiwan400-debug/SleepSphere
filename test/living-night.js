@@ -248,8 +248,81 @@ const clockAt = (h, mi) => `(()=>{const R=Date;const f=new R(2026,8,9,${h},${mi}
   check('The secondary rows fade before the drawing does',
         series[4].detailOpacity < series[4].opacity, `${series[4].detailOpacity} vs ${series[4].opacity}`);
   check('The evening’s heavier cards recede too, without disappearing',
-        series[0].scanOpacity === 1 && series[4].scanShown && series[4].scanOpacity < 0.8,
+        series[0].scanOpacity === 1 && series[4].scanShown
+        && series[4].scanOpacity < 1 && series[4].scanOpacity >= 0.8,
         `${series[0].scanOpacity} → ${series[4].scanOpacity}`);
+
+  /* READABLE AT THE DEEPEST RECEDE.
+
+     The cards step back; they must not come to look disabled. That is a
+     contrast question, not a taste one, so it is measured rather than
+     eyeballed: the text is composited over the night ground at the deepest
+     recede the system can reach and checked against WCAG AA. A first attempt
+     at this used a 0.3 floor, which put the helper paragraph at 1.6:1.
+
+     The ground is taken as the flat dark the dusk veil settles to. Stars
+     brighten parts of it, which moves contrast both ways locally; the flat
+     value is the dominant case and the one worth holding. */
+  const legibility = await (async () => {
+    const c = await open({ plan: BRIDGE, hour: 22, minute: 30 });
+    const out = await c.p.evaluate(() => {
+      // Force the deepest recede this system can produce.
+      document.documentElement.style.setProperty('--night-detail', '0');
+      const card = document.getElementById('nightScan');
+      const opacity = parseFloat(getComputedStyle(card).opacity);
+      const parse = s => (s.match(/[\d.]+/g) || []).map(Number);
+      const srgb = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+      const lum = c => 0.2126 * srgb(c[0]) + 0.7152 * srgb(c[1]) + 0.0722 * srgb(c[2]);
+      const over = (fg, bg, a) => [0,1,2].map(i => fg[i] * a + bg[i] * (1 - a));
+      const ratio = (a, b) => { const l = [lum(a), lum(b)].sort((x, y) => y - x);
+                                return (l[0] + 0.05) / (l[1] + 0.05); };
+      const GROUND = [8, 10, 18];
+      const cardRgba = parse(getComputedStyle(card).backgroundColor);
+      const cardBg = over(cardRgba.slice(0, 3), GROUND, (cardRgba[3] ?? 1) * opacity);
+      const of = el => el ? ratio(over(parse(getComputedStyle(el).color).slice(0, 3), GROUND, opacity), cardBg) : null;
+      const btn = document.querySelector('#restorationCard .btn.primary');
+      const btnRgb = btn ? parse(getComputedStyle(btn).backgroundColor).slice(0, 3) : null;
+      return {
+        opacity,
+        helper: of(card.querySelector('p')),
+        heading: of(card.querySelector('h3')),
+        label: of(card.querySelector('label')),
+        button: btnRgb ? ratio(over(btnRgb, GROUND, opacity), cardBg) : null,
+        // Interactivity must stay obvious and must stay available.
+        pointer: getComputedStyle(card).pointerEvents,
+        disabled: [...card.querySelectorAll('button')].some(b => b.disabled),
+        /* Scrolled into view before hit-testing. elementFromPoint takes
+           viewport coordinates, and this card sits well down a long evening
+           page — the first version of this check reported "untappable" for a
+           control that was simply off-screen, which is a property of the
+           test, not of the card. */
+        tappable: (() => {
+          const b = card.querySelector('.mini-scale button');
+          if (!b) return false;
+          b.scrollIntoView({ block: 'center' });
+          const r = b.getBoundingClientRect();
+          const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+          return Boolean(el) && (el === b || b.contains(el) || el.contains(b));
+        })()
+      };
+    });
+    const errs = c.errs;
+    await c.ctx.close();
+    return { ...out, errs };
+  })();
+  check('At the deepest recede the cards are still well clear of invisible',
+        legibility.opacity >= 0.8, String(legibility.opacity));
+  check('Their body text still meets WCAG AA',
+        legibility.helper >= 4.5, `${legibility.helper.toFixed(2)}:1`);
+  check('Their headings and labels comfortably so',
+        legibility.heading >= 4.5 && legibility.label >= 4.5,
+        `${legibility.heading.toFixed(1)}:1 / ${legibility.label.toFixed(1)}:1`);
+  check('And the action inside them stays obvious',
+        legibility.button >= 3, `${legibility.button.toFixed(1)}:1`);
+  check('Nothing is disabled or made untappable by receding',
+        legibility.pointer !== 'none' && !legibility.disabled && legibility.tappable,
+        JSON.stringify({ pointer: legibility.pointer, disabled: legibility.disabled, tappable: legibility.tappable }));
+  check('No console errors measuring it', legibility.errs.length === 0, legibility.errs.join(' | '));
 
   /* 8. Goodnight belongs to bedtime and to nothing before it. */
   const evenings = series.filter(v => v.phase === 'EVENING');

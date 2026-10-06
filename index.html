@@ -1576,12 +1576,27 @@
        arrives. The phase filter removes them at bedtime as it always did. */
     :root[data-phase="EVENING"] #restorationCard,
     :root[data-phase="EVENING"] #nightScan {
-      /* !important because the cards carry an entrance animation whose
+      /* The floor is 0.8, and it is a contrast number rather than a taste
+         one. These cards hold 12px labels and a muted helper paragraph, and
+         composited over the night ground that paragraph measures:
+
+              opacity   1.00   0.80   0.65   0.45   0.30
+              contrast  6.5:1  4.5:1  3.3:1  2.2:1  1.6:1
+
+         WCAG AA wants 4.5:1 for body text. An earlier floor of 0.3 put it at
+         1.6:1 — which is exactly why it read as disabled rather than quiet.
+         At 0.8 every element here stays compliant (headings and the primary
+         button are both above 9:1) while still visibly stepping back, and
+         the quieting of the evening is carried by --night-detail taking the
+         Living Night's own secondary rows all the way to nothing, which is
+         text nobody has to act on.
+
+         !important because the cards carry an entrance animation whose
          `to { opacity: 1 }` has fill-mode `both` — so it keeps asserting 1
          for the life of the page, and a running animation outranks a normal
          declaration however specific. Without this the rule matched, the
          custom property resolved, and the computed opacity was still 1. */
-      opacity:calc(.3 + var(--night-detail, 1) * .7) !important;
+      opacity:calc(.8 + var(--night-detail, 1) * .2) !important;
       transition:opacity 2.6s ease;
     }
 
@@ -5060,6 +5075,9 @@
 
       $('#nightVeil').hidden = false;
       document.body.style.overflow = 'hidden';
+      // The sky is behind an opaque ground now; stop painting it. See the
+      // starfield loop.
+      document.documentElement.dataset.overlay = 'solid';
       requestAnimationFrame(() => $('#nightVeil').classList.add('on'));
 
       /* The one decision that makes this feature what it is. If anything
@@ -5082,6 +5100,9 @@
       const veil = $('#nightVeil');
       veil.classList.remove('on');
       document.body.style.overflow = '';
+      // Painted again from the moment it starts fading out, so the sky is
+      // already there behind the last of the fade.
+      delete document.documentElement.dataset.overlay;
       window.setTimeout(() => { veil.hidden = true; }, 420);
     }
 
@@ -7442,10 +7463,21 @@
            must not do is give the eye something to follow while someone is
            trying to stop. */
         if (!calm.matches) spin += dt * 0.0000035 * (1 - 0.66 * duskNow());
+        /* Build my night covers the sky with a ground that is over 99%
+           opaque, so every star drawn while it is open is painted to be
+           looked at by nobody. The loop keeps turning — the spin has to stay
+           continuous, or the sky jumps when the screen closes — but the
+           painting stops, which is where the cost is.
+
+           Measured: the overlay took about 15% of the frame budget purely to
+           redraw an invisible canvas. The dua screen is deliberately NOT in
+           this list: the brief asks for the sky to stay behind it. */
+        const obscured = document.documentElement.dataset.overlay === 'solid';
         let live = false;
         for (const field of fields) {
-          if (field.active()) { field.render(time, dt); live = true; }
-          else field.clear();
+          if (!field.active()) { field.clear(); continue; }
+          live = true;
+          if (!obscured) field.render(time, dt);
         }
         // Daylight is most of the app's waking life. Stopping outright is
         // the difference between a nice background and a battery complaint.
