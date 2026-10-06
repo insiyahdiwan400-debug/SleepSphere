@@ -39,6 +39,7 @@ let fails=0; const check=(n,ok,x='')=>{console.log(`${ok?'PASS':'FAIL'}  ${n}${x
  await p.locator('#fwId').fill('P001');
  await p.locator('#fwIdNext').click(); await p.waitForTimeout(500);
  await p.locator('#fwStorageNext').click();
+ await p.locator('#fwSchedNext').click();   // schedule step, added in Phase 1A.1
  await p.locator('#fwDone').click(); await p.waitForTimeout(400);
  await p.evaluate(()=>goPlan());
  await p.waitForTimeout(500);

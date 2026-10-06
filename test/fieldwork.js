@@ -166,6 +166,9 @@ const THROWS = `Object.defineProperty(window,'localStorage',{configurable:true,
         !(await fresh.p.locator('#fwStorageNext').isDisabled()));
   await fresh.p.locator('#fwStorageNext').click();
   await fresh.p.waitForTimeout(200);
+  // Onboarding gained a schedule step before Ready in Phase 1A.1.
+  await fresh.p.locator('#fwSchedNext').click();
+  await fresh.p.waitForTimeout(200);
   await fresh.p.locator('#fwDone').click();
   await fresh.p.waitForTimeout(400);
 
@@ -222,6 +225,9 @@ const THROWS = `Object.defineProperty(window,'localStorage',{configurable:true,
 
     // ...and all the way through, so the code is not merely displayed.
     await run.p.locator('#fwStorageNext').click();
+    await run.p.waitForTimeout(150);
+    // Onboarding gained a schedule step before Ready in Phase 1A.1.
+    await run.p.locator('#fwSchedNext').click();
     await run.p.waitForTimeout(150);
     await run.p.locator('#fwDone').click();
     await run.p.waitForTimeout(400);

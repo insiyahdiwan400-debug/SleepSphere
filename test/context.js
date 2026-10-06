@@ -124,6 +124,143 @@ const seed = blob => `(()=>{const k='sleepsphere_state_v2';
         await inBed.p.evaluate(() => window.__phase().reason));
   await inBed.ctx.close();
 
+  /* ------------------------------------------------ schedule preference
+
+     A generic 06:30 is wrong for anyone whose day starts at Fajr, so the
+     engine now prefers what the participant told us. Three sources, in
+     order, and it reports which one it used. */
+  const anchorsFor = async blob => {
+    const run = await open(blob, '2026-10-06T13:00:00+04:00');
+    const out = await run.p.evaluate(() => window.__anchors());
+    await run.ctx.close();
+    return out;
+  };
+
+  const generic = await anchorsFor(state({}));
+  check('With nothing at all it still answers, and admits it is guessing',
+        generic.source === 'default' && generic.wake === 390, JSON.stringify(generic));
+
+  const told = await anchorsFor(state({ settings:{ ...state({}).settings, usualWake:'04:50', fajrHabit:'stay' } }));
+  check('A stored schedule beats the generic fallback',
+        told.source === 'usual' && told.wake === 290, JSON.stringify(told));
+
+  const planned = await anchorsFor(state({
+    plan: PLAN, settings:{ ...state({}).settings, usualWake:'04:50', fajrHabit:'stay' } }));
+  check('A saved night plan beats the stored schedule',
+        planned.source === 'plan' && planned.wake === 390, JSON.stringify(planned));
+
+  // ...and the phases move with it, which is the whole point.
+  const early = await open(state({ settings:{ ...state({}).settings, usualWake:'04:50' } }),
+                           '2026-10-06T05:30:00+04:00');
+  check('A 04:50 riser is awake at 05:30, not asleep',
+        (await early.p.evaluate(() => window.__phase().phase)) === 'WAKE',
+        await early.p.evaluate(() => window.__phase().phase));
+  await early.ctx.close();
+  const late = await open(state({}), '2026-10-06T05:30:00+04:00');
+  check('Without it, the same hour reads as SLEEP',
+        (await late.p.evaluate(() => window.__phase().phase)) === 'SLEEP');
+  await late.ctx.close();
+
+  /* The one-time prompt, for participants enrolled before the question
+     existed. It must not be the whole onboarding again. */
+  const missing = await open(state({}), '2026-10-06T13:00:00+04:00');
+  check('An enrolled participant without a schedule is asked, once',
+        !(await missing.p.locator('#scheduleNudge').isHidden()));
+  check('And is NOT sent through onboarding again',
+        await missing.p.evaluate(() => !document.getElementById('fieldwork').classList.contains('active')));
+  check('Brain Day is still usable while it is showing',
+        await missing.p.locator('.brain-chip[data-brain="hifz"]').isVisible());
+
+  await missing.p.locator('#nudgeWake').fill('04:50');
+  await missing.p.locator('#nudgeHabits [data-habit="stay"]').click();
+  check('The Fajr habit announces itself as chosen',
+        (await missing.p.locator('#nudgeHabits [data-habit="stay"]').getAttribute('aria-pressed')) === 'true');
+  await missing.p.locator('#nudgeSave').click();
+  await missing.p.waitForTimeout(500);
+  check('Saving puts the prompt away', await missing.p.locator('#scheduleNudge').isHidden());
+  const kept = await missing.p.evaluate(() =>
+    JSON.parse(localStorage.getItem('sleepsphere_state_v2')).settings);
+  check('The usual wake time persists', kept.usualWake === '04:50', kept.usualWake);
+  check('The Fajr habit persists', kept.fajrHabit === 'stay', kept.fajrHabit);
+  check('And the engine picks it up immediately',
+        (await missing.p.evaluate(() => window.__anchors().source)) === 'usual');
+
+  await missing.p.reload({ waitUntil:'networkidle' });
+  await missing.p.waitForTimeout(1100);
+  check('Both survive a reopen, and the prompt stays away',
+        await missing.p.locator('#scheduleNudge').isHidden()
+        && (await missing.p.evaluate(() =>
+             JSON.parse(localStorage.getItem('sleepsphere_state_v2')).settings.fajrHabit)) === 'stay');
+  check('No errors through the prompt', missing.errs.length === 0, missing.errs.join(' | '));
+
+  // Both reach the research dataset.
+  const sched = await missing.p.evaluate(() => new Promise(resolve => {
+    const seen = []; const original = URL.createObjectURL;
+    URL.createObjectURL = blob => { seen.push(blob); return original(blob); };
+    document.querySelector('.nav button[data-view="data"]').click();
+    document.getElementById('exportStudy').click();
+    setTimeout(async () => resolve(await seen[0].text()), 1300);
+  }));
+  const sHead = sched.trim().split('\n')[0].split('","').map(x => x.replace(/^"|"$/g,''));
+  const sRow  = sched.trim().split('\n')[1].split('","').map(x => x.replace(/^"|"$/g,''));
+  check('usual_wake is exported', sRow[sHead.indexOf('usual_wake')] === '04:50',
+        sRow[sHead.indexOf('usual_wake')]);
+  check('fajr_habit is exported', sRow[sHead.indexOf('fajr_habit')] === 'stay',
+        sRow[sHead.indexOf('fajr_habit')]);
+  await missing.ctx.close();
+
+  /* ------------------------------------------- the morning that was missed
+
+     The four-hour WAKE window used to be the only time recording was
+     prominent. For fieldwork a missing observation is the one loss that
+     cannot be recovered later, so it stays visible — without blocking
+     anything and without ever writing a record by itself. */
+  const pending = await open(state({ plan: PLAN }), '2026-10-06T15:00:00+04:00');
+  check('Long after waking, the day has moved on',
+        (await pending.p.evaluate(() => window.__phase().phase)) === 'DAY');
+  check('But the morning is still visibly pending',
+        !(await pending.p.locator('#morningPending').isHidden()));
+  check('And it says how long it takes',
+        /twenty seconds/i.test(await pending.p.locator('#morningPending').innerText()));
+  check('Brain Day is not blocked by it',
+        await pending.p.locator('.brain-chip[data-brain="hifz"]').isVisible());
+  check('Nothing was fabricated', await pending.p.evaluate(() =>
+    JSON.parse(localStorage.getItem('sleepsphere_state_v2')).mornings.length === 0));
+
+  // It survives into the evening rather than quietly disappearing.
+  const evening = await open(state({ plan: PLAN }), '2026-10-06T21:00:00+04:00');
+  check('Still pending in the evening',
+        (await evening.p.evaluate(() => window.__phase().phase)) === 'EVENING'
+        && !(await evening.p.locator('#morningPending').isHidden()));
+  await evening.ctx.close();
+
+  // ...but bedtime stays quiet, and a recorded day is left alone.
+  const night = await open(state({ plan: PLAN }), '2026-10-06T23:30:00+04:00');
+  check('Bedtime is not the moment to chase it', await night.p.locator('#morningPending').isHidden());
+  await night.ctx.close();
+  const already = await open(state({ plan: PLAN, mornings:[morning('2026-10-06')] }), '2026-10-06T15:00:00+04:00');
+  check('A recorded morning shows no pending action',
+        await already.p.locator('#morningPending').isHidden());
+  await already.ctx.close();
+
+  // Completing it from the strip clears it.
+  await pending.p.locator('#pendingGo').click();
+  await pending.p.waitForTimeout(400);
+  for (const value of [3, 3, 3]) {
+    await pending.p.locator('.flow-choices .qc').nth(value - 1).click();
+    await pending.p.waitForTimeout(320);
+  }
+  await pending.p.locator('#flowSkip').click();
+  await pending.p.waitForTimeout(600);
+  await pending.p.evaluate(() => document.getElementById('wakeDone')?.click());
+  await pending.p.waitForTimeout(500);
+  check('Recording it removes the pending action',
+        await pending.p.locator('#morningPending').isHidden());
+  check('And a record now exists', await pending.p.evaluate(() =>
+    JSON.parse(localStorage.getItem('sleepsphere_state_v2')).mornings.length === 1));
+  check('No errors through the pending path', pending.errs.length === 0, pending.errs.join(' | '));
+  await pending.ctx.close();
+
   /* ---------------------------------------------------- what Today shows */
   const shows = async (at, expectPhase) => {
     const run = await open(state({ plan: PLAN }), at);
@@ -190,11 +327,11 @@ const seed = blob => `(()=>{const k='sleepsphere_state_v2';
   const brain = await open(state({ plan: PLAN }), '2026-10-06T13:00:00+04:00');
   check('The day asks what tomorrow needs',
         /what does your brain need tomorrow/i.test(await brain.p.locator('#momentAsk').innerText()));
-  check('All six categories are offered', await brain.p.locator('.brain-chip').count() === 6);
+  check('All six categories are offered', await brain.p.locator('#brainGrid .brain-chip').count() === 6);
   check('Each is a real touch target', await brain.p.evaluate(() =>
-    [...document.querySelectorAll('.brain-chip')].every(c => c.getBoundingClientRect().height >= 44)));
+    [...document.querySelectorAll('#brainGrid .brain-chip')].every(c => c.getBoundingClientRect().height >= 44)));
   check('None is selected to begin with', await brain.p.evaluate(() =>
-    [...document.querySelectorAll('.brain-chip')].every(c => c.getAttribute('aria-pressed') === 'false')));
+    [...document.querySelectorAll('#brainGrid .brain-chip')].every(c => c.getAttribute('aria-pressed') === 'false')));
 
   await brain.p.locator('[data-brain="hifz"]').click();
   await brain.p.waitForTimeout(400);

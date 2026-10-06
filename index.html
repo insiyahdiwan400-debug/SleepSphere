@@ -1464,6 +1464,26 @@
     .moment-alt { min-height:52px; }
     .moment-note { margin:13px 0 0; color:var(--muted); font-size:13.5px; }
 
+    /* The quiet strips. Secondary by construction: no card chrome, one line of
+       bold, and a ghost button — present without competing with the moment. */
+    .nudge { display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+      margin:0 0 20px; padding:15px 17px; border:1px solid var(--line);
+      border-radius:15px; background:rgba(233,228,217,.035); }
+    .nudge > div { flex:1 1 220px; min-width:0; }
+    .nudge strong { display:block; color:var(--ink); font-size:15.5px; font-weight:650; }
+    .nudge span { display:block; margin-top:3px; color:var(--muted); font-size:13.5px; }
+    .nudge .btn { min-height:46px; flex:0 0 auto; }
+    .nudge-open { display:block; }
+    .nudge-time { width:100%; margin-top:14px; padding:13px 15px; border-radius:13px;
+      border:1px solid var(--line); background:rgba(233,228,217,.04); color:var(--ink);
+      font-family:var(--font-display); font-size:26px; text-align:center; }
+    .nudge-q { margin:18px 0 10px; color:var(--ink); font-size:14.5px; font-weight:600; }
+    .nudge-open .btn { width:100%; margin-top:14px; }
+    .nudge-time:focus-visible, #pendingGo:focus-visible, #nudgeSave:focus-visible {
+      outline:2px solid var(--gold); outline-offset:3px; }
+    :root[data-mode="light"] .nudge, :root[data-mode="light"] .nudge-time {
+      background:rgba(255,255,255,.6); }
+
     /* Brain Day. A visual pick, not a form: six targets, each big enough to
        hit at arm's length, each legible as chosen without relying on colour
        alone — the tick and the border carry it too. */
@@ -1534,6 +1554,9 @@
     .fw-verdict span { color:var(--muted); font-size:14px; line-height:1.5; }
     .fw-verdict.bad { border-color:rgba(224,137,124,.45); }
     .fw-verdict.bad .mark { color:#e0897c; }
+    .fw-time { font-size:34px; letter-spacing:.02em; text-transform:none; }
+    .fw-q { margin:26px 0 11px; color:var(--ink); font-size:15px; font-weight:600; }
+    .fw-habits { display:grid; gap:9px; }
     .fw-day { font-family:var(--font-display); font-size:clamp(46px,12vw,72px); line-height:1;
               color:var(--gold-soft); letter-spacing:-.03em; margin:26px 0 8px; }
     /* Five facts for troubleshooting, not five achievements. Kept to a tight
@@ -1982,6 +2005,39 @@
             </div>
             <p class="moment-note" id="momentNote"></p>
           </section>
+
+          <!-- Asked once, of participants enrolled before the question
+               existed. Not the whole onboarding again — two fields. -->
+          <section class="nudge nudge-open" id="scheduleNudge" hidden>
+            <div>
+              <strong>One quick thing.</strong>
+              <span>When does your day usually start? It helps SleepSphere know
+                    which part of the day you are in.</span>
+            </div>
+            <input class="nudge-time" id="nudgeWake" type="time" value="06:30" aria-label="Usual start of day" />
+            <p class="nudge-q">After Fajr, you usually…</p>
+            <div class="fw-habits" id="nudgeHabits" role="group" aria-label="After Fajr">
+              <button type="button" class="brain-chip" data-habit="return" aria-pressed="false">
+                <span class="glyph" aria-hidden="true">☾</span><span>Return to sleep</span></button>
+              <button type="button" class="brain-chip" data-habit="stay" aria-pressed="false">
+                <span class="glyph" aria-hidden="true">☀</span><span>Stay awake</span></button>
+              <button type="button" class="brain-chip" data-habit="depends" aria-pressed="false">
+                <span class="glyph" aria-hidden="true">◐</span><span>It depends</span></button>
+            </div>
+            <button class="btn primary" id="nudgeSave">Save</button>
+          </section>
+
+          <!-- A missing observation costs the study more than a little
+               persistence costs the participant, so the morning stays
+               visible — quietly, and never blocking Brain Day. -->
+          <section class="nudge" id="morningPending" hidden>
+            <div>
+              <strong>This morning isn’t recorded yet.</strong>
+              <span>Takes about twenty seconds.</span>
+            </div>
+            <button class="btn ghost" id="pendingGo">Record morning</button>
+          </section>
+
           <article class="night-console" data-phase="DAY EVENING">
             <canvas class="console-stars" aria-hidden="true"></canvas>
             <div class="console-status"><span class="live-signal">Night console ready</span><span class="console-date" id="consoleDate">Tonight</span></div>
@@ -2728,7 +2784,7 @@
        seconds, and the only one that can be failed is storage. -->
   <div class="welcome-overlay" id="fieldwork" role="dialog" aria-modal="true" aria-labelledby="fwTitle">
     <div class="welcome-card">
-      <div class="fw-rail" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="fw-rail" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
 
       <div class="fw-panel" data-fw="1">
         <span class="welcome-badge">SleepSphere field study</span>
@@ -2801,6 +2857,30 @@
       </div>
 
       <div class="fw-panel" data-fw="5" hidden>
+        <span class="welcome-badge">Step 5 of 6</span>
+        <h2>When does your day usually start?</h2>
+        <p>Not an alarm, and not a target — just what normally happens. SleepSphere
+           uses it to know which part of the day you are in before you have planned
+           a single night.</p>
+        <input class="fw-id fw-time" id="fwWake" type="time" value="06:30" aria-label="Usual start of day" />
+        <p class="fw-say" id="fwWakeSay">You can change this later under Me.</p>
+
+        <p class="fw-q">After Fajr, you usually…</p>
+        <div class="fw-habits" id="fwHabits" role="group" aria-label="After Fajr">
+          <button type="button" class="brain-chip" data-habit="return" aria-pressed="false">
+            <span class="glyph" aria-hidden="true">☾</span><span>Return to sleep</span></button>
+          <button type="button" class="brain-chip" data-habit="stay" aria-pressed="false">
+            <span class="glyph" aria-hidden="true">☀</span><span>Stay awake</span></button>
+          <button type="button" class="brain-chip" data-habit="depends" aria-pressed="false">
+            <span class="glyph" aria-hidden="true">◐</span><span>It depends</span></button>
+        </div>
+
+        <div class="button-row" style="margin-top:22px">
+          <button class="btn primary" id="fwSchedNext">Continue</button>
+        </div>
+      </div>
+
+      <div class="fw-panel" data-fw="6" hidden>
         <span class="welcome-badge">Ready</span>
         <h2>You’re set.</h2>
         <div class="fw-day" id="fwDay">Day 1</div>
@@ -2894,7 +2974,14 @@
 
     const defaults = {
       version: SCHEMA_VERSION,
-      settings: { name: '', age: 'adult', target: 480, faith: 'on', installDismissed: false, openingOff: false, lastZone: '', locationGranted: false, dim: false, intent: 'restore', welcomeSeen: false, mode: 'dark', useCycle: false, healthLinked: false, place: null, highLatRule: 'seventh', fajrEdited: false },
+      settings: { name: '', age: 'adult', target: 480, faith: 'on', installDismissed: false, openingOff: false, lastZone: '', locationGranted: false, dim: false, intent: 'restore', welcomeSeen: false, mode: 'dark', useCycle: false, healthLinked: false, place: null, highLatRule: 'seventh', fajrEdited: false,
+        /* The participant's ordinary schedule, asked once. Without it the
+           context engine had to guess, and a generic 06:30 is wrong for
+           anyone whose day starts at Fajr. Empty means never asked — the
+           engine falls back and says it is doing so. */
+        usualWake: '',          // 'HH:MM', when their day usually starts
+        fajrHabit: ''           // 'return' | 'stay' | 'depends' | '' (not asked)
+      },
 
       /* Fieldwork metadata. Separate from settings on purpose: settings are
          the participant's preferences and they may change them freely, while
@@ -3298,6 +3385,20 @@
         };
       }
       const target = Number(state_.settings?.target) || 480;
+
+      /* No plan yet — but they told us when their day usually starts, which is
+         very nearly as good and is right from the first morning rather than
+         from the first saved night. */
+      const usual = state_.settings?.usualWake;
+      if (usual && /^\d{2}:\d{2}$/.test(usual)) {
+        const wake = normalizeMinutes(toMinutes(usual));
+        const sleep = normalizeMinutes(wake - target);
+        return { wake, sleep, windDown: normalizeMinutes(sleep - 60), source: 'usual' };
+      }
+
+      /* Last resort, and it says so. A generic 06:30 is wrong for anyone whose
+         day begins at Fajr, which is why the schedule question exists and why
+         this source is reported rather than hidden. */
       const wake = PHASE_FALLBACK.wake;
       const sleep = normalizeMinutes(wake - target);
       return { wake, sleep, windDown: normalizeMinutes(sleep - 60), source: 'default' };
@@ -3946,12 +4047,28 @@
         go.textContent = 'Change';
         go.onclick = () => { brainEditing = true; renderMoment(); };
       }
-      if (!recorded) {
-        alt.hidden = false;
-        alt.textContent = 'Record this morning';
-        alt.onclick = () => openFlow('wake');
-        note.textContent = 'This morning is not recorded yet.';
-      }
+      /* The pending strip below says this now, in DAY and in EVENING both,
+         so it does not quietly vanish four hours after waking. */
+    }
+
+    /* Shown whenever today's morning is still missing and it is no longer the
+       WAKE moment itself. A missed observation is the one thing fieldwork
+       cannot recover later, so this stays until the record exists or the day
+       genuinely rolls over — but it never blocks Brain Day, and it never
+       writes a record by itself. */
+    function renderPending() {
+      const strip = $('#morningPending');
+      if (!strip) return;
+      const { phase, recorded } = resolvePhase();
+      strip.hidden = recorded || phase === 'WAKE' || phase === 'SLEEP';
+    }
+
+    /* Asked once, of participants enrolled before the schedule question
+       existed. Two fields, on Today, not the whole onboarding again. */
+    function renderScheduleNudge() {
+      const strip = $('#scheduleNudge');
+      if (!strip) return;
+      strip.hidden = !(state.study?.onboarded && !state.settings?.usualWake);
     }
 
     function renderToday() {
@@ -3969,6 +4086,8 @@
       // The sphere's reading now lives on the Bio Harmony screen; the
       // Tonight hero shows the night itself instead.
       renderMoment();
+      renderPending();
+      renderScheduleNudge();
       renderHeroStatus();
       renderNightArc();
       renderRestoration();
@@ -4636,6 +4755,8 @@
     const STUDY_COLUMNS = [
       ['participant_id',       'Anonymous code assigned by the researcher',                 'study'],
       ['cohort',               'Build the participant was enrolled on',                      'study'],
+      ['usual_wake',           'When the participant says their day usually starts, HH:MM',   'entered'],
+      ['fajr_habit',           'return, stay or depends — what they usually do after Fajr',   'entered'],
       ['schema_version',       'State schema the record was written under',                  'study'],
       ['study_day',            'Whole days since day 1, inclusive (day 1 = start date)',     'calculated'],
       ['date',                 'Calendar date of the night, YYYY-MM-DD',                      'calculated'],
@@ -4706,7 +4827,9 @@
           : (record ? 'all entered' : '');
 
         rows.push([
-          study.participantId, study.cohort, study.schemaVersion,
+          study.participantId, study.cohort,
+          cell(state.settings?.usualWake), cell(state.settings?.fajrHabit),
+          study.schemaVersion,
           day, date, record ? 1 : 0, record ? (record.lazy ? 'lazy' : 'full') : '',
           cell(record?.brainDay ?? state.brainDays?.[date] ?? null),
           plan ? 1 : 0, cell(plan?.mode), cell(plan?.windStart), cell(plan?.sleepStart),
@@ -7330,7 +7453,7 @@
       $('#fieldwork .welcome-card').scrollTop = 0;
       if (step === 3) window.setTimeout(() => $('#fwId').focus(), 120);
       if (step === 4) checkFwStorage();
-      if (step === 5) $('#fwDay').textContent = 'Day 1';
+      if (step === 6) $('#fwDay').textContent = 'Day 1';
     }
 
     async function checkFwStorage() {
@@ -7395,6 +7518,11 @@
         storageMode: fwStorageState?.mode || (store.healthy ? 'local' : 'memory'),
         lastSeenDay: 1
       };
+      // Belt and braces: if someone reached the end without the schedule step
+      // writing (an old deep link, a reload mid-flow), take whatever the field
+      // currently holds rather than leaving the engine guessing.
+      if (!state.settings.usualWake) state.settings.usualWake = $('#fwWake')?.value || '';
+      if (!state.settings.fajrHabit) state.settings.fajrHabit = fwHabit;
       // The general welcome tour is redundant once a participant has been
       // through this; two introductions in a row is one too many.
       state.settings.welcomeSeen = true;
@@ -7426,6 +7554,47 @@
     });
     $('#fwStorageRetry').addEventListener('click', checkFwStorage);
     $('#fwStorageNext').addEventListener('click', () => { if (!$('#fwStorageNext').disabled) showFw(5); });
+
+    /* The schedule question. Both answers are optional in the sense that the
+       time has a sensible starting value and the habit may genuinely be "it
+       depends" — but neither is invented: an untouched habit stays empty and
+       the export shows it empty. */
+    let fwHabit = '';
+    $$('#fwHabits .brain-chip').forEach(chip => chip.addEventListener('click', () => {
+      fwHabit = chip.dataset.habit;
+      $$('#fwHabits .brain-chip').forEach(other => {
+        const on = other === chip;
+        other.setAttribute('aria-pressed', String(on));
+        other.querySelector('.glyph').textContent = on ? '✓' : ({return:'☾', stay:'☀', depends:'◐'})[other.dataset.habit];
+      });
+    }));
+    $('#pendingGo')?.addEventListener('click', () => openFlow('wake'));
+
+    let nudgeHabit = '';
+    $$('#nudgeHabits .brain-chip').forEach(chip => chip.addEventListener('click', () => {
+      nudgeHabit = chip.dataset.habit;
+      $$('#nudgeHabits .brain-chip').forEach(other => {
+        const on = other === chip;
+        other.setAttribute('aria-pressed', String(on));
+        other.querySelector('.glyph').textContent = on ? '✓' : ({return:'☾', stay:'☀', depends:'◐'})[other.dataset.habit];
+      });
+    }));
+    $('#nudgeSave')?.addEventListener('click', () => {
+      const wake = $('#nudgeWake').value;
+      if (!/^\d{2}:\d{2}$/.test(wake)) { toast('Choose a time first'); return; }
+      state.settings.usualWake = wake;
+      state.settings.fajrHabit = nudgeHabit;
+      saveState();
+      renderAll();
+      toast('Noted — thank you');
+    });
+
+    $('#fwSchedNext').addEventListener('click', () => {
+      state.settings.usualWake = $('#fwWake').value || '';
+      state.settings.fajrHabit = fwHabit;
+      saveState();
+      showFw(6);
+    });
     $('#fwDone').addEventListener('click', finishFieldwork);
 
     function closeWelcome(destination) {
