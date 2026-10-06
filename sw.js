@@ -1,4 +1,4 @@
-const CACHE = 'sleepsphere-v7-arabic-labels-20261006';
+const CACHE = 'sleepsphere-v8-build-my-night-20261006';
 /* The Arabic face is shell, not an extra. The dua is read at bedtime, which
    is exactly when a phone is likeliest to be in a basement, on aeroplane
    mode, or out of data — so it is fetched on install with everything else

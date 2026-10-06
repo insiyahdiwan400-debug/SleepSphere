@@ -1524,6 +1524,86 @@
       .topbar, .sidebar, .dusk-veil { transition:none; }
     }
 
+    /* ---- Build my night.
+
+       The same celestial ground as the dua, one step less deep: this is a
+       screen somebody makes a decision on, so it stays readable and its
+       controls stay obvious. The restraint is in how little it asks, not in
+       hiding the controls it does have. */
+    .night-veil { position:fixed; inset:0; z-index:66; overflow-y:auto;
+      padding:max(26px,env(safe-area-inset-top)) 18px calc(28px + env(safe-area-inset-bottom));
+      opacity:0; transition:opacity .55s ease;
+      /* No backdrop-filter. The ground here is 93-97% opaque, so a blur of
+         what is behind it is invisible — and it costs the compositor a
+         full-screen blur every frame for as long as the screen is open.
+         Measured at 44.7fps with it and 56.9 without, on the same device,
+         for no difference anyone can see. */
+      background:radial-gradient(120% 80% at 50% 0%, rgba(10,14,26,.93), rgba(4,6,13,.97) 70%), rgba(4,6,13,.95); }
+    .night-veil.on { opacity:1; }
+    .night-sheet { width:min(520px,100%); margin:0 auto; }
+    .night-close { position:absolute; top:max(18px,env(safe-area-inset-top)); right:16px;
+      width:40px; height:40px; border-radius:50%; cursor:pointer;
+      border:1px solid rgba(233,228,217,.16); background:rgba(233,228,217,.05);
+      color:#cfc8bb; font-size:15px; line-height:1; }
+    .night-close:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+
+    .night-pane { display:flex; flex-direction:column; gap:16px; padding-top:30px; }
+    .night-pane[hidden] { display:none !important; }
+    .night-eyebrow { margin:0; color:var(--gold); font-size:11px; font-weight:800;
+      letter-spacing:1.5px; text-transform:uppercase; }
+    .night-title { margin:0; color:#f4f1ea; font-family:var(--font-display);
+      font-weight:500; font-size:clamp(28px,7vw,40px); line-height:1.1; letter-spacing:-.02em; }
+    /* What SleepSphere already knows, said back in one line. This is the
+       whole argument of the feature, so it is set like a statement rather
+       than like a form summary. */
+    .night-facts { margin:0; color:#d6d0c4; font-size:clamp(16px,4.2vw,19px); line-height:1.65; }
+    .night-facts b { color:#f4f1ea; font-weight:600; }
+    .night-ask { margin:10px 0 0; color:#a49d90; font-size:15px; }
+    .night-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:4px; }
+    .night-actions .btn { min-height:50px; }
+    .night-note { margin:0; color:#9a9387; font-size:13.5px; line-height:1.55; }
+    .night-note[hidden] { display:none !important; }
+
+    .night-field { display:flex; flex-direction:column; gap:9px;
+      padding:16px 0 2px; border-top:1px solid rgba(233,228,217,.08); }
+    .night-field[hidden] { display:none !important; }
+    .night-q { margin:0; color:#cdc6b9; font-size:15px; font-weight:600; }
+    .night-hint { margin:0; color:#8e887c; font-size:13px; }
+    .night-keep { display:flex; align-items:center; gap:9px; color:#9a9387; font-size:13.5px; cursor:pointer; }
+    .night-keep input { width:18px; height:18px; accent-color:var(--gold); }
+    .fw-habits.wrap { flex-wrap:wrap; }
+    .brain-grid.tight { gap:7px; }
+    .night-duty-when { display:flex; align-items:center; gap:10px; }
+    .night-duty-when[hidden] { display:none !important; }
+
+    /* ---- The journey. Celestial, not clinical: no axis, no grid, no
+       quantity on it. Position carries order and shape; the printed times
+       carry everything a person actually has to read. */
+    .night-journey { margin:6px 0 0; }
+    .journey { width:100%; height:auto; display:block; overflow:visible; }
+    .jx-path { fill:none; stroke:rgba(216,185,104,.5); stroke-width:1.4; stroke-linecap:round; }
+    .jx-band { fill:rgba(216,185,104,.07); stroke:rgba(216,185,104,.14); stroke-width:1; }
+    .jx-tick { stroke:rgba(233,228,217,.2); stroke-width:1; }
+    .jx-dot { fill:rgba(233,228,217,.72); }
+    .jx-dot.bright { fill:var(--gold-soft); }
+    /* The Arabic names sit back; the times are what gets read. */
+    .jx-name { fill:rgba(233,228,217,.42); font-size:11px; font-family:var(--font-arabic); }
+    .jx-time { fill:#ddd6c9; font-size:11.5px; font-family:var(--font-display);
+      font-variant-numeric:tabular-nums; }
+    .jx-time.faint { fill:rgba(221,214,201,.45); }
+
+    .night-ends { margin:0; color:#9a9387; font-size:13px; letter-spacing:.01em; }
+    .night-ends b { color:#cdc6b9; font-weight:600; font-variant-numeric:tabular-nums; }
+    .night-window { margin:2px 0 0; color:#cdc6b9; font-size:15px; }
+    .night-window b { color:var(--gold-soft); font-weight:600; }
+    .night-intention { padding:16px 17px; border-radius:16px;
+      border:1px solid rgba(216,185,104,.18); background:rgba(216,185,104,.05); }
+    .night-intention p:last-child { margin:6px 0 0; color:#e4ded2; font-size:15.5px; line-height:1.6; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .night-veil { transition:none; }
+    }
+
     /* ---- The dua. Everything here exists to keep one block of Arabic the
        most legible thing on the screen: a near-opaque ground behind the text,
        a Naskh stack that iOS actually ships, generous leading for the
@@ -1532,8 +1612,7 @@
       padding:28px 22px; opacity:0; transition:opacity 1.1s ease;
       background:
         radial-gradient(120% 70% at 50% 42%, rgba(6,8,16,.82), rgba(3,4,9,.97) 72%),
-        rgba(3,4,9,.9);
-      -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px); }
+        rgba(3,4,9,.9); }
     .dua-veil.on { opacity:1; }
     .dua-inner { width:min(560px,100%); text-align:center;
       display:flex; flex-direction:column; align-items:center; gap:4px;
@@ -2083,6 +2162,92 @@
   <div class="dusk-veil" aria-hidden="true"></div>
   <!-- Lazy mode. The whole screen is the button: on a night when you have
        nothing left, aiming at a target is itself a demand. -->
+  <!-- Build my night. Three panes, one at a time: what SleepSphere already
+       knows, what is different tonight (only if there is any), and the night
+       itself. A normal evening never sees the middle one. -->
+  <div class="night-veil" id="nightVeil" hidden role="dialog" aria-modal="true" aria-labelledby="nightTitle">
+    <button type="button" class="night-close" id="nightClose" aria-label="Close">✕</button>
+    <div class="night-sheet">
+
+      <!-- 1. What we already know. -->
+      <section class="night-pane" id="nightKnow" hidden>
+        <p class="night-eyebrow">Tomorrow</p>
+        <h2 class="night-title" id="nightTitle">Tomorrow</h2>
+        <p class="night-facts" id="knowFacts"></p>
+        <p class="night-ask" id="knowAsk">Anything different tonight?</p>
+        <div class="night-actions">
+          <button type="button" class="btn primary" id="knowNormal">Everything’s normal</button>
+          <button type="button" class="btn ghost" id="knowChange">Change tonight</button>
+        </div>
+        <p class="night-note" id="knowNote"></p>
+      </section>
+
+      <!-- 2. Only what changed. Never shown unless it is needed. -->
+      <section class="night-pane" id="nightChange" hidden>
+        <p class="night-eyebrow">Tonight only</p>
+        <h2 class="night-title">What’s different?</h2>
+
+        <div class="night-field">
+          <p class="night-q">Tomorrow is…</p>
+          <div class="brain-grid tight" id="changeBrain" role="group" aria-label="What tomorrow asks of you"></div>
+        </div>
+
+        <div class="night-field">
+          <label class="night-q" for="changeWake">You need to be up at</label>
+          <input class="nudge-time" id="changeWake" type="time" />
+          <p class="night-hint" id="changeWakeHint"></p>
+        </div>
+
+        <div class="night-field" id="changeFajrField">
+          <p class="night-q">After Fajr tonight</p>
+          <div class="fw-habits" id="changeHabit" role="group" aria-label="After Fajr tonight">
+            <button type="button" class="brain-chip" data-habit="return" aria-pressed="false">
+              <span class="glyph" aria-hidden="true">☾</span><span>Return to sleep</span></button>
+            <button type="button" class="brain-chip" data-habit="stay" aria-pressed="false">
+              <span class="glyph" aria-hidden="true">☀</span><span>Stay awake</span></button>
+          </div>
+          <label class="night-keep"><input type="checkbox" id="changeHabitKeep" />
+            <span>Make this my usual, not just tonight</span></label>
+        </div>
+
+        <div class="night-field">
+          <p class="night-q">Anything fixed tomorrow morning?</p>
+          <div class="fw-habits wrap" id="changeDuty" role="group" aria-label="Fixed tomorrow morning"></div>
+          <div class="night-duty-when" id="changeDutyWhen" hidden>
+            <label class="night-hint" for="changeDutyTime">Starts at</label>
+            <input class="nudge-time" id="changeDutyTime" type="time" />
+          </div>
+        </div>
+
+        <div class="night-actions">
+          <button type="button" class="btn primary" id="changeBuild">Build my night</button>
+        </div>
+        <p class="night-note" id="changeNote"></p>
+        <!-- For anyone who wants every lever: the original planner, with the
+             target, the settle and wind-down lengths and the barrier. -->
+        <p class="night-note"><button type="button" class="flow-link" id="changeFull">Open the full planner instead</button></p>
+      </section>
+
+      <!-- 3. The night itself. -->
+      <section class="night-pane" id="nightPlan" hidden>
+        <p class="night-eyebrow">Tonight</p>
+        <div class="night-journey" id="planJourney"></div>
+        <p class="night-ends" id="planEnds"></p>
+        <p class="night-window" id="planWindow"></p>
+        <div class="night-intention">
+          <p class="card-label">Tonight’s intention</p>
+          <p id="planIntention"></p>
+        </div>
+        <p class="night-note" id="planWarning" hidden></p>
+        <div class="night-actions">
+          <button type="button" class="btn primary" id="planSave">Save tonight’s plan</button>
+          <button type="button" class="btn ghost" id="planAdjust">Adjust</button>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
   <!-- The closing moment of the day. One screen, one thing to read, one
        thing to tap. The sky is left running behind it because it is the one
        piece of the app that belongs at bedtime, but it is pushed well back
@@ -4237,17 +4402,14 @@
        Returns null rather than guessing. A dua that names the wrong hour is
        worse than one that keeps its placeholder. */
     function duaWakeMinutes(state_ = state) {
-      const plan = state_.plan;
-      if (plan) {
-        if (plan.mode === 'fajr') {
-          // Returning to sleep after Fajr: the dua names the final rising.
-          if (plan.finalWake) return toMinutes(plan.finalWake);
-          // A Fajr plan with no second sleep means the day starts at Fajr.
-          if (plan.fajr) return toMinutes(plan.fajr);
-        } else if (plan.wake) {
-          return toMinutes(plan.wake);
-        }
-      }
+      /* The same function every other screen now uses for "when do they
+         actually get up": on a Fajr Bridge night the end of the SECOND
+         sleep, on a Fajr plan with no second sleep Fajr itself, otherwise
+         tonight's planned wake. The dua had this logic first and it is now
+         shared rather than duplicated, so the dua and the morning prefill
+         can never name different hours for the same night. */
+      const final = planFinalWake(state_.plan);
+      if (final) return toMinutes(final);
       const usual = state_.settings?.usualWake;
       if (usual && /^\d{2}:\d{2}$/.test(usual)) return toMinutes(usual);
       return null;
@@ -4259,6 +4421,212 @@
       const tail = minutes == null ? DUA.placeholder : arabicClock(minutes);
       return `${DUA.line2Lead} ${tail}`;
     }
+
+    /* ==================================================================
+       BUILD MY NIGHT
+
+       Tomorrow shapes tonight. The arithmetic lives here, as pure functions
+       with no DOM in them, because the interesting part of this feature is
+       the decisions it makes and those have to be testable as arithmetic
+       rather than by clicking through a form.
+
+       The governing rule, which every function below exists to serve:
+       NEVER ASK FOR WHAT IS ALREADY KNOWN. SleepSphere holds the Brain Day,
+       the usual start of day, the Fajr habit and its own calculated Fajr.
+       A normal night is therefore a confirmation, not a questionnaire, and
+       only what is genuinely different tonight is ever asked.
+       ================================================================== */
+
+    /* Everything SleepSphere already knows about tomorrow, gathered in one
+       place so the screen never reaches for a value the engine did not
+       approve. `missing` is the honest part: it lists what genuinely is not
+       known, and that list — not a guess — is what the interface asks for. */
+    function nightKnowledge(state_ = state, now = new Date()) {
+      const settings = state_.settings || {};
+      const brainDay = brainDayFor(brainDayKeyFor(now));
+      const usualWake = /^\d{2}:\d{2}$/.test(settings.usualWake || '') ? settings.usualWake : null;
+      /* Fajr comes from the tested engine and nowhere else. It is never
+         typed in, never cached into the plan as an input, and when there is
+         no location it is simply unknown — an invented Fajr would be worse
+         than none, and the night is still plannable without it. */
+      const prayer = tomorrowPrayerTimes();
+      const fajr = prayer && prayer.fajr ? prayer.fajr : null;
+      const habit = ['return','stay','depends'].includes(settings.fajrHabit) ? settings.fajrHabit : null;
+
+      const missing = [];
+      if (!usualWake) missing.push('wake');
+      // 'depends' is not missing information — it is information that says
+      // this is the one thing worth asking tonight.
+      if (!habit) missing.push('habit');
+
+      return {
+        brainDay, usualWake, fajr, habit,
+        fajrEstimated: Boolean(prayer && prayer.estimated),
+        target: Number(settings.target) || 480,
+        settle: 15, wind: 30,
+        missing,
+        asksTonight: habit === 'depends'
+      };
+    }
+
+    /* The one night-shape decision: is there a second sleep after Fajr?
+
+       'return' only produces a bridge when a bridge is actually possible —
+       there has to be a Fajr, and the final wake has to come after it. A
+       participant who says they return to sleep but whose day starts at 5am
+       with Fajr at 5:04 is not describing a bridge, and modelling one would
+       put their whole night in the wrong place. */
+    function nightShape({ fajr, wake, afterFajr }) {
+      if (afterFajr !== 'return' || !fajr || !wake) return 'continuous';
+      const gap = forwardGap(toMinutes(fajr), toMinutes(wake));
+      // A second sleep of under twenty minutes, or one that would run most
+      // of the way round the clock, is not a second sleep.
+      if (gap < 20 || gap > 8 * 60) return 'continuous';
+      return 'fajr';
+    }
+
+    /**
+     * Build tonight from what tomorrow asks.
+     *
+     * Produces a plan object using the SAME field names the rest of the app
+     * already reads — mode, fajr, returnSleep, finalWake, wake, windStart,
+     * settleStart, sleepStart, wakeAnchor, total — so the context engine,
+     * the dua, Lazy Mode, the Restoration Twin and the export all keep
+     * working without knowing this screen exists. The new fields are added
+     * beside them, never instead of them.
+     *
+     * Pure: no DOM, no clock, no state. Everything it needs is passed in.
+     */
+    function buildNight(input) {
+      const target = Number(input.target) || 480;
+      const settle = Number.isFinite(Number(input.settle)) ? Number(input.settle) : 15;
+      const wind = Number.isFinite(Number(input.wind)) ? Number(input.wind) : 30;
+      const fajr = input.fajr || null;
+      const afterFajr = ['return','stay'].includes(input.afterFajr) ? input.afterFajr : null;
+
+      /* Where the day actually begins.
+
+         Someone who stays awake after Fajr IS up at Fajr — that is what the
+         answer means — so Fajr is their final waking even if they also told
+         us their day "usually starts" later. Someone who returns to sleep
+         rises at the end of the second sleep. Everyone else rises when they
+         said they do. */
+      let wake = input.wake || null;
+      if (!wake && afterFajr === 'stay' && fajr) wake = fajr;
+      if (afterFajr === 'stay' && fajr && wake && forwardGap(toMinutes(fajr), toMinutes(wake)) < 12 * 60) {
+        // They stay up from Fajr, so the later "usual" time is not a waking.
+        wake = fajr;
+      }
+      if (!wake) return null;   // Nothing reliable. The caller must ask.
+
+      const mode = nightShape({ fajr, wake, afterFajr });
+
+      if (mode === 'fajr') {
+        /* The Fajr Bridge, as the existing planner models it: the second
+           block is the sleep after Fajr, and the first block is whatever
+           the target still needs before it. */
+        const returnSleep = input.returnSleep || clockValue(normalizeMinutes(toMinutes(fajr) + 25));
+        const blockTwo = spanMinutes(returnSleep, wake);
+        const blockOne = Math.max(0, target - blockTwo);
+        const sleepStart = normalizeMinutes(toMinutes(fajr) - blockOne);
+        const settleStart = normalizeMinutes(sleepStart - settle);
+        const windStart = normalizeMinutes(settleStart - wind);
+        return {
+          mode: 'fajr', target, settle, wind,
+          barrier: input.barrier || 'Screens',
+          fajr, returnSleep, finalWake: wake,
+          blockOne, blockTwo, total: blockOne + blockTwo,
+          sleepStart, settleStart, windStart,
+          awakeBridge: spanMinutes(fajr, returnSleep),
+          wakeAnchor: fajr, reason: 'Fajr Bridge',
+          afterFajr: 'return'
+        };
+      }
+
+      const sleepStart = normalizeMinutes(toMinutes(wake) - target);
+      const settleStart = normalizeMinutes(sleepStart - settle);
+      const windStart = normalizeMinutes(settleStart - wind);
+      return {
+        mode: 'continuous', target, settle, wind,
+        barrier: input.barrier || 'Screens',
+        wake, reason: input.reason || 'Planned start of day',
+        /* Fajr is carried even on a continuous night. It is part of this
+           person's night whether or not it splits their sleep, the arc draws
+           it, and the export needs it to be able to tell a stay-awake night
+           from one where Fajr simply fell outside the window. */
+        fajr, finalWake: wake,
+        blockOne: target, blockTwo: 0, total: target,
+        sleepStart, settleStart, windStart,
+        wakeAnchor: wake,
+        afterFajr: afterFajr === 'stay' ? 'stay' : null
+      };
+    }
+
+    /* The final waking a plan describes — the moment the person actually
+       gets up, which on a bridge night is the end of the SECOND sleep.
+
+       This existed only inside duaWakeMinutes, and several older screens
+       reached for `mode === 'fajr' ? fajr : wake` instead, which is the
+       wake ANCHOR and on a bridge night is hours too early. One function
+       now, so the dua, the morning prefill and Today cannot disagree about
+       when somebody got up. */
+    function planFinalWake(plan) {
+      if (!plan) return null;
+      if (plan.mode === 'fajr') return plan.finalWake || plan.fajr || null;
+      return plan.wake || plan.finalWake || null;
+    }
+
+    /* ---- Tonight's intention.
+
+       ONE line. Not a recommendation list, not an article, and never guilt:
+       a single imperfect night is not a health event and the app does not
+       get to imply otherwise.
+
+       The language is deliberately about SLEEP OPPORTUNITY — the thing a
+       plan can actually arrange — and never about what the brain does with
+       it. SleepSphere does not measure memory consolidation, neuroplasticity
+       or cognitive recovery, so it does not mention them. */
+    const BRAIN_INTENTION = Object.freeze({
+      hifz:           'Tomorrow leans on memory. Protect the earlier part of tonight — the opportunity is the part you can actually arrange.',
+      heavy_learning: 'Tomorrow asks a lot of your attention. A steady, complete night is worth more than one more hour of reading.',
+      exam:           'Tomorrow is a high-focus day. A realistic night tends to serve you better than a late one.',
+      travel:         'Tomorrow’s timing is unusual. Build tonight around when you actually have to be up.',
+      recovery:       'Nothing to perform tomorrow. Take the night you need.',
+      normal:         'Keep tonight simple and steady.'
+    });
+
+    function nightIntention(plan, knowledge = {}) {
+      if (!plan) return '';
+      /* An early start outranks the category: whatever tomorrow is for, the
+         useful thing to say about a night that has to end at five is that it
+         has to begin sooner. */
+      const windHour = normalizeMinutes(Number(plan.windStart)) / 60;
+      if (windHour >= 12 && windHour < 20.5) {
+        return `Tomorrow starts unusually early. Give yourself room to settle sooner tonight — wind down around ${formatTime(plan.windStart)}.`;
+      }
+      if (plan.total < plan.target - 45) {
+        /* Shorter than they asked for, said plainly and without alarm. The
+           app reports the arithmetic; it does not pass judgement on it. */
+        return `Tonight’s window comes to ${formatDuration(plan.total)}, short of the ${formatDuration(plan.target)} you aim for. That is worth knowing, not worrying about.`;
+      }
+      const key = knowledge.brainDay || plan.brainDay;
+      return BRAIN_INTENTION[key] || 'Build tonight around when you actually have to be up.';
+    }
+
+    /* ---- A fixed thing tomorrow morning.
+
+       Categories only, with no free-text option anywhere. That is a privacy
+       decision, not a shortcut: this field goes into the research export,
+       and a box a participant can type anything into is a box that will
+       eventually hold a name, a place or a reason. A category and a time
+       answer the planning question completely. */
+    const OBLIGATION = Object.freeze({
+      jamea:       'Jamea or class',
+      exam:        'Exam',
+      travel:      'Travel or departure',
+      appointment: 'Appointment',
+      other:       'Something fixed'
+    });
 
     const BRAIN_GLYPH = { hifz:'◉', heavy_learning:'◈', exam:'✦', normal:'○', travel:'✈', recovery:'◡' };
 
@@ -4320,12 +4688,17 @@
       if (phase === 'EVENING') {
         eyebrow.textContent = 'This evening';
         const planned = state.plan && state.plan.savedDate === studyToday();
-        ask.textContent = planned ? 'Tonight is planned.' : 'Let’s prepare tonight.';
+        ask.textContent = planned ? 'Tonight is planned.' : 'Let’s build tonight.';
         sub.textContent = planned
-          ? `Wind down around ${formatTime(state.plan.windStart)}, settle by ${formatTime(state.plan.sleepStart)}.`
-          : 'Build a realistic night around what tomorrow actually asks.';
-        go.textContent = planned ? 'Change tonight’s plan' : 'Plan tonight';
-        go.onclick = () => navigate('plan');
+          ? `Wind down around ${formatTime(state.plan.windStart)}, settle by ${formatTime(state.plan.settleStart ?? state.plan.sleepStart)}.`
+          : 'Tomorrow shapes tonight. It takes seconds if nothing is unusual.';
+        go.textContent = planned ? 'Change tonight’s plan' : 'Build my night';
+        go.onclick = openBuildNight;
+        /* Still two actions. The full planner has not gone anywhere — it is
+           its own destination in the navigation, and pane two of Build my
+           night links to it — but it is no longer what an evening opens
+           with, because opening with a form is the thing this phase exists
+           to stop. */
         alt.hidden = false;
         alt.textContent = 'Clear my mind';
         alt.onclick = () => navigate('unload');
@@ -4367,6 +4740,149 @@
        not part of the supplied prayer. */
     const ARC_LABEL = Object.freeze({ sleep: 'النوم', fajr: 'الفجر', wake: 'الاستيقاظ' });
 
+    /* ==================================================================
+       THE CELESTIAL JOURNEY
+
+       The same night the dua's arc draws, at the size where it is the point
+       of the screen rather than an ornament under it: one curve from settling
+       to rising, with the person's own times on it.
+
+       Deliberately not a chart. There is no axis, no grid and no quantity on
+       it — the x position is time only so that the ORDER and the SHAPE are
+       right, which is the whole of what it has to communicate: where tonight
+       begins, where Fajr sits, whether there is a second sleep, and when they
+       finally get up. The times are printed because atmosphere must not cost
+       comprehension.
+       ================================================================== */
+    function journeySvg(plan) {
+      if (!plan || !Number.isFinite(Number(plan.windStart))) return '';
+      /* One curve across the night: it sinks at settling, rises to Fajr,
+         sinks again for a second sleep where there is one, and comes up at
+         waking. The shape IS the information — two dips means two sleeps —
+         which is why there is no band, no block and no legend. */
+      const W = 340, H = 132, PEAK = 26, FLOOR = 92, EDGE = 34;
+
+      /* Placed by minutes elapsed from wind-down, so a night that crosses
+         midnight draws as one continuous run instead of wrapping. */
+      const from = normalizeMinutes(Number(plan.windStart));
+      const at = time => forwardGap(from, typeof time === 'number' ? normalizeMinutes(time) : toMinutes(time));
+
+      const bridge = plan.mode === 'fajr' && plan.fajr && plan.returnSleep;
+      const finalWake = planFinalWake(plan);
+      const wakeMin = at(finalWake);
+      const fajrMin = plan.fajr ? at(plan.fajr) : null;
+      /* Fajr is drawn whenever it genuinely sits inside this night — which
+         includes the stay-awake night, where it IS the waking. */
+      const fajrShown = plan.fajr && fajrMin !== null && fajrMin <= wakeMin;
+      const sameAsWake = fajrShown && Math.abs(fajrMin - wakeMin) < 6;
+
+      /* Shape first.
+
+         The night is a basin, not a ramp. Settling descends into it and it
+         STAYS down for the length of the sleep — an earlier version ran a
+         single curve from settling up to Fajr, and a four-hour block drawn
+         as one long climb reads as slowly waking up all night, which is the
+         opposite of what it is. Each sleep therefore gets a holding point
+         that keeps the floor until shortly before it ends. */
+      const shape = [{ m: 0, y: FLOOR - 18 }, { m: at(plan.settleStart), y: FLOOR }];
+      const holdTo = (next, floor) => {
+        const last = shape[shape.length - 1];
+        if (next - last.m > 25) shape.push({ m: next - (next - last.m) * 0.32, y: floor });
+      };
+      if (fajrShown && !sameAsWake) {
+        holdTo(fajrMin, FLOOR);
+        shape.push({ m: fajrMin, y: PEAK });
+        if (bridge) {
+          shape.push({ m: at(plan.returnSleep), y: FLOOR - 6 });
+          holdTo(wakeMin, FLOOR - 6);
+        }
+      } else {
+        holdTo(wakeMin, FLOOR);
+      }
+      shape.push({ m: wakeMin, y: sameAsWake ? PEAK : PEAK + 8 });
+      const span = Math.max(60, shape[shape.length - 1].m);
+      const x = m => EDGE + (m / span) * (W - EDGE * 2);
+
+      let path = `M${x(shape[0].m).toFixed(1)} ${shape[0].y}`;
+      for (let i = 1; i < shape.length; i += 1) {
+        const a = shape[i - 1], b = shape[i];
+        const ax = x(a.m), bx = x(b.m), mid = ax + (bx - ax) / 2;
+        path += ` C ${mid.toFixed(1)} ${a.y}, ${mid.toFixed(1)} ${b.y}, ${bx.toFixed(1)} ${b.y}`;
+      }
+
+      /* Marked points: the three the approved labels name, and no others.
+         A stay-awake night has one point that is both Fajr and the waking,
+         so it is named once rather than stacked twice. */
+      const marks = [{ m: at(plan.settleStart), y: FLOOR, label: ARC_LABEL.sleep,
+                       when: formatTime(plan.settleStart), bright: false }];
+      if (fajrShown && !sameAsWake) {
+        marks.push({ m: fajrMin, y: PEAK, label: ARC_LABEL.fajr,
+                     when: formatTime(toMinutes(plan.fajr)), bright: true });
+      }
+      marks.push({ m: wakeMin, y: sameAsWake ? PEAK : PEAK + 8,
+                   label: sameAsWake ? ARC_LABEL.fajr : ARC_LABEL.wake,
+                   when: formatTime(toMinutes(finalWake)), bright: !bridge || sameAsWake });
+
+      const dot = p => `<circle class="jx-dot${p.bright ? ' bright' : ''}" cx="${x(p.m).toFixed(1)}" cy="${p.y}" r="${p.bright ? 4.6 : 3.4}" />`;
+      const name = p => `<text class="jx-name" x="${x(p.m).toFixed(1)}" y="${p.y - 12}" text-anchor="middle"
+        direction="rtl" xml:lang="ar" style="unicode-bidi:isolate">${escapeHtml(p.label)}</text>`;
+      /* The times sit on one baseline, not under each point: a time printed
+         beneath a dip and one beneath a peak are sixty units apart and read
+         as two unrelated rows. First and last anchor to their ends so
+         nothing runs off the edge.
+
+         A night where Fajr is close to waking puts two times within a few
+         percent of the width of each other — 4:45 AM and 6:30 AM ran into
+         one another on the first build — so anything that would collide
+         drops to a second row instead. Measured in SVG units against a
+         conservative width for the widest label this ever prints. */
+      const LABEL_W = 52;
+      const placed = marks.map((p, i) => {
+        const anchor = i === 0 ? 'start' : i === marks.length - 1 ? 'end' : 'middle';
+        const px = i === 0 ? x(p.m) - 6 : i === marks.length - 1 ? x(p.m) + 6 : x(p.m);
+        /* Compared as intervals, not as centres. Centre-to-centre distance
+           is the wrong test the moment two labels have different anchors:
+           a centred 4:45 AM and an end-anchored 6:30 AM sat 58 units apart
+           and still overlapped by fourteen. */
+        const left = anchor === 'start' ? px : anchor === 'end' ? px - LABEL_W : px - LABEL_W / 2;
+        return { ...p, anchor, px, left, right: left + LABEL_W };
+      });
+      let rowEnd = -Infinity;
+      placed.forEach(p => {
+        p.row = p.left < rowEnd + 4 ? 1 : 0;
+        if (p.row === 0) rowEnd = p.right;
+      });
+      const when = p =>
+        `<text class="jx-time" x="${p.px.toFixed(1)}" y="${H - 8 - p.row * 15}" text-anchor="${p.anchor}">${escapeHtml(p.when)}</text>`;
+
+      return `<svg class="journey" viewBox="0 0 ${W} ${H}" role="img"
+                   aria-label="${escapeHtml(journeyText(plan))}">
+        <path class="jx-path" d="${path}" />
+        ${marks.map(dot).join('')}
+        ${marks.map(name).join('')}
+        ${placed.map(when).join('')}
+      </svg>`;
+    }
+
+    /* The same journey in words, for a screen reader and for anyone whose
+       sky never loads. Nothing on the drawing is information that only
+       exists on the drawing. */
+    function journeyText(plan) {
+      if (!plan) return '';
+      const parts = [`Wind down ${formatTime(plan.windStart)}`, `settle ${formatTime(plan.settleStart)}`];
+      if (plan.mode === 'fajr' && plan.fajr) {
+        parts.push(`Fajr ${formatTime(toMinutes(plan.fajr))}`);
+        if (plan.returnSleep) parts.push(`back to sleep ${formatTime(toMinutes(plan.returnSleep))}`);
+      } else if (plan.fajr) {
+        parts.push(`Fajr ${formatTime(toMinutes(plan.fajr))}`);
+      }
+      parts.push(`up ${formatTime(toMinutes(planFinalWake(plan)))}`);
+      if (plan.obligation && plan.obligation.time) {
+        parts.push(`${OBLIGATION[plan.obligation.kind] || 'Fixed'} ${formatTime(toMinutes(plan.obligation.time))}`);
+      }
+      return parts.join(', ') + `. ${formatDuration(plan.total)} of sleep opportunity.`;
+    }
+
     function renderDuaArc() {
       const svg = $('#duaArc');
       if (!svg) return;
@@ -4389,6 +4905,236 @@
            ${mark(14, 52)}${mark(266, 20, 'bright')}
            ${label(14, ARC_LABEL.sleep)}${label(266, ARC_LABEL.wake)}`;
     }
+
+    /* ==================================================================
+       BUILD MY NIGHT — the screen.
+
+       `tonight` is this session's working copy. It starts as everything
+       SleepSphere already knows and is only ever touched by something the
+       participant actually changed, which is what makes "everything's
+       normal" a single tap: the working copy is already the answer.
+
+       Nothing here writes to state until Save.
+       ================================================================== */
+    let tonight = null;
+
+    function nightPane(which) {
+      ['nightKnow','nightChange','nightPlan'].forEach(id => { $(`#${id}`).hidden = (id !== which); });
+      $('#nightVeil').scrollTop = 0;
+    }
+
+    function openBuildNight() {
+      const known = nightKnowledge();
+      tonight = {
+        brainDay: known.brainDay,
+        wake: known.usualWake,
+        fajr: known.fajr,
+        /* 'depends' is not an answer, so it does not become one here. It is
+           carried as null, which is what puts the question on the screen. */
+        afterFajr: known.habit === 'return' || known.habit === 'stay' ? known.habit : null,
+        keepHabit: false,
+        duty: null, dutyTime: '',
+        target: known.target, settle: known.settle, wind: known.wind,
+        knowledge: known
+      };
+      /* If a plan was already saved for tonight, this is a revisit, so start
+         from what they saved rather than from the general rules — otherwise
+         "change tonight's plan" would quietly undo last time's changes. */
+      const saved = state.plan && state.plan.savedDate === studyToday() ? state.plan : null;
+      if (saved) {
+        tonight.wake = planFinalWake(saved) || tonight.wake;
+        tonight.afterFajr = saved.afterFajr || tonight.afterFajr;
+        if (saved.obligation) { tonight.duty = saved.obligation.kind; tonight.dutyTime = saved.obligation.time || ''; }
+        if (saved.brainDay) tonight.brainDay = saved.brainDay;
+        tonight.target = saved.target || tonight.target;
+      }
+
+      $('#nightVeil').hidden = false;
+      document.body.style.overflow = 'hidden';
+      requestAnimationFrame(() => $('#nightVeil').classList.add('on'));
+
+      /* The one decision that makes this feature what it is. If anything
+         needed is genuinely unknown, ask — and ask ONLY for that. If
+         everything is known, show it back and offer one tap. */
+      if (nightNeedsAsking()) renderNightChange();
+      else renderNightKnow();
+    }
+
+    /* True when SleepSphere cannot build a night without being told
+       something. Note what is NOT here: the Brain Day, which is optional,
+       and the obligation, which most nights do not have. */
+    function nightNeedsAsking() {
+      if (!tonight.wake) return true;                       // no reliable wake, anywhere
+      if (tonight.fajr && !tonight.afterFajr) return true;  // habit is 'depends' or never asked
+      return false;
+    }
+
+    function closeBuildNight() {
+      const veil = $('#nightVeil');
+      veil.classList.remove('on');
+      document.body.style.overflow = '';
+      window.setTimeout(() => { veil.hidden = true; }, 420);
+    }
+
+    /* ---- Pane 1. Everything known, said back in one line. */
+    function renderNightKnow() {
+      const k = tonight.knowledge;
+      const bits = [];
+      if (tonight.wake) bits.push(`<b>${escapeHtml(formatTime(toMinutes(tonight.wake)))}</b> start`);
+      if (tonight.fajr) bits.push(`Fajr <b>${escapeHtml(formatTime(toMinutes(tonight.fajr)))}</b>`);
+      if (tonight.afterFajr === 'return') bits.push('back to sleep after');
+      if (tonight.afterFajr === 'stay') bits.push('up from Fajr');
+      if (tonight.duty && tonight.dutyTime) {
+        bits.push(`${escapeHtml(OBLIGATION[tonight.duty])} <b>${escapeHtml(formatTime(toMinutes(tonight.dutyTime)))}</b>`);
+      }
+
+      $('#nightTitle').textContent = tonight.brainDay
+        ? `Tomorrow: ${BRAIN_DAY[tonight.brainDay].toLowerCase()}.`
+        : 'Tomorrow';
+      $('#knowFacts').innerHTML = bits.join(' · ');
+      /* Said plainly rather than hidden, because a Fajr the app had to
+         estimate is a different thing from one it calculated. */
+      $('#knowNote').textContent = !tonight.fajr
+        ? 'Fajr is not set for your location yet, so tonight is built without it.'
+        : (k.fajrEstimated ? 'Fajr here is estimated — the sun does not reach the Fajr angle at this latitude today.' : '');
+      nightPane('nightKnow');
+      window.setTimeout(() => $('#knowNormal').focus({ preventScroll:true }), 260);
+    }
+
+    /* ---- Pane 2. Only what might be different. */
+    function renderNightChange() {
+      // Brain Day, as chips, pre-selected with what is already known.
+      $('#changeBrain').innerHTML = Object.entries(BRAIN_DAY).map(([key, label]) => `
+        <button type="button" class="brain-chip" data-brain="${key}" aria-pressed="${String(key === tonight.brainDay)}">
+          <span class="glyph" aria-hidden="true">${key === tonight.brainDay ? '✓' : BRAIN_GLYPH[key]}</span>
+          <span>${escapeHtml(label)}</span>
+        </button>`).join('');
+      $$('#changeBrain .brain-chip').forEach(chip => chip.addEventListener('click', () => {
+        tonight.brainDay = chip.dataset.brain; renderNightChange();
+      }));
+
+      $('#changeWake').value = tonight.wake || '';
+      $('#changeWakeHint').textContent = tonight.knowledge.usualWake
+        ? `Usually ${formatTime(toMinutes(tonight.knowledge.usualWake))}. Changing it here is for tonight only.`
+        : 'SleepSphere has no usual start of day for you yet, so this one is needed.';
+
+      // The Fajr question only exists if there is a Fajr.
+      $('#changeFajrField').hidden = !tonight.fajr;
+      $$('#changeHabit .brain-chip').forEach(chip => {
+        chip.setAttribute('aria-pressed', String(chip.dataset.habit === tonight.afterFajr));
+        chip.onclick = () => {
+          tonight.afterFajr = chip.dataset.habit;
+          $$('#changeHabit .brain-chip').forEach(other =>
+            other.setAttribute('aria-pressed', String(other.dataset.habit === tonight.afterFajr)));
+          $('#changeNote').textContent = '';
+        };
+      });
+      $('#changeHabitKeep').checked = Boolean(tonight.keepHabit);
+
+      $('#changeDuty').innerHTML = [['', 'Nothing fixed'], ...Object.entries(OBLIGATION)]
+        .map(([key, label]) => `
+          <button type="button" class="brain-chip" data-duty="${key}"
+                  aria-pressed="${String((tonight.duty || '') === key)}">
+            <span>${escapeHtml(label)}</span>
+          </button>`).join('');
+      $$('#changeDuty .brain-chip').forEach(chip => chip.addEventListener('click', () => {
+        tonight.duty = chip.dataset.duty || null;
+        if (!tonight.duty) tonight.dutyTime = '';
+        renderNightChange();
+      }));
+      $('#changeDutyWhen').hidden = !tonight.duty;
+      $('#changeDutyTime').value = tonight.dutyTime || '';
+
+      $('#changeNote').textContent = '';
+      nightPane('nightChange');
+    }
+
+    function readNightChange() {
+      const wake = $('#changeWake').value;
+      tonight.wake = /^\d{2}:\d{2}$/.test(wake) ? wake : null;
+      tonight.keepHabit = $('#changeHabitKeep').checked;
+      const dutyTime = $('#changeDutyTime').value;
+      tonight.dutyTime = tonight.duty && /^\d{2}:\d{2}$/.test(dutyTime) ? dutyTime : '';
+    }
+
+    /* ---- Pane 3. The night, built. */
+    function renderNightPlan() {
+      const plan = buildNight({
+        target: tonight.target, settle: tonight.settle, wind: tonight.wind,
+        fajr: tonight.fajr, wake: tonight.wake, afterFajr: tonight.afterFajr
+      });
+      if (!plan) { renderNightChange(); $('#changeNote').textContent = 'SleepSphere needs to know when you have to be up before it can build tonight.'; return; }
+
+      plan.brainDay = tonight.brainDay || null;
+      plan.obligation = tonight.duty && tonight.dutyTime ? { kind: tonight.duty, time: tonight.dutyTime } : null;
+      tonight.plan = plan;
+
+      $('#planJourney').innerHTML = journeySvg(plan);
+      /* Wind-down and the fixed thing tomorrow bracket the night rather than
+         sitting inside it, so they are said in words under the drawing. Five
+         times across one arc collide on a phone, and a time nobody can read
+         is worse than a time printed plainly. */
+      const ends = [`Wind down <b>${escapeHtml(formatTime(plan.windStart))}</b>`];
+      if (plan.obligation) {
+        ends.push(`${escapeHtml(OBLIGATION[plan.obligation.kind])} <b>${escapeHtml(formatTime(toMinutes(plan.obligation.time)))}</b>`);
+      }
+      $('#planEnds').innerHTML = ends.join(' · ');
+      $('#planWindow').innerHTML = plan.mode === 'fajr'
+        ? `<b>${escapeHtml(formatDuration(plan.total))}</b> of sleep opportunity, in two parts around Fajr.`
+        : plan.afterFajr === 'stay'
+          ? `<b>${escapeHtml(formatDuration(plan.total))}</b> of sleep opportunity, up from Fajr.`
+          : `<b>${escapeHtml(formatDuration(plan.total))}</b> of sleep opportunity.`;
+      $('#planIntention').textContent = nightIntention(plan, tonight.knowledge);
+
+      /* Warnings are statements of arithmetic, never verdicts. */
+      let warn = '';
+      if (plan.obligation) {
+        const lead = forwardGap(toMinutes(planFinalWake(plan)), toMinutes(plan.obligation.time));
+        if (lead < 30 || lead > 12 * 60) {
+          warn = `That leaves ${formatDuration(lead)} between getting up and ${OBLIGATION[plan.obligation.kind].toLowerCase()}. Adjust whichever is wrong.`;
+        }
+      }
+      if (!warn && plan.mode === 'fajr' && plan.blockTwo >= plan.target) {
+        warn = 'The second sleep already meets your whole target, which leaves no first block. Check the times.';
+      }
+      if (!warn && plan.mode === 'fajr' && plan.awakeBridge > 180) {
+        warn = 'The planned awake stretch around Fajr is over three hours. Check the return-to-sleep time.';
+      }
+      $('#planWarning').textContent = warn;
+      $('#planWarning').hidden = !warn;
+
+      nightPane('nightPlan');
+      window.setTimeout(() => $('#planSave').focus({ preventScroll:true }), 260);
+    }
+
+    function saveNight() {
+      const plan = tonight && tonight.plan;
+      if (!plan) return;
+      /* The permanent preference changes ONLY if they ticked the box. A
+         different answer for one night is a fact about tonight, not a
+         revision of who they are. */
+      if (tonight.keepHabit && tonight.afterFajr) state.settings.fajrHabit = tonight.afterFajr;
+      /* Brain Day goes to the map keyed by the night's date, which is what
+         keeps history honest: answering for tomorrow cannot reach back into
+         a morning already recorded. */
+      if (tonight.brainDay) setBrainDay(tonight.brainDay);
+
+      state.plan = { ...plan,
+        savedDate: studyToday(), savedAt: new Date().toISOString(),
+        source: 'build-my-night' };
+      saveState();
+      closeBuildNight();
+      renderAll();
+      toast('Tonight’s plan is ready');
+    }
+
+    $('#nightClose')?.addEventListener('click', closeBuildNight);
+    $('#knowNormal')?.addEventListener('click', renderNightPlan);
+    $('#knowChange')?.addEventListener('click', renderNightChange);
+    $('#changeBuild')?.addEventListener('click', () => { readNightChange(); renderNightPlan(); });
+    $('#changeFull')?.addEventListener('click', () => { closeBuildNight(); navigate('plan'); });
+    $('#planAdjust')?.addEventListener('click', renderNightChange);
+    $('#planSave')?.addEventListener('click', saveNight);
 
     /* Open → read → one tap → the sky alone → the existing Goodnight state.
        Nothing invites another interaction after the tap, which is the whole
@@ -4455,7 +5201,7 @@
         const currentPlan = Number.isFinite(Number(state.plan.windStart)) ? state.plan : readPlanForm();
         $('#todayWinddown').textContent = formatTime(currentPlan.windStart);
         $('#todayOpportunity').textContent = formatDuration(currentPlan.total || currentPlan.target);
-        $('#todayWake').textContent = formatTime(toMinutes(currentPlan.mode === 'fajr' ? currentPlan.fajr : currentPlan.wake));
+        $('#todayWake').textContent = formatTime(toMinutes(planFinalWake(currentPlan)));
       } else {
         $('#todayWinddown').textContent = 'Not planned'; $('#todayOpportunity').textContent = '—'; $('#todayWake').textContent = '—';
       }
@@ -4509,7 +5255,7 @@
       if (plan && Number.isFinite(Number(plan.windStart))) {
         const toWind = until(Number(plan.windStart));
         const toSleep = until(Number(plan.sleepStart));
-        const wakeAt = toMinutes(plan.mode === 'fajr' ? plan.fajr : plan.wake);
+        const wakeAt = toMinutes(planFinalWake(plan));
         const toWake = until(wakeAt);
         if (toWind > 0 && toWind <= 600) {
           status.textContent = `${formatDuration(toWind)} until wind-down`;
@@ -4602,7 +5348,7 @@
       const band = [];
 
       if (plan && Number.isFinite(Number(plan.sleepStart))) {
-        const wakeAt = toMinutes(plan.mode === 'fajr' ? plan.fajr : plan.wake);
+        const wakeAt = toMinutes(planFinalWake(plan));
         const from = arcPos(Number(plan.sleepStart));
         const to = arcPos(wakeAt);
         const width = Math.max(1.5, to - from);
@@ -5144,6 +5890,17 @@
       ['plan_wind_down',       'Planned wind-down start, minutes past midnight',              'calculated'],
       ['plan_sleep_start',     'Planned settle time, minutes past midnight',                  'calculated'],
       ['plan_wake_anchor',     'Planned wake or Fajr time, HH:MM',                            'entered'],
+      /* Phase 1B. plan_wake_anchor is Fajr on a Bridge night, which is not
+         when the participant got up — these say what the night actually
+         planned, so planned and actual can be compared without the analyst
+         having to reconstruct the shape from the mode. */
+      ['plan_fajr',            'Calculated Fajr the night was built around, HH:MM; empty if location unset', 'calculated'],
+      ['plan_second_sleep',    'Planned return to sleep after Fajr, HH:MM; empty if no second sleep',        'calculated'],
+      ['plan_final_wake',      'Planned final waking — end of the second sleep on a Bridge night, HH:MM',    'calculated'],
+      ['plan_after_fajr',      'return or stay FOR THIS NIGHT; may differ from the participant’s usual fajr_habit', 'entered'],
+      ['plan_obligation',      'Fixed morning commitment category: jamea, exam, travel, appointment, other; empty if none. Category only — the app has no free-text field here', 'entered'],
+      ['plan_obligation_time', 'When that commitment starts, HH:MM',                          'entered'],
+      ['plan_source',          'build-my-night = guided Phase 1B flow, empty = the detailed planner', 'calculated'],
       ['plan_total_minutes',   'Planned total sleep opportunity in minutes',                  'calculated'],
       ['bed_time',             'Got into bed, HH:MM',                                         'entered'],
       ['sleep_time',           'Estimated sleep onset, HH:MM',                                'entered'],
@@ -5193,7 +5950,18 @@
           .toISOString().slice(0, 10);
         const record = byDate.get(date) || null;
         const bio = bioByDate.get(date) || record?.bioHarmonySnapshot || null;
-        const plan = record?.planSnapshot || null;
+        /* A plan reaches the export through the morning record that
+           snapshotted it, which is what keeps history honest: changing a
+           preference in week three cannot rewrite week one.
+
+           The one exception is tonight. A participant who planned and then
+           did not record a morning had a plan, and a row that says no plan
+           existed would be wrong about them — so tonight's live plan is used
+           when, and only when, it is stamped for exactly this date and there
+           is no record to take precedence. Every earlier row still comes
+           from its own snapshot. */
+        const plan = record?.planSnapshot
+          || (state.plan && state.plan.savedDate === date ? state.plan : null);
         const inputs = bio?.inputs || {};
         const experiment = record?.experimentId
           ? [state.activeExperiment, ...state.experimentHistory].find(item => item?.id === record.experimentId)
@@ -5209,7 +5977,11 @@
           day, date, record ? 1 : 0, record ? (record.lazy ? 'lazy' : 'full') : '',
           cell(record?.brainDay ?? state.brainDays?.[date] ?? null),
           plan ? 1 : 0, cell(plan?.mode), cell(plan?.windStart), cell(plan?.sleepStart),
-          cell(plan?.wakeAnchor), cell(plan?.total),
+          cell(plan?.wakeAnchor),
+          cell(plan?.fajr), cell(plan?.mode === 'fajr' ? plan?.returnSleep : null),
+          cell(plan ? planFinalWake(plan) : null), cell(plan?.afterFajr),
+          cell(plan?.obligation?.kind), cell(plan?.obligation?.time), cell(plan?.source),
+          cell(plan?.total),
           cell(record?.bedTime), cell(record?.sleepTime), cell(record?.wakeTime),
           cell(record?.awakeMinutes), cell(record?.napMinutes),
           cell(record?.opportunityMinutes), cell(record?.sleepMinutes), cell(record?.efficiency),
@@ -5655,7 +6427,7 @@
       // what the night did differently.
       if (plan) {
         const bed = Number.isFinite(Number(plan.settleStart)) ? Number(plan.settleStart) : null;
-        const wake = plan.mode === 'fajr' ? plan.fajr : plan.wake;
+        const wake = planFinalWake(plan);
         if (bed != null) {
           $('#actualBed').value = clockValue(bed);
           $('#actualSleep').value = clockValue(bed + Number(plan.settle || 15));
@@ -6553,6 +7325,18 @@
          assembled from the plan, readable without opening the screen. The
          constants are returned too, so a test can prove the stored wording
          is byte-for-byte what was supplied rather than what it expected. */
+      /* Build my night, exposed the same way. The decisions this feature
+         makes are arithmetic — which shape the night takes, which hour the
+         day begins, what is known and what has to be asked — so they are
+         tested as arithmetic rather than by clicking through the screen.
+         The screen is tested too, but separately and for different things. */
+      window.__buildNight = input => buildNight(input);
+      window.__nightKnowledge = (override, iso) =>
+        nightKnowledge(override || state, iso ? new Date(iso) : new Date());
+      window.__nightShape = input => nightShape(input);
+      window.__planFinalWake = plan => planFinalWake(plan);
+      window.__intention = (plan, knowledge) => nightIntention(plan, knowledge || {});
+      window.__journeyText = plan => journeyText(plan);
       window.__dua = override => {
         const s = override ? { ...state, ...override } : state;
         return { heading: DUA.heading, line1: DUA.line1, lead: DUA.line2Lead,
@@ -7226,7 +8010,7 @@
       await bridge.startWindDown({
         windStart: nextOccurrence(Number(plan.windStart)),
         sleepStart: nextOccurrence(Number(plan.sleepStart)),
-        wakeAt: nextOccurrence(toMinutes(plan.mode === 'fajr' ? plan.fajr : plan.wake)),
+        wakeAt: nextOccurrence(toMinutes(planFinalWake(plan))),
         label: 'Tonight'
       });
     }
