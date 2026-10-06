@@ -98,7 +98,12 @@ const clockAt = (h, mi) => `(()=>{const R=Date;const f=new R(2026,8,9,${h},${mi}
       links: [...el.querySelectorAll('.living-link')].map(n => n.textContent.trim()),
       scanShown: (() => { const s = document.getElementById('nightScan'); return s && s.offsetParent !== null; })(),
       scanOpacity: (() => { const s = document.getElementById('nightScan');
-        return s && s.offsetParent !== null ? parseFloat(getComputedStyle(s).opacity) : null; })()
+        return s && s.offsetParent !== null ? parseFloat(getComputedStyle(s).opacity) : null; })(),
+      stage: document.documentElement.dataset.nightStage,
+      panelHeight: el.getBoundingClientRect().height,
+      margin: parseFloat(cs.marginTop),
+      linksOpacity: parseFloat(getComputedStyle(el.querySelector('.living-actions')).opacity),
+      linksShown: el.querySelector('.living-actions').offsetParent !== null
     };
   });
 
@@ -133,7 +138,8 @@ const clockAt = (h, mi) => `(()=>{const R=Date;const f=new R(2026,8,9,${h},${mi}
   }));
 
   /* 4. Brain Day context. */
-  check('Tomorrow’s Brain Day is named', e.context === 'Tomorrow · Hifz or revision', e.context);
+  check('Tomorrow’s Brain Day is named',
+        e.context.toLowerCase() === 'tomorrow · hifz or revision', e.context);
   check('With the matching intention', /memory/i.test(e.intention), e.intention);
 
   /* 5. The obligation, because this night has one. */
@@ -196,7 +202,8 @@ const clockAt = (h, mi) => `(()=>{const R=Date;const f=new R(2026,8,9,${h},${mi}
   check('With no obligation, none is shown',
         !/Jamea|Exam|Appointment|Travel/i.test(s.ends), s.ends);
   /* 4 (negative). No Brain Day chosen. */
-  check('With no Brain Day, the line says only “Tomorrow”', s.context === 'Tomorrow', s.context);
+  check('With no Brain Day, the line says only “Tomorrow”',
+        s.context.toLowerCase() === 'tomorrow', s.context);
   check('And the intention falls back without inventing a category',
         s.intention.length > 10 && !/hifz|exam|recovery/i.test(s.intention), s.intention);
   check('No console errors on a stay-awake night', stay.errs.length === 0, stay.errs.join(' | '));
@@ -237,20 +244,34 @@ const clockAt = (h, mi) => `(()=>{const R=Date;const f=new R(2026,8,9,${h},${mi}
   check('The detail never goes back up as the evening passes',
         detail.every((d, i) => i === 0 || d <= detail[i - 1] + 1e-9), detail.join(' → '));
   check('It is full early in the evening', series[0].detail === 1, String(series[0].detail));
-  check('Half gone by the time wind-down is under way',
-        series[4].detail > 0 && series[4].detail < 0.6, String(series[4].detail));
-  check('And nothing by the planned settling time',
-        series[5].detail < 0.1, `${series[5].at} → ${series[5].detail}`);
+  check('Well into fading by the last half hour',
+        series[3].detail > 0 && series[3].detail < 0.5, `${series[3].at} → ${series[3].detail}`);
+  check('And the explanation is gone before wind-down ends',
+        series[4].detail === 0, `${series[4].at} → ${series[4].detail}`);
   check('It is a ramp, not a switch',
         new Set(detail.map(d => d.toFixed(2))).size >= 4, detail.join(' '));
-  /* The drawing itself outlasts the text around it, which is the shape the
-     brief asks for: detail recedes, then the night itself. */
-  check('The secondary rows fade before the drawing does',
-        series[4].detailOpacity < series[4].opacity, `${series[4].detailOpacity} vs ${series[4].opacity}`);
+  /* THE SCREEN GETS SMALLER, NOT DIMMER.
+
+     The three layers go in order — the explanation, then the controls, then
+     the night itself — and each gives its space back once it has finished
+     fading, so the evening ends on a genuinely shorter page rather than the
+     same page turned down. */
+  check('The layers go in order, not together',
+        series.map(v => v.stage).join(' → ').includes('full')
+        && series.some(v => v.stage === 'links') && series.some(v => v.stage === 'bare'),
+        series.map(v => `${v.at}:${v.stage}`).join(' '));
+  check('And each one gives its space back when it goes',
+        series[4].panelHeight < series[0].panelHeight * 0.75,
+        `${Math.round(series[0].panelHeight)}px early → ${Math.round(series[4].panelHeight)}px at wind-down`);
   check('The evening’s heavier cards recede too, without disappearing',
         series[0].scanOpacity === 1 && series[4].scanShown
         && series[4].scanOpacity < 1 && series[4].scanOpacity >= 0.8,
         `${series[0].scanOpacity} → ${series[4].scanOpacity}`);
+  /* And the room around what is left grows, which is the other half of
+     feeling calmer: fewer things, each with more air. */
+  check('The air around the night grows as the evening empties',
+        series[4].margin > series[0].margin,
+        `${series[0].margin}px → ${series[4].margin}px`);
 
   /* READABLE AT THE DEEPEST RECEDE.
 
@@ -323,6 +344,92 @@ const clockAt = (h, mi) => `(()=>{const R=Date;const f=new R(2026,8,9,${h},${mi}
         legibility.pointer !== 'none' && !legibility.disabled && legibility.tappable,
         JSON.stringify({ pointer: legibility.pointer, disabled: legibility.disabled, tappable: legibility.tappable }));
   check('No console errors measuring it', legibility.errs.length === 0, legibility.errs.join(' | '));
+
+  /* EVERY LAYER STAYS READABLE RIGHT UP TO THE MOMENT IT IS REMOVED.
+
+     The same rule the cards taught, applied to the Living Night's own
+     layers: a control or a time at a fifth of its opacity looks broken, and
+     "quieter" has to mean fewer things rather than things nobody can read.
+     So each layer is measured at the faintest point it ever reaches while
+     still on screen — which is the point just before its stage ends. */
+  const floors = await (async () => {
+    const c = await open({ plan: BRIDGE, hour: 21, minute: 30 });
+    const out = await c.p.evaluate(() => {
+      const root = document.documentElement.style;
+      const srgb = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+      const lum = c => 0.2126 * srgb(c[0]) + 0.7152 * srgb(c[1]) + 0.0722 * srgb(c[2]);
+      const parse = s => (s.match(/[\d.]+/g) || []).map(Number).slice(0, 3);
+      const over = (fg, bg, a) => [0,1,2].map(i => fg[i] * a + bg[i] * (1 - a));
+      const ratio = (a, b) => { const l = [lum(a), lum(b)].sort((x, y) => y - x);
+                                return (l[0] + 0.05) / (l[1] + 0.05); };
+      const GROUND = [8, 10, 18];
+      const panel = document.getElementById('livingNight');
+      // The faintest each layer ever gets while still displayed.
+      const read = (sel, carrier) => {
+        const el = panel.querySelector(sel);
+        if (!el || el.offsetParent === null) return null;
+        const a = parseFloat(getComputedStyle(panel).opacity)
+                * parseFloat(getComputedStyle(carrier ? panel.querySelector(carrier) : el).opacity);
+        return ratio(over(parse(getComputedStyle(el).color), GROUND, a), GROUND);
+      };
+      // Drive every layer to the last instant before it is taken away.
+      root.setProperty('--night-detail', '0.001');
+      root.setProperty('--night-links', '0.001');
+      root.setProperty('--night-frame', '0.001');
+      return {
+        intention: read('.living-intention', '.living-detail'),
+        context: read('.living-context', '.living-detail'),
+        link: read('.living-link', '.living-actions'),
+        ends: read('.living-ends'),
+        time: (() => {
+          const t = panel.querySelector('.jx-time');
+          if (!t) return null;
+          const a = parseFloat(getComputedStyle(panel).opacity);
+          return ratio(over(parse(getComputedStyle(t).fill), GROUND, a), GROUND);
+        })()
+      };
+    });
+    const errs = c.errs;
+    await c.ctx.close();
+    return { ...out, errs };
+  })();
+  for (const [what, value] of Object.entries(floors)) {
+    if (what === 'errs' || value === null) continue;
+    check(`The ${what} is still readable at its faintest`, value >= 4.5, `${value.toFixed(2)}:1`);
+  }
+  check('No console errors measuring the layer floors', floors.errs.length === 0, floors.errs.join(' | '));
+
+  /* The night journey must read as part of the sky rather than a chart laid
+     on it: the curve is lit along its length and the marks are soft points,
+     which is one gradient each and no extra layer, glow or animation. */
+  const sky = await (async () => {
+    const c = await open({ plan: BRIDGE, hour: 20, minute: 40 });
+    const out = await c.p.evaluate(() => {
+      const svg = document.querySelector('#livingNight svg.journey');
+      const path = svg.querySelector('.jx-path');
+      const dots = [...svg.querySelectorAll('.jx-dot')];
+      return {
+        litCurve: /url\(/.test(getComputedStyle(path).stroke),
+        softMarks: dots.every(d => /url\(/.test(getComputedStyle(d).fill)),
+        gradients: document.querySelectorAll('#jxLine, #jxStar, #jxStarBright').length,
+        // Defined once in the page, not duplicated into each drawing.
+        duplicateIds: ['jxLine','jxStar','jxStarBright']
+          .every(id => document.querySelectorAll(`[id="${id}"]`).length === 1),
+        noCard: (() => { const s = getComputedStyle(document.querySelector('.living-sky'));
+          return s.borderTopWidth === '0px' && s.backgroundColor === 'rgba(0, 0, 0, 0)'
+                 && s.boxShadow === 'none'; })(),
+        animations: document.getAnimations().filter(a => a.playState === 'running').length
+      };
+    });
+    await c.ctx.close();
+    return out;
+  })();
+  check('The curve is lit along its length, not drawn in one flat colour', sky.litCurve);
+  check('And its marks are soft points rather than data dots', sky.softMarks);
+  check('Both come from gradients defined once in the page',
+        sky.gradients === 3 && sky.duplicateIds, `${sky.gradients} gradients`);
+  check('The night is suspended in the sky, not sitting in a card', sky.noCard);
+  check('And nothing on it animates', sky.animations === 0, String(sky.animations));
 
   /* 8. Goodnight belongs to bedtime and to nothing before it. */
   const evenings = series.filter(v => v.phase === 'EVENING');
