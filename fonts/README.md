@@ -1,7 +1,7 @@
 # The Arabic face
 
-`amiri-naskh.woff2` is a subset of **Amiri**, cut down to exactly the
-characters SleepSphere actually sets in Arabic.
+`amiri-naskh-v2.woff2` is a subset of **Amiri**, cut to the Arabic letter
+repertoire SleepSphere may need to set.
 
 ## Why Amiri
 
@@ -30,15 +30,27 @@ pyftsubset amiri-arabic-400-normal.woff2 \
   --text-file=subset.txt \
   --layout-features='*' \
   --flavor=woff2 \
-  --output-file=amiri-naskh.woff2 \
+  --output-file=amiri-naskh-v2.woff2 \
   --no-hinting --desubroutinize
 ```
 
-`subset.txt` is every Arabic codepoint that appears in `index.html`, plus
-all ten Arabic-Indic digits, the punctuation that sits inside an Arabic
-run on screen, and the joiners. **All ten digits are included even though
-only some appear in the source**, because the dua's wake time is built at
-runtime and any digit can turn up in it.
+`subset.txt` is **the whole basic Arabic letter repertoire** — every
+letter and hamza form in U+0621–U+064A, every tashkeel mark, the dagger
+alif and wasla, all ten Arabic-Indic digits, Arabic punctuation, the
+Quranic marks, the joiners, and whatever Arabic happens to be in
+`index.html` as a belt-and-braces check.
+
+**The first cut was built only from the characters the file then
+contained, and that was a mistake.** Adding the arc label الاستيقاظ
+introduced ظ, which was not in it. A missing glyph does not fail: the
+browser quietly takes that one letter from the system font, so a single
+letter of one word would have been set in Geeza Pro with nothing to show
+for it but a faint wrongness. Cutting the full letter set costs 7 KB and
+makes that impossible for any Arabic added later.
+
+All ten digits matter for the same reason in reverse: the dua's wake time
+is built at runtime, so any digit can turn up in it whether or not it
+appears in the source.
 
 `--layout-features='*'` is deliberate. Arabic shaping needs `init`,
 `medi`, `fina`, `isol`, `rlig`, `calt`, `mark` and `mkmk` at minimum, and
@@ -51,10 +63,10 @@ What survived, checked on the cut file:
 ```
 GSUB  ccmp dnom fina init locl medi numr pnum rlig
 GPOS  curs kern mark mkmk
-GDEF  present      878 glyphs for 61 codepoints
+GDEF  present      1040 glyphs for 103 codepoints
 ```
 
-**878 glyphs for 61 codepoints** is the thing worth understanding before
+**1040 glyphs for 103 codepoints** is the thing worth understanding before
 reading a width measurement. Amiri does not place tashkeel on a fixed
 letterform and hope; it substitutes a wider or differently-shaped variant
 to make room for the mark it is about to position. So pointed text is
@@ -62,7 +74,7 @@ genuinely a little wider than the same text unpointed — about 17% for
 `نَوْمَكُمْ` — and that is the font working, not marks failing to attach.
 `test/night.js` asserted the opposite at first and was wrong.
 
-**36 KB.** That is the whole cost, it is same-origin, and it is in the
+**43 KB.** That is the whole cost, it is same-origin, and it is in the
 service worker's shell so an installed PWA has it offline from the first
 launch.
 

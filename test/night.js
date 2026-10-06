@@ -68,10 +68,10 @@ const PLAN = { plan: { mode:'continuous', wake:'06:30', savedDate:'2026-09-09',
   const night = await open();
   check('Nothing 404s', night.missing.length === 0, night.missing.join(' | '));
   check('The font file is actually fetched', await night.p.evaluate(() =>
-    performance.getEntriesByType('resource').some(r => /amiri-naskh\.woff2$/.test(r.name))));
+    performance.getEntriesByType('resource').some(r => /amiri-naskh[\w-]*\.woff2$/.test(r.name))));
   check('And it is small enough to ship at bedtime', await night.p.evaluate(() => {
-    const r = performance.getEntriesByType('resource').find(x => /amiri-naskh\.woff2$/.test(x.name));
-    return r && (r.encodedBodySize === 0 || r.encodedBodySize < 60000);
+    const r = performance.getEntriesByType('resource').find(x => /amiri-naskh[\w-]*\.woff2$/.test(x.name));
+    return r && (r.encodedBodySize === 0 || r.encodedBodySize < 70000);
   }));
   check('The face is loaded, not merely requested',
         await night.p.evaluate(() => document.fonts.check('30px "Amiri Naskh"')));

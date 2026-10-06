@@ -353,10 +353,30 @@ const settings = extra => Object.assign({}, DEFAULT_SETTINGS, extra);
     await c.p.waitForTimeout(700);
     const out = await c.p.evaluate(() => {
       const svg = document.getElementById('duaArc');
+      const box = svg.viewBox.baseVal;
+      const texts = [...svg.querySelectorAll('text')];
       return { marks: [...svg.querySelectorAll('circle')].map(el => ({
                  x:+el.getAttribute('cx'), y:+el.getAttribute('cy'),
                  bright: !el.classList.contains('faint') })),
-               labels: [...svg.querySelectorAll('text')].map(el => el.textContent.trim()),
+               labels: texts.map(el => el.textContent.trim()),
+               /* Measured in the SVG's own user units, so this says whether
+                  the label is inside the box the browser will draw — the
+                  Arabic labels are far wider than the English ones were and
+                  the first box was cut to fit the curve alone. */
+               inside: texts.every(el => {
+                 const b = el.getBBox();
+                 return b.x >= box.x - 0.5 && b.x + b.width <= box.x + box.width + 0.5
+                        && b.y + b.height <= box.y + box.height + 0.5;
+               }),
+               dir: texts.map(el => getComputedStyle(el).direction),
+               family: texts.length ? getComputedStyle(texts[0]).fontFamily : '',
+               fill: texts.length ? getComputedStyle(texts[0]).fill : '',
+               size: texts.length ? parseFloat(getComputedStyle(texts[0]).fontSize) : 0,
+               transform: texts.length ? getComputedStyle(texts[0]).textTransform : '',
+               spacing: texts.length ? getComputedStyle(texts[0]).letterSpacing : '',
+               // The dua itself, to compare prominence against.
+               duaFill: getComputedStyle(document.getElementById('duaLine1')).color,
+               duaSize: parseFloat(getComputedStyle(document.getElementById('duaLine1')).fontSize),
                blocksTaps: getComputedStyle(svg).pointerEvents };
     });
     await c.ctx.close();
@@ -369,12 +389,50 @@ const settings = extra => Object.assign({}, DEFAULT_SETTINGS, extra);
   check('And it is the highest point on the arc, not a break in it',
         bright[0].y === Math.min(...bridgeArc.marks.map(m => m.y)),
         JSON.stringify(bridgeArc.marks.map(m => m.y)));
-  check('The arc names what its points are', bridgeArc.labels.join(',') === 'sleep,fajr,wake',
-        bridgeArc.labels.join(','));
+  /* The labels are Arabic, and asserted as literal strings for the same
+     reason the dua is: comparing the screen against the app's own constant
+     proves only that the app agrees with itself. */
+  check('The arc names its points in Arabic',
+        bridgeArc.labels.join('|') === 'النوم|الفجر|الاستيقاظ',
+        bridgeArc.labels.join('|'));
+  check('Each label is laid out right to left',
+        bridgeArc.dir.every(d => d === 'rtl'), bridgeArc.dir.join(','));
+  check('In the same Naskh as the rest of the Arabic',
+        /Amiri Naskh/.test(bridgeArc.family), bridgeArc.family);
+  check('With no tracking and no case transform',
+        (bridgeArc.spacing === 'normal' || parseFloat(bridgeArc.spacing) === 0)
+        && bridgeArc.transform === 'none',
+        `${bridgeArc.spacing} / ${bridgeArc.transform}`);
+  /* ظ is in الاستيقاظ and was NOT in the first font cut: a missing glyph
+     falls back to the system face silently, so one letter of one label would
+     have been set in something else. This is the check that catches it. */
+  check('Every letter of every label is in the font cut',
+        await (async () => {
+          const c = await open(plan({ mode:'fajr', fajr:'04:45', finalWake:'06:15' }));
+          const out = await c.p.evaluate(async () => {
+            await document.fonts.ready;
+            const chars = [...new Set('النومالفجرالاستيقاظ')];
+            return chars.filter(ch => !document.fonts.check(`20px "Amiri Naskh"`, ch));
+          });
+          await c.ctx.close();
+          return out.length === 0;
+        })());
+  /* "Keep these labels visually very subtle. The dua must remain the clear
+     visual focus." Both halves of that, measured. */
+  check('The labels sit far back from the dua',
+        bridgeArc.size < bridgeArc.duaSize * 0.45,
+        `${bridgeArc.size}px against the dua's ${bridgeArc.duaSize}px`);
+  check('And are much fainter than it', await (async () => {
+    const alpha = s => { const m = /rgba?\([^)]*?,\s*([\d.]+)\)$/.exec(s); return m ? Number(m[1]) : 1; };
+    return alpha(bridgeArc.fill) <= 0.3 && alpha(bridgeArc.duaFill) >= 0.9;
+  })(), `${bridgeArc.fill} against ${bridgeArc.duaFill}`);
+  check('But they are not clipped by the box that holds them', bridgeArc.inside);
+
   const plainArc = await arcOf(plan({ mode:'continuous', wake:'06:30' }));
   check('An ordinary night is drawn with two', plainArc.marks.length === 2);
-  check('And is labelled for what it is', plainArc.labels.join(',') === 'sleep,wake',
-        plainArc.labels.join(','));
+  check('And is labelled for what it is',
+        plainArc.labels.join('|') === 'النوم|الاستيقاظ', plainArc.labels.join('|'));
+  check('Its labels fit too', plainArc.inside);
 
   /* Nothing in the animation may sit between a tired person and the one
      button on the screen. */

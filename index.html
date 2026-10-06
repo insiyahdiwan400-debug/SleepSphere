@@ -34,7 +34,7 @@
   <link rel="apple-touch-startup-image" href="./splash/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
   <link rel="apple-touch-startup-image" href="./splash/splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
   <title>SleepSphere Prototype — Bio Harmony</title>
-  <link rel="preload" href="./fonts/amiri-naskh.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="./fonts/amiri-naskh-v2.woff2" as="font" type="font/woff2" crossorigin />
   <style>
     /* ---- The Arabic face.
        Amiri: a revival of the Bulaq (Amiria) press Naskh, which is the
@@ -54,7 +54,7 @@
        the file renders exactly what it rendered before. */
     @font-face {
       font-family: 'Amiri Naskh';
-      src: url('./fonts/amiri-naskh.woff2') format('woff2');
+      src: url('./fonts/amiri-naskh-v2.woff2') format('woff2');
       font-weight: 400; font-style: normal; font-display: swap;
     }
 
@@ -1563,8 +1563,19 @@
     .dua-arc path { fill:none; stroke:rgba(216,185,104,.42); stroke-width:1; }
     .dua-arc circle { fill:var(--gold-soft); }
     .dua-arc circle.faint { fill:rgba(233,228,217,.5); }
-    .dua-arc text { fill:rgba(233,228,217,.5); font-size:8px; letter-spacing:.09em;
-      text-transform:uppercase; font-family:-apple-system,system-ui,sans-serif; }
+    /* Deliberately almost too faint to read, and that is the brief: on this
+       screen the dua is the thing being read, and three words competing with
+       it would be three words too many. The arc says sleep rises into Fajr
+       and settles into waking on its own; the labels are there for the
+       person who looks down and wonders, not for the person reading.
+
+       Set in the same Naskh as everything else in Arabic — no tracking (it
+       breaks the joins) and no text-transform (there is no case in Arabic,
+       and uppercase was only ever doing work for the English). 11px rather
+       than the old 8: Amiri at eight is a smudge, and a label nobody can
+       resolve at all is worse than no label. */
+    .dua-arc text { fill:rgba(233,228,217,.26); font-size:11px; letter-spacing:0;
+      font-family:var(--font-arabic); direction:rtl; }
 
     .dua-amin { margin-top:30px; min-height:52px; padding:14px 30px; border-radius:16px;
       border:1px solid rgba(216,185,104,.42); background:rgba(216,185,104,.07);
@@ -2081,7 +2092,12 @@
       <p class="dua-heading" id="duaHeading" lang="ar" dir="rtl"></p>
       <p class="dua-text" id="duaLine1" lang="ar" dir="rtl"></p>
       <p class="dua-text dua-rise" id="duaLine2" lang="ar" dir="rtl"></p>
-      <svg class="dua-arc" id="duaArc" viewBox="0 0 280 74" aria-hidden="true" focusable="false"></svg>
+      <!-- The box is wider than the arc it holds. The curve still runs x=14
+           to x=266; the margin either side is for the labels, which are
+           centred on the end points and used to be clipped by a box drawn to
+           fit the drawing. test/dua.js measures each label against these
+           bounds rather than trusting the arithmetic. -->
+      <svg class="dua-arc" id="duaArc" viewBox="-26 0 332 84" aria-hidden="true" focusable="false"></svg>
       <button type="button" class="dua-amin" id="duaAmin" lang="ar" dir="rtl"></button>
     </div>
     <p class="dua-closing" id="duaClosing" lang="ar" dir="rtl" hidden></p>
@@ -4346,21 +4362,32 @@
        sleep it is simply one curve. Fajr is the highest point on it, not a
        break in it — it is drawn as the brightest mark, because that is what
        it is in the night this person planned. */
+    /* The three points of the night, named. Kept with the dua rather than in
+       the display strings above, because these are labels on a drawing and
+       not part of the supplied prayer. */
+    const ARC_LABEL = Object.freeze({ sleep: 'النوم', fajr: 'الفجر', wake: 'الاستيقاظ' });
+
     function renderDuaArc() {
       const svg = $('#duaArc');
       if (!svg) return;
       const plan = state.plan;
       const bridge = plan && plan.mode === 'fajr' && plan.finalWake;
       const mark = (x, y, cls) => `<circle cx="${x}" cy="${y}" r="${cls === 'bright' ? 3.1 : 2.1}"${cls === 'bright' ? '' : ' class="faint"'} />`;
-      const label = (x, text) => `<text x="${x}" y="68" text-anchor="middle">${escapeHtml(text)}</text>`;
+      /* direction and the embedding marks are both stated. An SVG <text> is
+         not laid out by the HTML bidi algorithm the way a <p lang="ar"> is,
+         and a single Arabic word centred in a box is the case where getting
+         it wrong is invisible until a two-word label appears. */
+      const label = (x, text) =>
+        `<text x="${x}" y="68" text-anchor="middle" direction="rtl"
+               xml:lang="ar" style="unicode-bidi:isolate">${escapeHtml(text)}</text>`;
 
       svg.innerHTML = bridge
         ? `<path d="M14 52 C 60 52, 86 18, 140 18 C 194 18, 220 52, 266 52" />
            ${mark(14, 52)}${mark(140, 18, 'bright')}${mark(266, 52)}
-           ${label(14, 'sleep')}${label(140, 'fajr')}${label(266, 'wake')}`
+           ${label(14, ARC_LABEL.sleep)}${label(140, ARC_LABEL.fajr)}${label(266, ARC_LABEL.wake)}`
         : `<path d="M14 52 C 80 52, 200 52, 266 20" />
            ${mark(14, 52)}${mark(266, 20, 'bright')}
-           ${label(14, 'sleep')}${label(266, 'wake')}`;
+           ${label(14, ARC_LABEL.sleep)}${label(266, ARC_LABEL.wake)}`;
     }
 
     /* Open → read → one tap → the sky alone → the existing Goodnight state.
