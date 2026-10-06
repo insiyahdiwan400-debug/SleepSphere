@@ -1449,6 +1449,78 @@
     .elsewhere .button-row { display:flex; flex-wrap:wrap; gap:9px; margin-top:4px; }
     .elsewhere .btn { min-height:46px; }
 
+    /* The interface settling down with the person. Nothing is swapped out;
+       the same screen simply loses its edges — the top bar and the navigation
+       fade back, the ground darkens, and the sky is what is left. */
+    :root[data-phase="SLEEP"] .topbar,
+    :root[data-settling="yes"] .topbar { opacity:.45; transition:opacity 2.4s ease; }
+    :root[data-settling="yes"] .sidebar { opacity:.3; transition:opacity 2.4s ease; }
+    :root[data-phase="SLEEP"] body::after,
+    :root[data-settling="yes"] body::after {
+      content:''; position:fixed; inset:0; z-index:-1; pointer-events:none;
+      background:radial-gradient(130% 90% at 50% 8%, rgba(4,6,14,.3), rgba(2,3,8,.72));
+      opacity:1; transition:opacity 3s ease;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      :root[data-phase="SLEEP"] .topbar, :root[data-settling="yes"] .topbar,
+      :root[data-settling="yes"] .sidebar,
+      :root[data-phase="SLEEP"] body::after, :root[data-settling="yes"] body::after {
+        transition:none;
+      }
+    }
+
+    /* ---- The dua. Everything here exists to keep one block of Arabic the
+       most legible thing on the screen: a near-opaque ground behind the text,
+       a Naskh stack that iOS actually ships, generous leading for the
+       diacritics, and no animation whatsoever on the text itself. */
+    .dua-veil { position:fixed; inset:0; z-index:70; display:grid; place-items:center;
+      padding:28px 22px; opacity:0; transition:opacity 1.1s ease;
+      background:
+        radial-gradient(120% 70% at 50% 42%, rgba(6,8,16,.82), rgba(3,4,9,.97) 72%),
+        rgba(3,4,9,.9);
+      -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px); }
+    .dua-veil.on { opacity:1; }
+    .dua-inner { width:min(560px,100%); text-align:center;
+      display:flex; flex-direction:column; align-items:center; gap:4px;
+      transition:opacity 1.4s ease; }
+    .dua-inner.away { opacity:0; }
+
+    .dua-heading { margin:0 0 26px; font-size:15px; letter-spacing:.06em;
+      color:var(--gold); font-weight:600;
+      font-family:'Al Bayan','Geeza Pro','Noto Naskh Arabic',serif; }
+    .dua-text { margin:0; color:#f6f2e8;
+      font-family:'Al Bayan','Geeza Pro','Noto Naskh Arabic','Scheherazade New','Traditional Arabic',serif;
+      font-size:clamp(21px,5.6vw,29px); line-height:2.05; font-weight:500;
+      text-shadow:0 1px 18px rgba(0,0,0,.9); }
+    .dua-rise { margin-top:20px; color:var(--gold-soft); font-size:clamp(19px,5vw,26px); }
+
+    /* Symbolic, not a chart: one arc for the night, with the points the
+       person's own plan has. Faint enough to read as atmosphere. */
+    .dua-arc { width:min(280px,78%); height:auto; margin:34px 0 4px; opacity:.5; }
+    .dua-arc path { fill:none; stroke:rgba(216,185,104,.42); stroke-width:1; }
+    .dua-arc circle { fill:var(--gold-soft); }
+    .dua-arc circle.faint { fill:rgba(233,228,217,.5); }
+    .dua-arc text { fill:rgba(233,228,217,.5); font-size:8px; letter-spacing:.09em;
+      text-transform:uppercase; font-family:-apple-system,system-ui,sans-serif; }
+
+    .dua-amin { margin-top:30px; min-height:52px; padding:14px 30px; border-radius:16px;
+      border:1px solid rgba(216,185,104,.42); background:rgba(216,185,104,.07);
+      color:var(--gold-soft); font-size:17px; cursor:pointer;
+      font-family:'Al Bayan','Geeza Pro','Noto Naskh Arabic',serif;
+      transition:background .5s ease, border-color .5s ease; }
+    .dua-amin:focus-visible { outline:2px solid var(--gold); outline-offset:3px; }
+
+    .dua-closing { position:absolute; margin:0; opacity:0; color:var(--gold-soft);
+      font-size:clamp(22px,6vw,30px); transition:opacity 1.6s ease;
+      font-family:'Al Bayan','Geeza Pro','Noto Naskh Arabic',serif; }
+    .dua-closing.on { opacity:1; }
+
+    /* Nothing here moves for someone who asked for less motion; the screen is
+       still the same screen, just without the fades. */
+    @media (prefers-reduced-motion: reduce) {
+      .dua-veil, .dua-inner, .dua-closing, .dua-amin { transition:none; }
+    }
+
     /* ---- The moment card. The only thing on Today that must be read, so
        it gets the room and everything else gets out of the way. */
     .moment { margin:0 0 20px; padding:4px 2px 0; }
@@ -1932,6 +2004,21 @@
   <canvas id="starfield" aria-hidden="true"></canvas>
   <!-- Lazy mode. The whole screen is the button: on a night when you have
        nothing left, aiming at a target is itself a demand. -->
+  <!-- The closing moment of the day. One screen, one thing to read, one
+       thing to tap. The sky is left running behind it because it is the one
+       piece of the app that belongs at bedtime, but it is pushed well back
+       so it can never compete with the Arabic. -->
+  <div class="dua-veil" id="duaVeil" hidden role="dialog" aria-modal="true" aria-labelledby="duaHeading">
+    <div class="dua-inner" id="duaInner">
+      <p class="dua-heading" id="duaHeading" lang="ar" dir="rtl"></p>
+      <p class="dua-text" id="duaLine1" lang="ar" dir="rtl"></p>
+      <p class="dua-text dua-rise" id="duaLine2" lang="ar" dir="rtl"></p>
+      <svg class="dua-arc" id="duaArc" viewBox="0 0 280 74" aria-hidden="true" focusable="false"></svg>
+      <button type="button" class="dua-amin" id="duaAmin" lang="ar" dir="rtl"></button>
+    </div>
+    <p class="dua-closing" id="duaClosing" lang="ar" dir="rtl" hidden></p>
+  </div>
+
   <div class="lazy-veil" id="lazyVeil" hidden>
     <button type="button" class="lazy-sheet" id="lazyGoodnight">
       <span class="lazy-eyebrow">Lazy mode</span>
@@ -3963,6 +4050,85 @@
        glyph. These all exist in the fonts the app already relies on, and in
        any case the label carries the meaning: the mark is decoration and the
        tick is what says "chosen". */
+    /* ==================================================================
+       THE BEDTIME DUA
+
+       Supplied by the researcher as the Jamea/Fatimi wording. It is NOT
+       edited, paraphrased, corrected against other sources, or reflowed, and
+       the scheduling code below cannot reach it: the only dynamic part is a
+       single trailing phrase appended after `ساعة`.
+
+       The placeholder (كذا وكذا) means "such and such" — it is the
+       traditional slot for the time you intend to rise, not literal display
+       text. Where SleepSphere knows that time it fills the slot; where it
+       does not, the placeholder stays exactly as supplied rather than a
+       guess being invented.
+       ================================================================== */
+    const DUA = Object.freeze({
+      heading: 'قبل النوم',
+      line1: 'اللهم لا تؤمني مكرك ولا تنسني ذكرك ولا تجعلني من القوم الغافلين',
+      // Everything up to and including the word "hour". Never modified.
+      line2Lead: 'أقوم إن شاء الله تعالى ساعة',
+      // The supplied placeholder, used verbatim when no time is known.
+      placeholder: '(كذا وكذا)',
+      closing: 'تصبح على خير',
+      amin: 'آمين · تصبح على خير'
+    });
+
+    /* ---- The one decision this required, isolated so it is one line to
+       change.
+
+       `ساعة (كذا وكذا)` has to be completed with a time, and that is a
+       choice about religious text, so it is made here and nowhere else:
+       Eastern Arabic numerals with a colon, e.g. ساعة ٦:١٥.
+
+       Why this and not the alternatives:
+         · Spelling the hour out (ساعة السادسة والربع) requires ordinal and
+           fraction forms that vary by register; getting them subtly wrong in
+           a dua is worse than a numeral.
+         · No صباحًا / مساءً marker is appended, because adding words to a
+           supplied formula is a bigger change than leaving the hour to read
+           as it does on a clock.
+       Swap ARABIC_DIGITS for Western numerals, or change the joiner, and
+       nothing else in the file needs to move. */
+    const ARABIC_DIGITS = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+    const toArabicDigits = text => String(text).replace(/\d/g, d => ARABIC_DIGITS[Number(d)]);
+    const arabicClock = minutes => {
+      const value = normalizeMinutes(Number(minutes));
+      const h = Math.floor(value / 60), m = value % 60;
+      return toArabicDigits(`${h % 12 || 12}:${String(m).padStart(2, '0')}`);
+    };
+
+    /* The time the dua should name: when the person actually gets up, which
+       on a Fajr Bridge night is the END of the second sleep, not Fajr. Fajr
+       is only the answer when the plan says the day begins there.
+
+       Returns null rather than guessing. A dua that names the wrong hour is
+       worse than one that keeps its placeholder. */
+    function duaWakeMinutes(state_ = state) {
+      const plan = state_.plan;
+      if (plan) {
+        if (plan.mode === 'fajr') {
+          // Returning to sleep after Fajr: the dua names the final rising.
+          if (plan.finalWake) return toMinutes(plan.finalWake);
+          // A Fajr plan with no second sleep means the day starts at Fajr.
+          if (plan.fajr) return toMinutes(plan.fajr);
+        } else if (plan.wake) {
+          return toMinutes(plan.wake);
+        }
+      }
+      const usual = state_.settings?.usualWake;
+      if (usual && /^\d{2}:\d{2}$/.test(usual)) return toMinutes(usual);
+      return null;
+    }
+
+    // The second line, assembled. The lead is constant; only the tail moves.
+    function duaSecondLine(state_ = state) {
+      const minutes = duaWakeMinutes(state_);
+      const tail = minutes == null ? DUA.placeholder : arabicClock(minutes);
+      return `${DUA.line2Lead} ${tail}`;
+    }
+
     const BRAIN_GLYPH = { hifz:'◉', heavy_learning:'◈', exam:'✦', normal:'○', travel:'✈', recovery:'◡' };
 
     function renderBrainGrid(selected) {
@@ -4012,7 +4178,10 @@
         ask.textContent = state.plan ? 'Your night is ready.' : 'Time to stop.';
         sub.textContent = 'One tap, then put the phone somewhere else.';
         go.textContent = 'Goodnight';
-        go.onclick = () => startLazyNight();
+        /* Straight into the dua, which ends by starting the night state the
+           app already had. The faith-aware setting still governs it: someone
+           who turned that off keeps the plain one-tap goodnight. */
+        go.onclick = () => (state.settings.faith === 'off' ? startLazyNight() : openDua());
         return;
       }
 
@@ -4056,6 +4225,67 @@
        cannot recover later, so this stays until the record exists or the day
        genuinely rolls over — but it never blocks Brain Day, and it never
        writes a record by itself. */
+    /* The night, drawn as one arc rather than a timeline. Sleep rises into
+       Fajr and settles again into the final waking; where there is no second
+       sleep it is simply one curve. Fajr is the highest point on it, not a
+       break in it — it is drawn as the brightest mark, because that is what
+       it is in the night this person planned. */
+    function renderDuaArc() {
+      const svg = $('#duaArc');
+      if (!svg) return;
+      const plan = state.plan;
+      const bridge = plan && plan.mode === 'fajr' && plan.finalWake;
+      const mark = (x, y, cls) => `<circle cx="${x}" cy="${y}" r="${cls === 'bright' ? 3.1 : 2.1}"${cls === 'bright' ? '' : ' class="faint"'} />`;
+      const label = (x, text) => `<text x="${x}" y="68" text-anchor="middle">${escapeHtml(text)}</text>`;
+
+      svg.innerHTML = bridge
+        ? `<path d="M14 52 C 60 52, 86 18, 140 18 C 194 18, 220 52, 266 52" />
+           ${mark(14, 52)}${mark(140, 18, 'bright')}${mark(266, 52)}
+           ${label(14, 'sleep')}${label(140, 'fajr')}${label(266, 'wake')}`
+        : `<path d="M14 52 C 80 52, 200 52, 266 20" />
+           ${mark(14, 52)}${mark(266, 20, 'bright')}
+           ${label(14, 'sleep')}${label(266, 'wake')}`;
+    }
+
+    /* Open → read → one tap → the sky alone → the existing Goodnight state.
+       Nothing invites another interaction after the tap, which is the whole
+       design: read, close the day, put the phone down. */
+    function openDua() {
+      $('#duaHeading').textContent = DUA.heading;
+      $('#duaLine1').textContent = DUA.line1;
+      $('#duaLine2').textContent = duaSecondLine();
+      $('#duaAmin').textContent = DUA.amin;
+      $('#duaClosing').textContent = DUA.closing;
+      renderDuaArc();
+      $('#duaInner').classList.remove('away');
+      $('#duaClosing').hidden = true;
+      $('#duaClosing').classList.remove('on');
+      $('#duaVeil').hidden = false;
+      // Deepen the sky for as long as this is open.
+      document.documentElement.dataset.settling = 'yes';
+      requestAnimationFrame(() => $('#duaVeil').classList.add('on'));
+      window.setTimeout(() => $('#duaAmin').focus({ preventScroll: true }), 420);
+    }
+
+    function closeDua() {
+      const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const veil = $('#duaVeil');
+      $('#duaInner').classList.add('away');
+      $('#duaClosing').hidden = false;
+      window.setTimeout(() => $('#duaClosing').classList.add('on'), calm ? 0 : 900);
+      window.setTimeout(() => {
+        veil.classList.remove('on');
+        window.setTimeout(() => {
+          veil.hidden = true;
+          delete document.documentElement.dataset.settling;
+          // Into the night state the app already had.
+          startLazyNight();
+        }, calm ? 0 : 1100);
+      }, calm ? 400 : 3200);
+    }
+
+    $('#duaAmin')?.addEventListener('click', closeDua);
+
     function renderPending() {
       const strip = $('#morningPending');
       if (!strip) return;
@@ -5914,6 +6144,13 @@
         return off;
       });
 
+      /* True while the app is closing the day: the SLEEP phase, or the dua
+         screen itself. Read from the document rather than passed in, so the
+         starfield needs no knowledge of the context engine. */
+      const settlingNow = () =>
+        document.documentElement.dataset.settling === 'yes'
+        || document.documentElement.dataset.phase === 'SLEEP';
+
       function makeField(canvas, options) {
         const ctx = canvas.getContext('2d', { alpha: true });
         if (!ctx) return null;
@@ -6034,7 +6271,9 @@
 
           // A meteor now and then. Rare enough to be a small gift rather
           // than a feature — one every few seconds is just an animation.
-          if (!opt.meteors || calm.matches) return;
+          // No meteors once the day is closing. A streak across the sky is
+          // exactly the kind of thing that catches a tired eye.
+          if (!opt.meteors || calm.matches || settlingNow()) return;
           field.nextMeteor -= dt;
           if (field.nextMeteor <= 0) {
             field.nextMeteor = 24000 + Math.random() * 40000;
@@ -6069,7 +6308,13 @@
         // A full turn in about half an hour: a pixel and a half a second at
         // the edge, so resting your eyes on it shows the sky moving, and
         // reading over it never does.
-        if (!calm.matches) spin += dt * 0.0000035;
+        /* Settling.
+
+           At bedtime the sky does not get busier, it gets slower — a third of
+           the daytime rate, which is already barely perceptible. The purpose
+           of this screen is calm, so the one thing it must not do is give the
+           eye something to follow while someone is trying to stop. */
+        if (!calm.matches) spin += dt * 0.0000035 * (settlingNow() ? 0.34 : 1);
         let live = false;
         for (const field of fields) {
           if (field.active()) { field.render(time, dt); live = true; }
@@ -6144,6 +6389,16 @@
          tested as arithmetic rather than by waiting for the clock. */
       window.__phase = (iso, override) => resolvePhase(iso ? new Date(iso) : new Date(), override || state);
       window.__anchors = () => phaseAnchors();
+      /* The dua, the same way: the supplied text and the one phrase that is
+         assembled from the plan, readable without opening the screen. The
+         constants are returned too, so a test can prove the stored wording
+         is byte-for-byte what was supplied rather than what it expected. */
+      window.__dua = override => {
+        const s = override ? { ...state, ...override } : state;
+        return { heading: DUA.heading, line1: DUA.line1, lead: DUA.line2Lead,
+                 placeholder: DUA.placeholder, closing: DUA.closing, amin: DUA.amin,
+                 minutes: duaWakeMinutes(s), line2: duaSecondLine(s) };
+      };
     }
 
     /* ------------------------------------------------------------------

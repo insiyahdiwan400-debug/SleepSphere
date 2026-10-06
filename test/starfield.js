@@ -88,12 +88,16 @@ const clockAt = hour => `(()=>{const R=Date;const f=new R(2026,8,9,${hour},30,0)
   check('No horizontal overflow', await phone.p.evaluate(
     () => document.documentElement.scrollWidth <= window.innerWidth));
 
-  // Motion: slow, but genuinely moving. The numbers are the design — about a
-  // couple of pixels a second at the edge of the field.
+  /* Motion at bedtime is DELIBERATELY about a third of the daytime rate:
+     this probe sits at 23:00, which is the SLEEP phase, and the sky settles
+     with the person there. The full rate is measured in the evening context
+     further down; what matters here is that it is slower and still moving —
+     a sky frozen at bedtime would be a broken loop, not a calm one. */
   await phone.p.waitForTimeout(5000);
   const later = await phone.p.evaluate(() => window.__starProbe());
-  const drift = (later.spin - p0.spin) * a.radius;
-  check('The field turns, slowly', drift > 4 && drift < 40, `${drift.toFixed(1)}px at the edge over 5s`);
+  const settledDrift = (later.spin - p0.spin) * a.radius;
+  check('The field still turns at bedtime', settledDrift > 1 && settledDrift < 14,
+        `${settledDrift.toFixed(1)}px at the edge over 5s`);
 
   // Twinkle: individual, so the field shimmers unevenly rather than pulsing.
   const shimmer = await phone.p.evaluate(() => new Promise(res => {
@@ -116,6 +120,26 @@ const clockAt = hour => `(()=>{const R=Date;const f=new R(2026,8,9,${hour},30,0)
   const phoneStarsAtNight = await phone.p.evaluate(() =>
     parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stars')));
   await phone.ctx.close();
+
+  /* The full rate, measured where it applies: the evening, before the app
+     starts closing the day. About a couple of pixels a second at the edge of
+     the field is the design, and this is the number the bedtime check above
+     is slower than. */
+  const evening = await open(20, { width:390, height:844 });
+  const e0 = await evening.p.evaluate(() => window.__starProbe());
+  check('The evening is not a settling phase',
+        !['SLEEP'].includes(await evening.p.evaluate(() => document.documentElement.dataset.phase))
+        && !(await evening.p.evaluate(() => document.documentElement.dataset.settling)),
+        await evening.p.evaluate(() => document.documentElement.dataset.phase));
+  await evening.p.waitForTimeout(5000);
+  const e1 = await evening.p.evaluate(() => window.__starProbe());
+  const drift = (e1.spin - e0.spin) * pick(e0, 'starfield').radius;
+  check('The field turns, slowly', drift > 4 && drift < 40,
+        `${drift.toFixed(1)}px at the edge over 5s`);
+  check('And faster than it does at bedtime', drift > settledDrift * 2,
+        `${drift.toFixed(1)}px against ${settledDrift.toFixed(1)}px`);
+  check('No console errors in the evening', evening.errs.length === 0, evening.errs.join(' | '));
+  await evening.ctx.close();
 
   /* In daylight the page sky is faint rather than absent. It used to be
      switched off entirely to save the loop; the cost was that opening the

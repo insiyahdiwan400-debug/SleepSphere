@@ -66,8 +66,20 @@ const clockAt = (y,mo,d,h,mi) => `(()=>{const R=Date;const f=new R(${y},${mo},${
   check('And it says what it does',
         /goodnight/i.test(await night.p.locator('#momentGo').innerText()));
   await night.p.locator('#momentGo').click();
-  await night.p.waitForTimeout(400);
-  check('Going to bed takes one tap', await night.p.locator('#lazyVeil').isVisible());
+  await night.p.waitForTimeout(700);
+  /* A faith-aware participant — the default — now reads the bedtime dua on
+     the way to this screen, so the way out is two taps rather than one: the
+     dua, then آمين. Both are the same single decision ("I am going to bed"),
+     and neither asks a question. test/dua.js owns the dua itself; what this
+     suite has to keep is that the lazy night on the other side of it is
+     unchanged, which is why the walk-through is here rather than a seed that
+     turns the dua off. */
+  check('Going to bed goes through the dua', await night.p.locator('#duaVeil').isVisible());
+  check('Which asks nothing either', await night.p.evaluate(() =>
+    document.querySelectorAll('#duaVeil input, #duaVeil select, #duaVeil textarea').length === 0));
+  await night.p.locator('#duaAmin').click();
+  await night.p.waitForTimeout(5400);   // the closing words, then the handover
+  check('Going to bed still takes no decisions', await night.p.locator('#lazyVeil').isVisible());
   const stored = (await read(night.p)).lazyNight;
   check('Bed time is stamped, not asked for', stored && stored.bedTime === '23:40', JSON.stringify(stored));
   check('Nothing else is asked', await night.p.evaluate(() =>
