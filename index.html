@@ -34,8 +34,54 @@
   <link rel="apple-touch-startup-image" href="./splash/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
   <link rel="apple-touch-startup-image" href="./splash/splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
   <title>SleepSphere Prototype — Bio Harmony</title>
+  <link rel="preload" href="./fonts/amiri-naskh.woff2" as="font" type="font/woff2" crossorigin />
   <style>
+    /* ---- The Arabic face.
+       Amiri: a revival of the Bulaq (Amiria) press Naskh, which is the
+       tradition most printed Qur'ans and prayer books here are set in. The
+       app sets two pieces of Arabic that matter — the bedtime dua and the
+       verse on Learn — and both carry tashkeel, so the face has to be one
+       drawn for pointed text rather than whichever Arabic font the device
+       happens to ship.
+
+       36 KB, subset to exactly the characters this file sets plus all ten
+       Arabic-Indic digits (the dua's wake time is built at runtime, so any
+       digit can appear). Same-origin, in the service worker's shell, and
+       allowed by `font-src 'self'` in _headers. See fonts/README.md.
+
+       Every rule that asks for it names the old system stack behind it and
+       the face swaps in rather than blocking, so a device that never gets
+       the file renders exactly what it rendered before. */
+    @font-face {
+      font-family: 'Amiri Naskh';
+      src: url('./fonts/amiri-naskh.woff2') format('woff2');
+      font-weight: 400; font-style: normal; font-display: swap;
+    }
+
+    /* Arabic is cursive: letter-spacing is inserted BETWEEN glyphs, so a
+       tracking value meant for Latin headings opens gaps in the middle of
+       words. The display headings in this app are tracked in slightly, and
+       the verse on Learn is an h2 — it was inheriting -0.01em and loosening
+       its joins. One rule, so no Arabic added later can inherit tracking
+       from whatever element it happens to be.
+
+       `!important` on purpose, and it is the right tool here rather than a
+       shortcut: the heading rules are a long selector list, so the verse on
+       Learn is tracked by `.hero h2` at (0,1,1) and a plain `[lang="ar"]` at
+       (0,1,0) loses to it. Winning that on specificity means guessing which
+       selector will match next time somebody sets Arabic inside a card or a
+       panel. This is an invariant — Arabic is never tracked, wherever it
+       lands — which is what !important is for. */
+    [lang="ar"] { letter-spacing:normal !important; }
+
     :root {
+      /* Named once. Amiri ships in this app as a single regular weight, so
+         nothing may ask for bold from it: synthetic bold on a Naskh smears
+         the joins and lands the marks wrong. Hierarchy in Arabic here is
+         size, colour and space — never weight. */
+      --font-arabic: 'Amiri Naskh', 'Al Bayan', 'Geeza Pro', 'Noto Naskh Arabic',
+                     'Scheherazade New', 'Traditional Arabic', serif;
+
       --night: #07171d;
       --night-2: #0d2630;
       --night-3: #173a45;
@@ -1449,24 +1495,33 @@
     .elsewhere .button-row { display:flex; flex-wrap:wrap; gap:9px; margin-top:4px; }
     .elsewhere .btn { min-height:46px; }
 
-    /* The interface settling down with the person. Nothing is swapped out;
-       the same screen simply loses its edges — the top bar and the navigation
-       fade back, the ground darkens, and the sky is what is left. */
-    :root[data-phase="SLEEP"] .topbar,
-    :root[data-settling="yes"] .topbar { opacity:.45; transition:opacity 2.4s ease; }
-    :root[data-settling="yes"] .sidebar { opacity:.3; transition:opacity 2.4s ease; }
-    :root[data-phase="SLEEP"] body::after,
-    :root[data-settling="yes"] body::after {
-      content:''; position:fixed; inset:0; z-index:-1; pointer-events:none;
+    /* The interface settling down with the person.
+
+       --dusk runs 0 → 1 from the start of the evening to the planned sleep
+       time (see duskLevel), so this is a slide rather than a step at a phase
+       boundary: the top bar and the navigation fade back, the ground darkens,
+       and the sky is what is left. Nothing is swapped out and nothing is
+       removed — a control that disappeared would have a boundary again, and
+       would mean the app had taken something away while someone was tired.
+
+       Everything below degrades to the old behaviour if --dusk is missing,
+       because the fallback in each var() is 0 and the dua still stamps
+       data-settling. */
+    :root { --dusk: 0; }
+    .topbar { opacity:calc(1 - var(--dusk, 0) * .55); transition:opacity 2.4s ease; }
+    .sidebar { opacity:calc(1 - var(--dusk, 0) * .7); transition:opacity 2.4s ease; }
+    /* Its own element, not body::after — that is the film grain, and putting
+       this there replaced the grain for as long as the darkening showed. */
+    .dusk-veil {
+      position:fixed; inset:0; z-index:-1; pointer-events:none;
       background:radial-gradient(130% 90% at 50% 8%, rgba(4,6,14,.3), rgba(2,3,8,.72));
-      opacity:1; transition:opacity 3s ease;
+      opacity:var(--dusk, 0); transition:opacity 3s ease;
     }
+    /* Reduced motion keeps every one of those values and drops the crossfade
+       between them. The evening still draws in; it simply arrives rather than
+       travelling, which is the whole distinction the setting asks for. */
     @media (prefers-reduced-motion: reduce) {
-      :root[data-phase="SLEEP"] .topbar, :root[data-settling="yes"] .topbar,
-      :root[data-settling="yes"] .sidebar,
-      :root[data-phase="SLEEP"] body::after, :root[data-settling="yes"] body::after {
-        transition:none;
-      }
+      .topbar, .sidebar, .dusk-veil { transition:none; }
     }
 
     /* ---- The dua. Everything here exists to keep one block of Arabic the
@@ -1485,14 +1540,22 @@
       transition:opacity 1.4s ease; }
     .dua-inner.away { opacity:0; }
 
-    .dua-heading { margin:0 0 26px; font-size:15px; letter-spacing:.06em;
-      color:var(--gold); font-weight:600;
-      font-family:'Al Bayan','Geeza Pro','Noto Naskh Arabic',serif; }
+    /* Amiri sets smaller on the body than the interface stacks it replaces —
+       a small x-height and long descenders are the point of a Naskh — so
+       every size here is up on what the system fonts needed, and the leading
+       with it. Weight stays at 400 everywhere: see --font-arabic. */
+    /* No letter-spacing on Arabic, here or anywhere: it is inserted between
+       glyphs, and in a cursive script that is a gap in the middle of a word.
+       Latin eyebrows in this app are tracked out; this one cannot be, so it
+       separates itself from the dua by size and by sitting back instead. */
+    .dua-heading { margin:0 0 32px; font-size:20px; letter-spacing:0;
+      color:var(--gold); font-weight:400; opacity:.8;
+      font-family:var(--font-arabic); }
     .dua-text { margin:0; color:#f6f2e8;
-      font-family:'Al Bayan','Geeza Pro','Noto Naskh Arabic','Scheherazade New','Traditional Arabic',serif;
-      font-size:clamp(21px,5.6vw,29px); line-height:2.05; font-weight:500;
+      font-family:var(--font-arabic);
+      font-size:clamp(27px,7.2vw,37px); line-height:2.15; font-weight:400;
       text-shadow:0 1px 18px rgba(0,0,0,.9); }
-    .dua-rise { margin-top:20px; color:var(--gold-soft); font-size:clamp(19px,5vw,26px); }
+    .dua-rise { margin-top:26px; color:var(--gold-soft); font-size:clamp(24px,6.4vw,33px); }
 
     /* Symbolic, not a chart: one arc for the night, with the points the
        person's own plan has. Faint enough to read as atmosphere. */
@@ -1505,14 +1568,14 @@
 
     .dua-amin { margin-top:30px; min-height:52px; padding:14px 30px; border-radius:16px;
       border:1px solid rgba(216,185,104,.42); background:rgba(216,185,104,.07);
-      color:var(--gold-soft); font-size:17px; cursor:pointer;
-      font-family:'Al Bayan','Geeza Pro','Noto Naskh Arabic',serif;
+      color:var(--gold-soft); font-size:21px; cursor:pointer;
+      font-family:var(--font-arabic);
       transition:background .5s ease, border-color .5s ease; }
     .dua-amin:focus-visible { outline:2px solid var(--gold); outline-offset:3px; }
 
     .dua-closing { position:absolute; margin:0; opacity:0; color:var(--gold-soft);
-      font-size:clamp(22px,6vw,30px); transition:opacity 1.6s ease;
-      font-family:'Al Bayan','Geeza Pro','Noto Naskh Arabic',serif; }
+      font-size:clamp(28px,7.6vw,38px); transition:opacity 1.6s ease;
+      font-family:var(--font-arabic); }
     .dua-closing.on { opacity:1; }
 
     /* Nothing here moves for someone who asked for less motion; the screen is
@@ -1773,7 +1836,7 @@
 
     .ayah {
       margin:0 0 26px;
-      font-family:'Mishafi', 'Al Bayan', 'Geeza Pro', 'Noto Naskh Arabic', 'Traditional Arabic', 'Scheherazade New', serif;
+      font-family:var(--font-arabic);
       font-size:clamp(34px,10vw,62px); line-height:2; font-weight:400;
       color:#F6EEDC; text-shadow:0 0 44px rgba(226,200,150,.28);
       direction:rtl; unicode-bidi:isolate;
@@ -2002,6 +2065,11 @@
 </head>
 <body>
   <canvas id="starfield" aria-hidden="true"></canvas>
+  <!-- The evening drawing in. Its own element rather than body::after, which
+       is already the film grain: an earlier version of this darkening sat on
+       that pseudo-element and quietly replaced the grain for as long as it
+       was showing. -->
+  <div class="dusk-veil" aria-hidden="true"></div>
   <!-- Lazy mode. The whole screen is the button: on a night when you have
        nothing left, aiming at a target is itself a demand. -->
   <!-- The closing moment of the day. One screen, one thing to read, one
@@ -2644,7 +2712,7 @@
           <div class="section-head"><div><div class="eyebrow">Evidence & boundaries</div><h2>Understand without becoming afraid of sleep</h2></div><p>Short explanations connect the app to research while keeping public-facing articles, personal reflection and clinical evidence in their proper places.</p></div>
           <div class="grid">
             <article class="card hero span-12" style="min-height:270px">
-              <div class="hero-copy" style="padding-right:0;max-width:760px"><div class="eyebrow">Central idea</div><h2 style="font-family:Georgia,serif;font-weight:500">﴿وَجَعَلْنَا نَوْمَكُمْ سُبَاتًا﴾</h2><p>Sleep as <em>sabat</em> frames rest as purposeful restoration. SleepSphere uses Fajr and other responsibilities as real planning anchors, while refusing to turn faith, study or productivity into a reason to celebrate chronic sleep restriction.</p></div>
+              <div class="hero-copy" style="padding-right:0;max-width:760px"><div class="eyebrow">Central idea</div><h2 lang="ar" dir="rtl" style="font-family:var(--font-arabic);font-weight:400;line-height:2">﴿وَجَعَلْنَا نَوْمَكُمْ سُبَاتًا﴾</h2><p>Sleep as <em>sabat</em> frames rest as purposeful restoration. SleepSphere uses Fajr and other responsibilities as real planning anchors, while refusing to turn faith, study or productivity into a reason to celebrate chronic sleep restriction.</p></div>
             </article>
             <!-- Apnea SCREENING, not detection. The difference is the whole
                  design: this asks eight validated questions and points at a
@@ -3529,6 +3597,53 @@
       return say('DAY', recorded ? 'day-recorded' : 'day-unrecorded');
     }
 
+    /* ==================================================================
+       DUSK — the interface settling down with the person.
+
+       The phase is a label: DAY, EVENING, SLEEP. Nothing the person does at
+       21:50 differs from what they do at 21:49, but crossing a boundary used
+       to dim the whole chrome in one step, which reads as the app changing
+       its mind rather than the evening drawing in.
+
+       So the *appearance* of settling is continuous while the *behaviour*
+       stays discrete. Dusk runs 0 → 1 from the moment the evening begins to
+       the planned sleep time, and everything atmospheric reads it: the top
+       bar and the navigation fade back, the ground darkens, the sky slows,
+       and meteors stop about halfway through. Nothing is swapped out, no
+       control moves, and nothing is hidden — a ramp may not take anything
+       away, because then the thing it takes away has a boundary again.
+
+       Pure, like resolvePhase: a clock and a state in, the same number out.
+       ================================================================== */
+    function duskLevel(now = new Date(), state_ = state) {
+      const { phase, anchors } = resolvePhase(now, state_);
+      if (phase === 'SLEEP') return 1;
+      if (phase !== 'EVENING') return 0;
+      /* Dimming starts where EVENING does — EVENING_LEAD before wind-down —
+         and is complete at the planned sleep time, so the ramp is as long as
+         this person's own evening rather than a fixed number of minutes. */
+      const start = normalizeMinutes(anchors.windDown - EVENING_LEAD);
+      const span = forwardGap(start, anchors.sleep);
+      if (span <= 0) return 1;
+      const into = forwardGap(start, localMinutesNow(now));
+      return Math.min(1, Math.max(0, into / span));
+    }
+
+    /* The live value, kept in a variable as well as on the element: the
+       starfield reads it every frame, and getComputedStyle every frame at
+       bedtime is exactly the kind of battery cost this screen must not
+       have. */
+    let duskValue = 0;
+
+    function applyDusk(now = new Date()) {
+      /* The dua forces full night whatever the clock says, because it is the
+         one moment the person has told us they are going to bed. */
+      const forced = document.documentElement.dataset.settling === 'yes';
+      duskValue = forced ? 1 : duskLevel(now);
+      document.documentElement.style.setProperty('--dusk', duskValue.toFixed(3));
+      return duskValue;
+    }
+
     /* ---- Brain Day -------------------------------------------------- */
 
     /* Stored against the DATE THE NIGHT BELONGS TO, so changing tomorrow's
@@ -4157,6 +4272,7 @@
          competing for the same three seconds. */
       if (!document.documentElement.dataset.view) document.documentElement.dataset.view = 'today';
       document.documentElement.dataset.phase = phase;
+      applyDusk();
 
       const eyebrow = $('#momentEyebrow'), ask = $('#momentAsk'), sub = $('#momentSub');
       const go = $('#momentGo'), alt = $('#momentAlt'), note = $('#momentNote');
@@ -4261,8 +4377,10 @@
       $('#duaClosing').hidden = true;
       $('#duaClosing').classList.remove('on');
       $('#duaVeil').hidden = false;
-      // Deepen the sky for as long as this is open.
+      // Deepen the sky for as long as this is open. Whatever the evening had
+      // reached, reading the dua is full night.
       document.documentElement.dataset.settling = 'yes';
+      applyDusk();
       requestAnimationFrame(() => $('#duaVeil').classList.add('on'));
       window.setTimeout(() => $('#duaAmin').focus({ preventScroll: true }), 420);
     }
@@ -4278,6 +4396,7 @@
         window.setTimeout(() => {
           veil.hidden = true;
           delete document.documentElement.dataset.settling;
+          applyDusk();
           // Into the night state the app already had.
           startLazyNight();
         }, calm ? 0 : 1100);
@@ -6144,12 +6263,13 @@
         return off;
       });
 
-      /* True while the app is closing the day: the SLEEP phase, or the dua
-         screen itself. Read from the document rather than passed in, so the
-         starfield needs no knowledge of the context engine. */
-      const settlingNow = () =>
-        document.documentElement.dataset.settling === 'yes'
-        || document.documentElement.dataset.phase === 'SLEEP';
+      /* How far into the evening the app has settled, 0 to 1 — the same
+         number the chrome fades on. Read as a variable rather than off the
+         element: this is consulted every frame, and getComputedStyle per
+         frame at bedtime is exactly the battery cost this screen must not
+         have. Guarded so the sky is never held hostage by the context
+         engine failing to have run yet. */
+      const duskNow = () => (typeof duskValue === 'number' ? duskValue : 0);
 
       function makeField(canvas, options) {
         const ctx = canvas.getContext('2d', { alpha: true });
@@ -6271,9 +6391,11 @@
 
           // A meteor now and then. Rare enough to be a small gift rather
           // than a feature — one every few seconds is just an animation.
-          // No meteors once the day is closing. A streak across the sky is
-          // exactly the kind of thing that catches a tired eye.
-          if (!opt.meteors || calm.matches || settlingNow()) return;
+          /* Meteors stop once the evening is half drawn in, well before
+             bedtime itself. A streak across the sky is exactly the kind of
+             thing that catches a tired eye, and the point of a gift is that
+             it arrives while you are still awake enough to enjoy it. */
+          if (!opt.meteors || calm.matches || duskNow() >= 0.5) return;
           field.nextMeteor -= dt;
           if (field.nextMeteor <= 0) {
             field.nextMeteor = 24000 + Math.random() * 40000;
@@ -6310,11 +6432,14 @@
         // reading over it never does.
         /* Settling.
 
-           At bedtime the sky does not get busier, it gets slower — a third of
-           the daytime rate, which is already barely perceptible. The purpose
-           of this screen is calm, so the one thing it must not do is give the
-           eye something to follow while someone is trying to stop. */
-        if (!calm.matches) spin += dt * 0.0000035 * (settlingNow() ? 0.34 : 1);
+           As the evening draws in the sky does not get busier, it gets
+           slower — down to a third of the daytime rate by bedtime, which is
+           already barely perceptible. It slides the whole way down rather
+           than stepping at a boundary, so nobody ever sees the sky change
+           speed. The purpose of this screen is calm, so the one thing it
+           must not do is give the eye something to follow while someone is
+           trying to stop. */
+        if (!calm.matches) spin += dt * 0.0000035 * (1 - 0.66 * duskNow());
         let live = false;
         for (const field of fields) {
           if (field.active()) { field.render(time, dt); live = true; }
@@ -6389,6 +6514,14 @@
          tested as arithmetic rather than by waiting for the clock. */
       window.__phase = (iso, override) => resolvePhase(iso ? new Date(iso) : new Date(), override || state);
       window.__anchors = () => phaseAnchors();
+      window.__dusk = (iso, override) => duskLevel(iso ? new Date(iso) : new Date(), override || state);
+      /* The evening has to draw in while someone is sitting on the screen,
+         not only when something else happens to re-render. Once a minute is
+         far finer than the ramp is perceptible — a two-hour evening moves
+         --dusk by less than one percent in that time — and it costs one
+         custom-property write, with no layout and no repaint of its own. */
+      window.setInterval(() => applyDusk(), 60000);
+      applyDusk();
       /* The dua, the same way: the supplied text and the one phrase that is
          assembled from the plan, readable without opening the screen. The
          constants are returned too, so a test can prove the stored wording
