@@ -1507,7 +1507,7 @@
        Everything below degrades to the old behaviour if --dusk is missing,
        because the fallback in each var() is 0 and the dua still stamps
        data-settling. */
-    :root { --dusk: 0; }
+    :root { --dusk: 0; --night-detail: 1; }
     .topbar { opacity:calc(1 - var(--dusk, 0) * .55); transition:opacity 2.4s ease; }
     .sidebar { opacity:calc(1 - var(--dusk, 0) * .7); transition:opacity 2.4s ease; }
     /* Its own element, not body::after — that is the film grain, and putting
@@ -1522,6 +1522,73 @@
        travelling, which is the whole distinction the setting asks for. */
     @media (prefers-reduced-motion: reduce) {
       .topbar, .sidebar, .dusk-veil { transition:none; }
+    }
+
+    /* ---- The Living Night.
+
+       The evening's answer to a screen that was either cluttered or bare.
+       It sits in the sky rather than on a card — no border, no fill, no
+       shadow — because the point is that the night is simply there, the way
+       the stars behind it are.
+
+       Everything on it fades on --night-detail, which runs 1 to 0 across the
+       last stretch of the evening (see applyDusk). The secondary rows go
+       first and the drawing goes last, so by the time the SLEEP phase
+       removes the section entirely the page has already arrived at the
+       sparse bedtime composition rather than cutting to it. */
+    .living { margin:4px 0 2px;
+      opacity:calc(.22 + var(--night-detail, 1) * .78);
+      transition:opacity 2.6s ease; }
+    .living[hidden] { display:none !important; }
+    .living-sky { margin:0 0 2px; }
+    .living-sky .journey { max-width:430px; }
+    .living-ends { margin:0; color:#a7a095; font-size:13px; }
+    .living-ends b { color:#ddd6c9; font-weight:600; font-variant-numeric:tabular-nums; }
+    /* The rows that go quiet first. */
+    .living-detail { opacity:var(--night-detail, 1); transition:opacity 2.6s ease; }
+    .living-context { margin:14px 0 0; color:var(--gold-soft); font-size:14px;
+      letter-spacing:.01em; }
+    .living-intention { margin:6px 0 0; color:#cdc6b9; font-size:15px; line-height:1.6;
+      max-width:46ch; }
+    .living-actions { display:flex; flex-wrap:wrap; gap:18px; margin-top:14px; }
+    /* Low emphasis on purpose: these are available, not asked for. */
+    .living-link { padding:6px 0; border:0; background:none; cursor:pointer;
+      color:#9a9387; font-size:13.5px; font-family:inherit;
+      border-bottom:1px solid rgba(233,228,217,.18); }
+    .living-link:hover { color:#ddd6c9; }
+    .living-link:focus-visible { outline:2px solid var(--gold); outline-offset:3px; }
+    .living-why { margin:14px 0 0; padding:14px 16px; border-radius:14px;
+      border:1px solid rgba(233,228,217,.1); background:rgba(233,228,217,.035); }
+    .living-why[hidden] { display:none !important; }
+    .living-why ul { margin:0; padding:0; list-style:none; display:grid; gap:8px; }
+    .living-why li { position:relative; padding-left:16px; color:#bdb6aa;
+      font-size:13.5px; line-height:1.55; }
+    .living-why li::before { content:"·"; position:absolute; left:3px; top:-4px;
+      color:var(--gold); font-size:20px; }
+    /* The honest footer. Stated every time this is opened rather than once
+       in a settings screen nobody revisits. */
+    .living-why p { margin:12px 0 0; padding-top:11px; font-size:13px; line-height:1.55;
+      color:#8e887c; border-top:1px solid rgba(233,228,217,.08); }
+
+    /* The evening's heavier cards recede on the same signal. They are not
+       hidden and they stay interactive — the brief is explicit that controls
+       must not disappear early — they simply stop competing as the night
+       arrives. The phase filter removes them at bedtime as it always did. */
+    :root[data-phase="EVENING"] #restorationCard,
+    :root[data-phase="EVENING"] #nightScan {
+      /* !important because the cards carry an entrance animation whose
+         `to { opacity: 1 }` has fill-mode `both` — so it keeps asserting 1
+         for the life of the page, and a running animation outranks a normal
+         declaration however specific. Without this the rule matched, the
+         custom property resolved, and the computed opacity was still 1. */
+      opacity:calc(.3 + var(--night-detail, 1) * .7) !important;
+      transition:opacity 2.6s ease;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .living, .living-detail,
+      :root[data-phase="EVENING"] #restorationCard,
+      :root[data-phase="EVENING"] #nightScan { transition:none; }
     }
 
     /* ---- Build my night.
@@ -2340,6 +2407,27 @@
               <button class="btn ghost moment-alt" id="momentAlt" hidden>More</button>
             </div>
             <p class="moment-note" id="momentNote"></p>
+          </section>
+
+          <!-- The Living Night. Everything on it is read from the plan the
+               participant already saved; nothing here computes a night and
+               nothing here is a measurement. It belongs to the evening, and
+               it recedes as the evening does — see --night-detail. -->
+          <section class="living" id="livingNight" data-phase="EVENING" hidden
+                   aria-label="Tonight, as planned">
+            <div class="living-sky" id="livingJourney"></div>
+            <p class="living-ends" id="livingEnds"></p>
+            <div class="living-detail" id="livingDetail">
+              <p class="living-context" id="livingContext"></p>
+              <p class="living-intention" id="livingIntention"></p>
+              <div class="living-actions">
+                <button type="button" class="living-link" id="livingChange">Change tonight</button>
+                <button type="button" class="living-link" id="livingWhy"
+                        aria-expanded="false" aria-controls="livingWhyBody">Why this night?</button>
+                <button type="button" class="living-link" id="livingUnload">Clear my mind</button>
+              </div>
+              <div class="living-why" id="livingWhyBody" hidden></div>
+            </div>
           </section>
 
           <!-- Asked once, of participants enrolled before the question
@@ -3822,6 +3910,17 @@
       const forced = document.documentElement.dataset.settling === 'yes';
       duskValue = forced ? 1 : duskLevel(now);
       document.documentElement.style.setProperty('--dusk', duskValue.toFixed(3));
+      /* The evening's detail, which goes before the evening does: 1 until
+         the last stretch, then down to 0 exactly as the planned sleep time
+         arrives. Derived from the participant's own dusk ramp — and so from
+         their own planned sleep and wind-down — rather than from any clock
+         time written into this file.
+
+         Separate from --dusk because they do different jobs. --dusk darkens
+         and slows things that stay; this removes things that should not be
+         on the screen by the time somebody is going to bed. */
+      const detail = Math.min(1, Math.max(0, (1 - duskValue) / 0.28));
+      document.documentElement.style.setProperty('--night-detail', detail.toFixed(3));
       return duskValue;
     }
 
@@ -4688,18 +4787,28 @@
       if (phase === 'EVENING') {
         eyebrow.textContent = 'This evening';
         const planned = state.plan && state.plan.savedDate === studyToday();
-        ask.textContent = planned ? 'Tonight is planned.' : 'Let’s build tonight.';
+        ask.textContent = planned ? 'Here is your night.' : 'Let’s build tonight.';
         sub.textContent = planned
-          ? `Wind down around ${formatTime(state.plan.windStart)}, settle by ${formatTime(state.plan.settleStart ?? state.plan.sleepStart)}.`
+          ? 'Everything is handled. Nothing else to decide.'
           : 'Tomorrow shapes tonight. It takes seconds if nothing is unusual.';
-        go.textContent = planned ? 'Change tonight’s plan' : 'Build my night';
+        /* With a night saved there is no primary action left in the evening,
+           so there is no primary button. The Living Night below carries
+           "Change tonight" as a quiet link, which is the right weight for
+           something available rather than asked for — and it keeps Goodnight
+           the only dominant action this screen ever has, at the one moment
+           it should be. */
+        go.hidden = planned;
+        go.textContent = 'Build my night';
         go.onclick = openBuildNight;
-        /* Still two actions. The full planner has not gone anywhere — it is
-           its own destination in the navigation, and pane two of Build my
-           night links to it — but it is no longer what an evening opens
-           with, because opening with a form is the thing this phase exists
-           to stop. */
-        alt.hidden = false;
+        /* With a night saved the moment card is a statement, not a prompt:
+           both buttons go, and every evening action moves to the quiet row
+           under the Living Night. Clear my mind is still there and still one
+           tap away — it just stops being the loudest thing on an evening
+           whose message is that nothing needs deciding.
+
+           Without a plan the evening still asks, and still offers the same
+           two things it always did. */
+        alt.hidden = planned;
         alt.textContent = 'Clear my mind';
         alt.onclick = () => navigate('unload');
         return;
@@ -5178,6 +5287,99 @@
 
     $('#duaAmin')?.addEventListener('click', closeDua);
 
+    /* ==================================================================
+       THE LIVING NIGHT
+
+       The evening screen used to be a cluster of cards and the bedtime
+       screen a single button, with a hard switch between them. This is what
+       sits between: the night the participant already planned, drawn once,
+       read in two or three seconds, and quietly getting out of the way as
+       bedtime arrives.
+
+       It computes NOTHING. Every value is read from the saved plan, and if
+       there is no plan for tonight the section is simply absent — there is
+       no time here that SleepSphere could invent.
+       ================================================================== */
+    function tonightsPlan() {
+      const plan = state.plan;
+      return plan && plan.savedDate === studyToday()
+             && Number.isFinite(Number(plan.windStart)) ? plan : null;
+    }
+
+    /* How the night was arrived at, in plain language, naming only things
+       the app actually holds. Every line is provenance — where a value came
+       from — and none of it is a finding about the person. */
+    function nightProvenance(plan) {
+      const lines = [];
+      const final = planFinalWake(plan);
+
+      if (plan.afterFajr === 'stay' && plan.fajr) {
+        lines.push(`You stay awake after Fajr, so your day starts at ${formatTime(toMinutes(plan.fajr))}.`);
+      } else if (final) {
+        const usual = state.settings?.usualWake;
+        lines.push(`You need to be up at ${formatTime(toMinutes(final))}. ` + (usual === final
+          ? 'That is the usual start of day you gave SleepSphere.'
+          : 'You set that for tonight.'));
+      }
+
+      lines.push(plan.fajr
+        ? `Fajr is ${formatTime(toMinutes(plan.fajr))}, calculated on this phone from your saved location.`
+        : 'No location is set, so tonight was built without Fajr.');
+
+      if (plan.mode === 'fajr') {
+        lines.push(`You return to sleep after Fajr, so the night is in two parts — ${formatDuration(plan.blockOne)} before it and ${formatDuration(plan.blockTwo)} after.`);
+      }
+
+      lines.push(`${formatDuration(plan.target)} is the sleep opportunity you aim for, so settling works back to ${formatTime(plan.settleStart)} and wind-down to ${formatTime(plan.windStart)}.`);
+
+      if (plan.brainDay) lines.push(`You said tomorrow is ${BRAIN_DAY[plan.brainDay].toLowerCase()}.`);
+      if (plan.obligation && plan.obligation.time) {
+        lines.push(`${OBLIGATION[plan.obligation.kind]} starts at ${formatTime(toMinutes(plan.obligation.time))}.`);
+      }
+      return lines;
+    }
+
+    /* Said every time this is opened, not once in a settings screen nobody
+       goes back to. The app arranges an opportunity; it does not know what
+       happened inside it. */
+    const PROVENANCE_LIMIT =
+      'SleepSphere arranges the opportunity and nothing more. It has not measured your sleep, your recovery or anything about your body — only the times above, which you gave it or it calculated.';
+
+    let livingWhyOpen = false;
+
+    function renderLivingNight() {
+      const section = $('#livingNight');
+      if (!section) return;
+      const plan = tonightsPlan();
+      section.hidden = !plan;
+      if (!plan) { livingWhyOpen = false; return; }
+
+      $('#livingJourney').innerHTML = journeySvg(plan);
+
+      const ends = [`Wind down <b>${escapeHtml(formatTime(plan.windStart))}</b>`,
+                    `<b>${escapeHtml(formatDuration(plan.total))}</b> of opportunity`];
+      if (plan.obligation && plan.obligation.time) {
+        ends.push(`${escapeHtml(OBLIGATION[plan.obligation.kind])} <b>${escapeHtml(formatTime(toMinutes(plan.obligation.time)))}</b>`);
+      }
+      $('#livingEnds').innerHTML = ends.join(' · ');
+
+      $('#livingContext').textContent = plan.brainDay
+        ? `Tomorrow · ${BRAIN_DAY[plan.brainDay]}`
+        : 'Tomorrow';
+      $('#livingIntention').textContent = nightIntention(plan, { brainDay: plan.brainDay });
+
+      $('#livingWhyBody').innerHTML =
+        `<ul>${nightProvenance(plan).map(line => `<li>${escapeHtml(line)}</li>`).join('')}</ul>
+         <p>${escapeHtml(PROVENANCE_LIMIT)}</p>`;
+      $('#livingWhyBody').hidden = !livingWhyOpen;
+      $('#livingWhy').setAttribute('aria-expanded', String(livingWhyOpen));
+      $('#livingWhy').textContent = livingWhyOpen ? 'Close' : 'Why this night?';
+    }
+
+    $('#livingChange')?.addEventListener('click', openBuildNight);
+    $('#livingUnload')?.addEventListener('click', () => navigate('unload'));
+    $('#livingWhy')?.addEventListener('click', () => { livingWhyOpen = !livingWhyOpen; renderLivingNight(); });
+
     function renderPending() {
       const strip = $('#morningPending');
       if (!strip) return;
@@ -5208,6 +5410,7 @@
       // The sphere's reading now lives on the Bio Harmony screen; the
       // Tonight hero shows the night itself instead.
       renderMoment();
+      renderLivingNight();
       renderPending();
       renderScheduleNudge();
       renderHeroStatus();
@@ -7337,6 +7540,10 @@
       window.__planFinalWake = plan => planFinalWake(plan);
       window.__intention = (plan, knowledge) => nightIntention(plan, knowledge || {});
       window.__journeyText = plan => journeyText(plan);
+      window.__provenance = () => {
+        const plan = tonightsPlan();
+        return plan ? { lines: nightProvenance(plan), limit: PROVENANCE_LIMIT } : null;
+      };
       window.__dua = override => {
         const s = override ? { ...state, ...override } : state;
         return { heading: DUA.heading, line1: DUA.line1, lead: DUA.line2Lead,

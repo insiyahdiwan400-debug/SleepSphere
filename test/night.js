@@ -324,21 +324,29 @@ const PLAN = { plan: { mode:'continuous', wake:'06:30', savedDate:'2026-09-09',
      a feature.
      ================================================================ */
   const cost = await open({ hour: 23, minute: 30 });
-  await cost.p.locator('#momentGo').click();
-  await cost.p.waitForTimeout(800);
-  const budget = await cost.p.evaluate(() => new Promise(resolve => {
+  /* A ratio against this same page a moment earlier, not an absolute frame
+     rate. An absolute gate measures the machine: the identical committed
+     build scored 59fps one hour and 33 the next on the same container. What
+     the dua screen must not do is cost more than the screen it opened over.  */
+  const sample = () => cost.p.evaluate(() => new Promise(resolve => {
     let frames = 0, long = 0, prev = performance.now();
     const started = prev;
     const tick = now => {
       const dt = now - prev; prev = now;
       frames++; if (dt > 34) long++;      // worse than ~30fps
-      if (now - started < 3000) requestAnimationFrame(tick);
-      else resolve({ frames, long, seconds: (now - started) / 1000 });
+      if (now - started < 2000) requestAnimationFrame(tick);
+      else resolve({ fps: frames / ((now - started) / 1000), frames, long });
     };
     requestAnimationFrame(tick);
   }));
-  const fps = budget.frames / budget.seconds;
-  check('The dua screen holds a smooth frame rate', fps > 45, `${fps.toFixed(0)} fps`);
+  const beforeDua = await sample();
+  await cost.p.locator('#momentGo').click();
+  await cost.p.waitForTimeout(2000);
+  const budget = await sample();
+  check('The dua screen costs no more than the screen it opened over',
+        budget.fps > beforeDua.fps * 0.85,
+        `${budget.fps.toFixed(0)} fps open against ${beforeDua.fps.toFixed(0)} closed`);
+  check('And is not broken outright', budget.fps > 20, `${budget.fps.toFixed(0)} fps`);
   check('With no stalls', budget.long <= 3, `${budget.long} long frames in ${budget.frames}`);
   /* The sky is one canvas. Anything else animating behind a screen whose
      whole purpose is to be put down is a battery leak. */
