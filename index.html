@@ -1446,6 +1446,57 @@
     :root[data-mode="light"] .segmented { background:rgba(56,50,38,.08); }
     :root[data-mode="light"] .welcome-overlay { background:rgba(214,209,198,.7); }
 
+    .elsewhere .button-row { display:flex; flex-wrap:wrap; gap:9px; margin-top:4px; }
+    .elsewhere .btn { min-height:46px; }
+
+    /* ---- The moment card. The only thing on Today that must be read, so
+       it gets the room and everything else gets out of the way. */
+    .moment { margin:0 0 20px; padding:4px 2px 0; }
+    .moment-eyebrow { margin:0 0 9px; font-size:11px; letter-spacing:.17em;
+      text-transform:uppercase; color:var(--gold); font-weight:700; }
+    .moment-ask { margin:0; font-family:var(--font-display); font-weight:500;
+      font-size:clamp(30px,8vw,44px); line-height:1.08; letter-spacing:-.03em;
+      color:var(--ink); text-wrap:balance; }
+    .moment-sub { margin:11px 0 0; color:var(--muted); font-size:15.5px;
+      line-height:1.5; max-width:46ch; }
+    .moment-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:22px; }
+    .moment-go { min-height:52px; font-size:16px; padding-inline:26px; }
+    .moment-alt { min-height:52px; }
+    .moment-note { margin:13px 0 0; color:var(--muted); font-size:13.5px; }
+
+    /* Brain Day. A visual pick, not a form: six targets, each big enough to
+       hit at arm's length, each legible as chosen without relying on colour
+       alone — the tick and the border carry it too. */
+    .brain-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(142px,1fr));
+      gap:9px; margin-top:20px; }
+    .brain-chip { display:flex; align-items:center; gap:11px; min-height:58px;
+      padding:12px 14px; border:1px solid var(--line); border-radius:15px;
+      background:rgba(233,228,217,.035); color:var(--ink); font-family:inherit;
+      font-size:14.5px; font-weight:550; text-align:left; cursor:pointer;
+      transition:border-color .16s ease, background .16s ease; }
+    .brain-chip .glyph { flex:0 0 auto; width:26px; height:26px; display:grid;
+      place-items:center; border-radius:50%; border:1px solid var(--line);
+      font-size:13px; color:var(--gold-soft); }
+    .brain-chip[aria-pressed="true"] { border-color:var(--gold); background:rgba(195,160,104,.1); }
+    .brain-chip[aria-pressed="true"] .glyph { border-color:var(--gold);
+      background:var(--gold); color:var(--night); }
+    .brain-chip:focus-visible, .moment-go:focus-visible, .moment-alt:focus-visible {
+      outline:2px solid var(--gold); outline-offset:3px; }
+    @media (prefers-reduced-motion: reduce) { .brain-chip { transition:none; } }
+    :root[data-mode="light"] .brain-chip { background:rgba(255,255,255,.6); }
+    :root[data-mode="light"] .brain-chip[aria-pressed="true"] { background:rgba(195,160,104,.16); }
+
+    /* Phase filtering. A card declares the phases it belongs to; Today hides
+       the rest rather than stacking everything on one screen. */
+    #today [data-phase]:not([data-phase~="ALL"]) { display:none; }
+    :root[data-phase="WAKE"]    #today [data-phase~="WAKE"],
+    :root[data-phase="DAY"]     #today [data-phase~="DAY"],
+    :root[data-phase="EVENING"] #today [data-phase~="EVENING"],
+    :root[data-phase="SLEEP"]   #today [data-phase~="SLEEP"] { display:block; }
+    /* At bedtime the screen gets quieter still: the sky, the moment, and
+       nothing with a chart in it. */
+    :root[data-phase="SLEEP"] #today .grid { gap:14px; }
+
     /* ---- Fieldwork onboarding. Borrows the welcome card wholesale so it is
        the same object the participant already trusts, and adds only the few
        pieces a study needs: a quiet progress rail, a plain-language list, an
@@ -1895,19 +1946,14 @@
     <aside class="sidebar">
       <div class="brand"><div class="brand-mark">☾</div><div><strong>SleepSphere</strong><small>The Sabat Loop</small></div></div>
       <nav class="nav" aria-label="Main navigation">
-        <button class="active" data-view="today"><span class="nav-icon">◐</span><span>Tonight</span></button>
-        <button data-view="bio"><span class="nav-icon">⌬</span><span>Bio Harmony</span></button>
-        <button data-view="plan"><span class="nav-icon">◷</span><span>Night plan</span></button>
-        <button data-view="morning"><span class="nav-icon">☀</span><span>Morning</span></button>
+        <!-- Four destinations. Everything that used to have a tab is still
+             here and still reachable; it is reached from the screen it
+             belongs to instead of from a row of twelve. The map lives in the
+             Phase 1A report, and nav-map.js proves nothing was stranded. -->
+        <button class="active" data-view="today"><span class="nav-icon">◐</span><span>Today</span></button>
         <button data-view="twin"><span class="nav-icon">◎</span><span>My pattern</span></button>
-        <button type="button" id="navMore" aria-expanded="false"><span class="nav-icon">•••</span><span>More</span></button>
-        <button class="secondary-nav" data-view="travel"><span class="nav-icon">✈</span><span>Travel</span></button>
-        <button class="secondary-nav" data-view="unload"><span class="nav-icon">✦</span><span>Clear my mind</span></button>
-        <button class="secondary-nav" data-view="compass"><span class="nav-icon">⌁</span><span>Trends</span></button>
-        <button class="secondary-nav" data-view="experiment"><span class="nav-icon">◈</span><span>Try one change</span></button>
-        <button class="secondary-nav" data-view="learn"><span class="nav-icon">◌</span><span>Sleep guide</span></button>
-        <button class="secondary-nav" data-view="data"><span class="nav-icon">⇩</span><span>My records</span></button>
-        <button class="secondary-nav" data-view="test"><span class="nav-icon">✓</span><span>Give feedback</span></button>
+        <button data-view="learn"><span class="nav-icon">◌</span><span>Explore</span></button>
+        <button data-view="data"><span class="nav-icon">◍</span><span>Me</span></button>
       </nav>
       <div class="side-note"><strong>Private by design.</strong><br />Your entries stay in this browser unless you export them. SleepSphere supports reflection; it does not diagnose.</div>
     </aside>
@@ -1920,7 +1966,23 @@
 
       <main>
         <section class="view active" id="today">
-          <article class="night-console">
+          <!-- The moment. One question, one action, and nothing else
+               competing with it. Everything below is secondary and most of
+               it is hidden unless this phase wants it. -->
+          <section class="moment" id="moment" aria-live="polite">
+            <p class="moment-eyebrow" id="momentEyebrow">Today</p>
+            <h2 class="moment-ask" id="momentAsk">Ready when you are</h2>
+            <p class="moment-sub" id="momentSub"></p>
+
+            <div class="brain-grid" id="brainGrid" hidden role="group" aria-label="What tomorrow asks of you"></div>
+
+            <div class="moment-actions">
+              <button class="btn primary moment-go" id="momentGo">Open</button>
+              <button class="btn ghost moment-alt" id="momentAlt" hidden>More</button>
+            </div>
+            <p class="moment-note" id="momentNote"></p>
+          </section>
+          <article class="night-console" data-phase="DAY EVENING">
             <canvas class="console-stars" aria-hidden="true"></canvas>
             <div class="console-status"><span class="live-signal">Night console ready</span><span class="console-date" id="consoleDate">Tonight</span></div>
             <div class="console-main">
@@ -1930,10 +1992,10 @@
                 <h2 id="heroStatus">Ready when you are</h2>
                 <p id="heroSub">Take tonight’s check-in to see where your body actually is.</p>
                 <div class="console-actions">
-                  <button class="btn primary" id="guideNext" data-go="flow">Start tonight’s check-in</button>
+                  <button class="btn primary" id="guideNext" data-go="flow" hidden>Start tonight’s check-in</button>
                   <button class="btn ghost" id="lazyStart">Too tired — just go to bed</button>
                 </div>
-                <div class="guide-strip" aria-label="Your SleepSphere progress">
+                <div class="guide-strip" aria-label="Your SleepSphere progress" hidden>
                   <div class="guide-step" id="guideBio"><span class="guide-number">1</span><div><strong>Check today</strong><span id="guideBioText">Not started</span></div></div>
                   <div class="guide-step" id="guidePlan"><span class="guide-number">2</span><div><strong>Plan tonight</strong><span id="guidePlanText">Waiting</span></div></div>
                   <div class="guide-step" id="guideMorning"><span class="guide-number">3</span><div><strong>Record tomorrow</strong><span id="guideMorningText">Waiting</span></div></div>
@@ -1949,7 +2011,7 @@
           </article>
           <div class="grid">
 
-            <article class="card span-12" id="healthCard" hidden>
+            <article class="card span-12" id="healthCard" data-phase="DAY EVENING" hidden>
               <div class="card-label">Apple Health</div>
               <h3 style="margin:6px 0 8px">Let the phone fill in what it already knows</h3>
               <p class="helper" id="healthState">Not connected. Everything still works by hand.</p>
@@ -1957,7 +2019,7 @@
               <div class="callout" style="margin-top:14px"><strong>Read only, and only these:</strong> your activity, last night as Health recorded it, and — if you switch cycle context on — your cycle phase. SleepSphere never writes to Health, and nothing leaves this phone.</div>
             </article>
 
-            <article class="card span-12" id="restorationCard">
+            <article class="card span-12" id="restorationCard" data-phase="DAY EVENING">
               <div class="section-head" style="margin-bottom:12px">
                 <div><div class="card-label">Restoration need</div><h3 id="needTotal">—</h3><p class="helper" id="needBaseline"></p></div>
                 <p>How much sleep opportunity tonight owes you, and why. Every term is visible and capped.</p>
@@ -1967,7 +2029,7 @@
               <label class="need-optin"><input type="checkbox" id="needCycle" /><span>Count my body-cycle context in this estimate. Off by default — cycle context is recorded, never scored, unless you ask.</span></label>
             </article>
 
-            <article class="card span-12">
+            <article class="card span-12" data-phase="DAY">
               <div class="card-label">Tomorrow’s priority</div>
                 <div class="intent-row" id="intentRow">
                   <button type="button" class="intent-pill" data-intent="restore">Feel restored</button>
@@ -1978,7 +2040,7 @@
                 <div class="intent-result" id="intentResult" aria-live="polite">Choose tomorrow’s priority. SleepSphere will keep that outcome visible.</div>
             </article>
 
-            <article class="card span-12">
+            <article class="card span-12" data-phase="DAY">
               <div class="card-label">Active experiment</div>
               <h3 id="activeExperimentTitle">No experiment running</h3>
               <p class="helper" id="activeExperimentText">Choose one small change and define what “helpful” would mean before testing it.</p>
@@ -1987,7 +2049,7 @@
               <button class="btn primary small" data-go="experiment">Open experiment studio</button>
             </article>
 
-            <article class="card span-12" id="nightScan">
+            <article class="card span-12" id="nightScan" data-phase="EVENING">
               <div class="section-head" style="margin-bottom:14px"><div><div class="card-label">60-second context scan</div><h3>What is most likely to get in the way tonight?</h3></div><p>This does not predict sleep. It simply chooses one low-effort response to your strongest friction.</p></div>
               <div class="scan-grid">
                 <div class="scan-item"><label>Mental load</label><div class="mini-scale" data-scan="mental"><button type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">4</button><button type="button">5</button></div></div>
@@ -2005,6 +2067,15 @@
         <section class="view" id="twin">
           <div class="section-head"><div><div class="eyebrow">SleepSphere signature</div><h2>Your Restoration Twin</h2></div><p>A twin is created by pairing a saved plan with the morning that followed. It exposes the gap between intention and real life without hiding the calculation inside a mystery score.</p></div>
           <div class="grid">
+            <!-- Rehomed from the old tab row. -->
+            <article class="card span-12 elsewhere">
+              <div class="card-label">Also here</div>
+              <div class="button-row">
+                <button class="btn ghost" data-go="compass">Trends</button>
+                <button class="btn ghost" data-go="experiment">Try one change</button>
+                <button class="btn ghost" data-go="bio">Bio Harmony</button>
+              </div>
+            </article>
             <article class="card span-12">
               <div class="section-head" style="margin-bottom:12px">
                 <div><div class="card-label">Your week</div><h3>Seven nights, one axis</h3><p class="helper" id="weekSummary"></p></div>
@@ -2506,6 +2577,18 @@
         <section class="view" id="data">
           <div class="section-head"><div><div class="eyebrow">Private data vault</div><h2>Own your record</h2></div><p>Export a readable diary, back up the full app, print a concise conversation summary or erase everything. Nothing is sent anywhere automatically.</p></div>
           <div class="grid">
+            <!-- Rehomed from the old tab row. -->
+            <article class="card span-12 elsewhere no-print">
+              <div class="card-label">Also here</div>
+              <div class="button-row">
+                <button class="btn ghost" data-go="morning">Full morning form</button>
+                <button class="btn ghost" data-go="plan">Night plan</button>
+                <button class="btn ghost" data-go="bio">Bio Harmony</button>
+                <button class="btn ghost" data-go="unload">Clear my mind</button>
+                <button class="btn ghost" data-go="travel">Travel</button>
+                <button class="btn ghost" data-go="test">Give feedback</button>
+              </div>
+            </article>
             <!-- Fieldwork. Deliberately quiet: a status line for troubleshooting
                  and one obvious button, with no streaks and nothing to beat. -->
             <article class="card span-12 no-print" id="studyPanel" hidden>
@@ -2833,6 +2916,10 @@
       },
 
       plan: null,
+      /* Brain Day, keyed by the date the night belongs to. A map rather than
+         a field on the plan so that answering for tomorrow never edits
+         yesterday, and so a run of days survives replanning. */
+      brainDays: {},
       scans: [],
       thoughts: [],
       mornings: [],
@@ -2938,6 +3025,8 @@
         version: SCHEMA_VERSION,
         settings: { ...defaults.settings, ...(stored.settings || {}) },
         study:    { ...defaults.study,    ...(stored.study    || {}) },
+        brainDays: (stored.brainDays && typeof stored.brainDays === 'object' && !Array.isArray(stored.brainDays))
+          ? stored.brainDays : {},
         scans: Array.isArray(stored.scans) ? stored.scans : [],
         thoughts: Array.isArray(stored.thoughts) ? stored.thoughts : [],
         mornings: Array.isArray(stored.mornings) ? stored.mornings : [],
@@ -3134,6 +3223,154 @@
 
     const inFieldwork = () => Boolean(state.study?.onboarded && state.study?.participantId);
 
+    /* ==================================================================
+       THE CONTEXT ENGINE
+
+       SleepSphere meets you at the right moment. Four phases, one primary
+       action each:
+
+         WAKE     you are up, and this morning is not recorded
+         DAY      the day is yours; the app's job is tomorrow
+         EVENING  wind-down has started or is close
+         SLEEP    you should be asleep, so the app gets out of the way
+
+       Three rules this follows, each of which cost something to learn:
+
+       1. It is DETERMINISTIC. One pure function of (now, state) with no
+          randomness, no network and no model. Everything else reads it.
+       2. It prefers the person's OWN plan over the clock. Fixed hours are
+          a fallback for someone who has not planned a night, not the rule.
+       3. Phase boundaries use LOCAL time, because "is it evening" is a
+          question about the room you are in.
+
+       ---- A documented inconsistency, deliberately left alone ----
+
+       Records are dated by `new Date().toISOString().slice(0,10)`, which is
+       UTC. In Dubai (UTC+4) anything written between midnight and 04:00
+       local therefore carries the previous calendar date. Phase 0 flagged
+       this; Phase 1A was told not to refactor dates, and it does not.
+
+       So the engine splits the two cleanly and names which is which:
+
+         · phase boundaries      → LOCAL clock  (localMinutesNow)
+         · "is today recorded?"  → UTC key      (studyToday)
+
+       The UTC key is used on purpose: it has to match the key records are
+       actually stored under, or the app would ask for a check-in that
+       already exists. The only window where the two disagree is 00:00 to
+       04:00 local, which falls inside SLEEP, where neither answer changes
+       what is shown. A contained fix is proposed separately; it must move
+       storage and display together or not at all.
+       ================================================================== */
+
+    // Used when somebody has not planned a night. Chosen to be unremarkable
+    // rather than aspirational — this is a fallback, not advice.
+    const PHASE_FALLBACK = Object.freeze({ wake: 6 * 60 + 30, windDown: 22 * 60, sleep: 23 * 60 });
+    /* How long after waking the check-in still feels like "this morning"
+       rather than a late catch-up. Four hours: late enough for someone who
+       slept in after a hard night, early enough that the app is not saying
+       "good morning" at lunchtime. Past it the day carries on and recording
+       becomes a secondary action rather than the headline. */
+    const WAKE_WINDOW = 4 * 60;
+    /* How early the evening starts to lean forward. Ninety minutes, because
+       three hours out "prepare tonight" is not yet the useful thing to say
+       and the first cut put the evening at six o'clock. */
+    const EVENING_LEAD = 90;
+
+    const localMinutesNow = (now = new Date()) => now.getHours() * 60 + now.getMinutes();
+
+    // Minutes from a to b going forwards round the clock, 0..1439.
+    const forwardGap = (from, to) => ((Math.round(to - from) % 1440) + 1440) % 1440;
+
+    /* The anchors this person's night actually has. A plan saved for tonight
+       wins; otherwise the fallback, nudged by their own sleep target so a
+       seven-hour sleeper is not told to wind down at the same hour as a
+       nine-hour one. */
+    function phaseAnchors(state_ = state) {
+      const plan = state_.plan;
+      if (plan && Number.isFinite(Number(plan.windStart))) {
+        const wakeAt = toMinutes(plan.mode === 'fajr' ? (plan.finalWake || plan.fajr) : plan.wake);
+        return {
+          wake: normalizeMinutes(wakeAt),
+          windDown: normalizeMinutes(Number(plan.windStart)),
+          sleep: normalizeMinutes(Number(plan.sleepStart)),
+          source: 'plan'
+        };
+      }
+      const target = Number(state_.settings?.target) || 480;
+      const wake = PHASE_FALLBACK.wake;
+      const sleep = normalizeMinutes(wake - target);
+      return { wake, sleep, windDown: normalizeMinutes(sleep - 60), source: 'default' };
+    }
+
+    /**
+     * The phase, and why. Pure: give it a clock and a state and it will
+     * always answer the same thing.
+     * @returns {{phase:string, reason:string, anchors:object, recorded:boolean}}
+     */
+    function resolvePhase(now = new Date(), state_ = state) {
+      const anchors = phaseAnchors(state_);
+      const minutes = localMinutesNow(now);
+      const key = now.toISOString().slice(0, 10);
+      const recorded = (state_.mornings || []).some(item => !item.demo && item.date === key);
+      const openNight = Boolean(state_.lazyNight && !state_.lazyNight.wakeTime);
+      const say = (phase, reason) => ({ phase, reason, anchors, recorded });
+
+      // Bed time is stamped and no wake time yet: they are in the night,
+      // whatever the clock says. This outranks everything because it is the
+      // one signal the person gave us directly.
+      if (openNight && forwardGap(anchors.wake, minutes) > WAKE_WINDOW) return say('SLEEP', 'lazy-night-open');
+
+      const sinceWake = forwardGap(anchors.wake, minutes);
+      const toWindDown = forwardGap(minutes, anchors.windDown);
+      const sinceWindDown = forwardGap(anchors.windDown, minutes);
+      const sinceSleep = forwardGap(anchors.sleep, minutes);
+
+      // Asleep: from the planned settle time until the planned wake.
+      if (sinceSleep < forwardGap(anchors.sleep, anchors.wake)) return say('SLEEP', 'past-sleep-time');
+
+      // Just up, and this morning is not down yet.
+      if (sinceWake <= WAKE_WINDOW && !recorded) return say('WAKE', 'after-wake-not-recorded');
+
+      // Wind-down has begun.
+      if (sinceWindDown < forwardGap(anchors.windDown, anchors.sleep)) return say('EVENING', 'wind-down-started');
+
+      // Close enough to wind-down that preparing the night is the useful act.
+      if (toWindDown <= EVENING_LEAD) return say('EVENING', 'wind-down-approaching');
+
+      return say('DAY', recorded ? 'day-recorded' : 'day-unrecorded');
+    }
+
+    /* ---- Brain Day -------------------------------------------------- */
+
+    /* Stored against the DATE THE NIGHT BELONGS TO, so changing tomorrow's
+       answer can never rewrite what a past record said. A morning takes its
+       copy at save time (see the record constructor); this map is only ever
+       the forward-looking intention. */
+    const brainDayKeyFor = (now = new Date()) => {
+      // Asked in the evening about tomorrow, so after wind-down the answer
+      // belongs to tomorrow's date; before it, to today's.
+      const phase = resolvePhase(now).phase;
+      const base = new Date(now.getTime());
+      if (phase === 'EVENING' || phase === 'SLEEP') base.setDate(base.getDate() + 1);
+      return base.toISOString().slice(0, 10);
+    };
+
+    function brainDayFor(key = brainDayKeyFor()) {
+      const picked = state.brainDays?.[key];
+      return picked && BRAIN_DAY[picked] ? picked : null;
+    }
+
+    function setBrainDay(category, key = brainDayKeyFor()) {
+      if (!BRAIN_DAY[category]) return false;
+      state.brainDays = { ...(state.brainDays || {}), [key]: category };
+      // The live plan carries it too, so a night saved after this choice
+      // records the demand it was built around.
+      if (state.plan) state.plan.brainDay = category;
+      saveState();
+      return true;
+    }
+
     const pageMeta = {
       today: ['Start here', 'Your simple sleep loop.', 'Check today, plan tonight and return tomorrow.'],
       twin: ['My pattern', 'What helped me feel restored?', 'See the difference between the night you planned and the morning you experienced.'],
@@ -3164,18 +3401,12 @@
       if (id === 'data') { renderDataSummary(); renderStudyPanel(); }
       if (id === 'travel') renderTravel();
       if (id === 'plan') renderPrayer();
-      if (window.innerWidth <= 900) {
-        $('.nav').classList.remove('expanded');
-        $('#navMore').setAttribute('aria-expanded','false');
-      }
+
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     $$('.nav button[data-view]').forEach(button => button.addEventListener('click', () => navigate(button.dataset.view)));
-    $('#navMore').addEventListener('click', () => {
-      const expanded = $('.nav').classList.toggle('expanded');
-      $('#navMore').setAttribute('aria-expanded',String(expanded));
-    });
+
     $$('[data-go]').forEach(button => button.addEventListener('click', () => {
       const target = button.dataset.go;
       if (target === 'flow') openFlow('evening');
@@ -3476,10 +3707,13 @@
         factors:[...selectedFactors], note:$('#morningNote').value.trim(),
         targetMinutes:Number(state.settings.target) || 480,
         intent:state.settings.intent || 'restore', planSnapshot:state.plan ? clone(state.plan) : null,
-        /* Carried from the night plan this morning belongs to. Until Phase 1
-           builds the Brain Day question nothing sets it, so it stays null —
-           which the export prints as empty rather than guessing 'normal'. */
-        brainDay: (existing && 'brainDay' in existing ? existing.brainDay : null) ?? state.plan?.brainDay ?? null,
+        /* Snapshotted from the Brain Day chosen for THIS date, so a record
+           keeps the demand it was actually made under. Changing tomorrow's
+           answer writes a different key in state.brainDays and cannot reach
+           back into a morning already saved. Still null when never asked —
+           the export prints empty rather than guessing 'normal'. */
+        brainDay: (existing && 'brainDay' in existing ? existing.brainDay : null)
+                  ?? state.brainDays?.[date] ?? state.plan?.brainDay ?? null,
         bioHarmonyId:pairedBio?.id || null, bioHarmonySnapshot:pairedBio ? clone(pairedBio) : null,
         experimentId:preservesBaseline ? (existing.experimentId || null) : (state.activeExperiment?.id || null),
         adherence:preservesBaseline ? (existing.adherence || 'not_applicable') : (state.activeExperiment ? $('#experimentAdherence').value : 'not_applicable'), demo:false
@@ -3616,6 +3850,110 @@
 
     $('#loadDemo').addEventListener('click', () => { demoMode = !demoMode; renderCompass(); toast(demoMode ? 'Showing separate demonstration data' : 'Showing your own records'); });
 
+    /* ==================================================================
+       THE MOMENT
+
+       One phase, one question, one action. Everything this writes comes from
+       resolvePhase(), so what the screen says and what the engine decided can
+       never drift apart.
+       ================================================================== */
+    /* Geometric marks only. The first cut used ۩ for hifz, which fell back
+       to a box on the test device — a glyph nobody can see is worse than no
+       glyph. These all exist in the fonts the app already relies on, and in
+       any case the label carries the meaning: the mark is decoration and the
+       tick is what says "chosen". */
+    const BRAIN_GLYPH = { hifz:'◉', heavy_learning:'◈', exam:'✦', normal:'○', travel:'✈', recovery:'◡' };
+
+    function renderBrainGrid(selected) {
+      $('#brainGrid').innerHTML = Object.entries(BRAIN_DAY).map(([key, label]) => `
+        <button type="button" class="brain-chip" data-brain="${key}"
+                aria-pressed="${String(key === selected)}">
+          <span class="glyph" aria-hidden="true">${key === selected ? '✓' : BRAIN_GLYPH[key]}</span>
+          <span>${escapeHtml(label)}</span>
+        </button>`).join('');
+      $$('#brainGrid .brain-chip').forEach(chip => chip.addEventListener('click', () => {
+        setBrainDay(chip.dataset.brain);
+        // Choosing ends the edit, so the answer is confirmed back rather than
+        // leaving the grid open with no sign it took.
+        brainEditing = false;
+        renderMoment();
+        toast(`Tomorrow noted as ${BRAIN_DAY[chip.dataset.brain].toLowerCase()}`);
+      }));
+    }
+
+    let brainEditing = false;
+
+    function renderMoment() {
+      const { phase, recorded } = resolvePhase();
+      /* navigate() stamps this, but it does not run on first paint, so a
+         cold open showed the page heading above the moment — two headlines
+         competing for the same three seconds. */
+      if (!document.documentElement.dataset.view) document.documentElement.dataset.view = 'today';
+      document.documentElement.dataset.phase = phase;
+
+      const eyebrow = $('#momentEyebrow'), ask = $('#momentAsk'), sub = $('#momentSub');
+      const go = $('#momentGo'), alt = $('#momentAlt'), note = $('#momentNote');
+      const grid = $('#brainGrid');
+      grid.hidden = true; go.hidden = false; alt.hidden = true; note.textContent = '';
+      go.onclick = null; alt.onclick = null;
+
+      if (phase === 'WAKE') {
+        eyebrow.textContent = 'Good morning';
+        ask.textContent = 'How did your night leave you?';
+        sub.textContent = 'Three questions. Under half a minute.';
+        go.textContent = 'Record this morning';
+        go.onclick = () => openFlow('wake');
+        return;
+      }
+
+      if (phase === 'SLEEP') {
+        eyebrow.textContent = 'Tonight';
+        ask.textContent = state.plan ? 'Your night is ready.' : 'Time to stop.';
+        sub.textContent = 'One tap, then put the phone somewhere else.';
+        go.textContent = 'Goodnight';
+        go.onclick = () => startLazyNight();
+        return;
+      }
+
+      if (phase === 'EVENING') {
+        eyebrow.textContent = 'This evening';
+        const planned = state.plan && state.plan.savedDate === studyToday();
+        ask.textContent = planned ? 'Tonight is planned.' : 'Let’s prepare tonight.';
+        sub.textContent = planned
+          ? `Wind down around ${formatTime(state.plan.windStart)}, settle by ${formatTime(state.plan.sleepStart)}.`
+          : 'Build a realistic night around what tomorrow actually asks.';
+        go.textContent = planned ? 'Change tonight’s plan' : 'Plan tonight';
+        go.onclick = () => navigate('plan');
+        alt.hidden = false;
+        alt.textContent = 'Clear my mind';
+        alt.onclick = () => navigate('unload');
+        return;
+      }
+
+      // DAY — the app's job is tomorrow.
+      const picked = brainDayFor();
+      eyebrow.textContent = 'Today';
+      if (!picked || brainEditing) {
+        ask.textContent = 'What does your brain need tomorrow?';
+        sub.textContent = 'So tonight can be built around it.';
+        grid.hidden = false;
+        renderBrainGrid(picked);
+        go.hidden = true;
+        if (brainEditing) { alt.hidden = false; alt.textContent = 'Keep what I had'; alt.onclick = () => { brainEditing = false; renderMoment(); }; }
+      } else {
+        ask.textContent = `Tomorrow: ${BRAIN_DAY[picked].toLowerCase()}.`;
+        sub.textContent = 'Tonight will be built around that.';
+        go.textContent = 'Change';
+        go.onclick = () => { brainEditing = true; renderMoment(); };
+      }
+      if (!recorded) {
+        alt.hidden = false;
+        alt.textContent = 'Record this morning';
+        alt.onclick = () => openFlow('wake');
+        note.textContent = 'This morning is not recorded yet.';
+      }
+    }
+
     function renderToday() {
       const today = new Date().toISOString().slice(0,10);
       $('#consoleDate').textContent = new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
@@ -3630,6 +3968,7 @@
       }
       // The sphere's reading now lives on the Bio Harmony screen; the
       // Tonight hero shows the night itself instead.
+      renderMoment();
       renderHeroStatus();
       renderNightArc();
       renderRestoration();
@@ -4369,7 +4708,7 @@
         rows.push([
           study.participantId, study.cohort, study.schemaVersion,
           day, date, record ? 1 : 0, record ? (record.lazy ? 'lazy' : 'full') : '',
-          cell(record?.brainDay),
+          cell(record?.brainDay ?? state.brainDays?.[date] ?? null),
           plan ? 1 : 0, cell(plan?.mode), cell(plan?.windStart), cell(plan?.sleepStart),
           cell(plan?.wakeAnchor), cell(plan?.total),
           cell(record?.bedTime), cell(record?.sleepTime), cell(record?.wakeTime),
@@ -4766,9 +5105,29 @@
       { key:'morningNote', target:'#morningNote', kind:'note', optional:true, question:'Anything the numbers miss?', hint:'“Slept long enough but woke with a headache.” “Short night, but calm.” Optional.', placeholder:'Optional. Kept in this browser.' }
     ];
 
+    /* The morning check-in a participant actually meets.
+
+       The full `morningSteps` flow asks ten questions and takes two or three
+       minutes. It still exists, reachable from Today, for anyone who wants
+       to correct the details. But the thing someone does every day for a
+       fortnight has to be shorter than the thing they feel about it, so the
+       daily path is three scales and an optional tap.
+
+       Nothing is lost from the research export: the times come from the
+       plan this night was built on, and the record says so — exactly the
+       honesty Lazy Mode already uses. Calm is not asked, so it stays null
+       rather than being guessed from yesterday. */
+    const wakeSteps = [
+      { key:'rest',   kind:'scale', rating:'rest',   question:'How restored do you feel?', hint:'The honest answer, not the one you would like to be true.', low:'Not restored', high:'Very restored' },
+      { key:'energy', kind:'scale', rating:'energy', question:'And your energy right now?', hint:'How much is actually in the tank this morning.', low:'Very low', high:'Very steady' },
+      { key:'focus',  kind:'scale', rating:'focus',  question:'How clear is your concentration?', hint:'Scattered, or able to hold on to a thought.', low:'Scattered', high:'Clear' },
+      { key:'factors', kind:'multi', optional:true, question:'Anything present last night?', hint:'Tap anything that fits, or none at all. This is optional.' }
+    ];
+
     const flows = {
       evening: { steps:eveningSteps, finish:finishEvening, reveal:revealEvening },
-      morning: { steps:morningSteps, finish:finishMorning, reveal:revealMorning }
+      morning: { steps:morningSteps, finish:finishMorning, reveal:revealMorning },
+      wake:    { steps:wakeSteps,    finish:finishWake,    reveal:revealWake }
     };
     let flowKind = 'evening';
     let flowIndex = 0;
@@ -4835,9 +5194,19 @@
       } else {
         $('#logDate').value = today;
         flowCanRepeat = prefillMorning();
+        /* The fast path asks its three questions fresh. prefillMorning fills
+           the times from the saved plan, which is what we want, but it also
+           carries yesterday's ratings forward for the "same as yesterday"
+           shortcut — and a pre-answered scale in a three-question check-in
+           is an answer nobody gave. */
+        if (flowKind === 'wake') {
+          ['rest','energy','focus','calm','fajrStatus'].forEach(key => delete flowPicks[key]);
+          flowPicks.factors = [];
+          flowCanRepeat = false;
+        }
         if (state.settings.healthLinked && native()) {
           native().lastNightSleep().then(sleep => {
-            if (!sleep || flowKind !== 'morning') return;
+            if (!sleep || (flowKind !== 'morning' && flowKind !== 'wake')) return;
             if (sleep.bedTime) $('#actualBed').value = sleep.bedTime;
             if (sleep.sleepTime) $('#actualSleep').value = sleep.sleepTime;
             if (sleep.wakeTime) $('#actualWake').value = sleep.wakeTime;
@@ -5071,6 +5440,78 @@
 
       $('#revealPlan').addEventListener('click', () => { closeFlow(); navigate('plan'); });
       $('#revealDetail').addEventListener('click', () => { closeFlow(); navigate('bio'); });
+    }
+
+    /* The fast path's save. Runs the ordinary morning save so everything
+       downstream — the estimate, the pairing, the Twin, the export — behaves
+       exactly as it always has, then corrects the record to say what was
+       actually asked and what was merely inherited. */
+    function finishWake() {
+      /* The shared save refuses a record without all four ratings, and the
+         fast check-in deliberately does not ask for calm — so without this
+         the save was silently declined, no record was written, and the
+         acknowledgement screen had nothing to show. It failed as a toast
+         nobody was looking at.
+
+         Rather than loosen a validation the full form still relies on, this
+         does what Lazy Mode already does: satisfy the save path, then
+         immediately tell the truth about what was actually asked. The
+         placeholder below never survives this function. */
+      flowPicks.calm = flowPicks.calm || '3';
+      finishMorning();
+      const date = $('#logDate').value;
+      const saved = state.mornings.find(item => !item.demo && item.date === date);
+      if (!saved) return;
+      // Calm was not asked. An unasked question is null, not yesterday's answer.
+      saved.calm = null;
+      saved.quick = true;
+      /* The times came from the night plan, not from the person. Naming them
+         keeps `value_basis` in the research export truthful. */
+      saved.measured = [];
+      saved.estimated = ['bedTime', 'sleepTime', 'wakeTime', 'awakeMinutes'];
+      saveState();
+    }
+
+    /* One acknowledgement. Never a score, never a diagnosis, and never a
+       cause — three nights cannot establish one, and the language says so. */
+    function wakeObservation(record) {
+      const history = realMornings().filter(item => item.date !== record.date);
+      if (history.length < 3) return 'Got it. Have a good morning.';
+      const usualSleep = medianOf(history.map(item => Number(item.sleepMinutes)).filter(Number.isFinite));
+      const usualRest  = medianOf(history.map(item => Number(item.rest)).filter(Number.isFinite));
+      if (!Number.isFinite(usualSleep) || !Number.isFinite(usualRest)) return 'Got it. Have a good morning.';
+
+      const sleepGap = Number(record.sleepMinutes) - usualSleep;
+      const restGap  = Number(record.rest) - usualRest;
+      const similarSleep = Math.abs(sleepGap) <= 30;
+
+      if (similarSleep && restGap <= -1)
+        return 'Your sleep opportunity was close to usual, but you felt less restored. Worth watching whether that repeats.';
+      if (similarSleep && restGap >= 1)
+        return 'A similar night to usual, and it left you feeling better. Noted.';
+      if (sleepGap <= -45 && restGap <= -1)
+        return 'A shorter night than usual, and this morning reflects it. One night is just one night.';
+      if (sleepGap >= 45 && restGap <= -1)
+        return 'A longer night than usual, and you still feel less restored. Worth watching.';
+      if (sleepGap <= -45)
+        return 'Shorter than your usual night. Recorded.';
+      return 'Got it. Have a good morning.';
+    }
+
+    function revealWake() {
+      const record = realMornings().at(-1);
+      if (!record) { closeFlow(); return; }
+      $('#flowInner').innerHTML = `<div class="reveal reveal-quiet">
+        <h2>Recorded.</h2>
+        <p class="wake-observation">${escapeHtml(wakeObservation(record))}</p>
+        <div class="reveal-actions" style="margin-top:22px">
+          <button type="button" class="btn primary" id="wakeDone">Start the day</button>
+          <button type="button" class="btn ghost" id="wakeDetail">Add exact times</button>
+        </div>
+      </div>`;
+      $('#wakeDone').addEventListener('click', () => { closeFlow(); renderAll(); });
+      // The full form stays one tap away for anyone who wants the detail.
+      $('#wakeDetail').addEventListener('click', () => { closeFlow(); navigate('morning'); });
     }
 
     function revealMorning() {
@@ -5576,6 +6017,10 @@
          applySky reads the clock, so with the clock held or driven this is
          the whole of it. */
       window.__applySky = applySky;
+      /* The context engine, exposed the same way, so its boundaries can be
+         tested as arithmetic rather than by waiting for the clock. */
+      window.__phase = (iso, override) => resolvePhase(iso ? new Date(iso) : new Date(), override || state);
+      window.__anchors = () => phaseAnchors();
     }
 
     /* ------------------------------------------------------------------

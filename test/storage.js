@@ -11,6 +11,23 @@
  * this app is usually first opened, from a shared link inside another app.
  */
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+/* Pinned to the middle of the afternoon. Today is contextual now: the night
+   console — which holds #lazyStart and the hero starfield — belongs to the
+   DAY and EVENING phases and is hidden at waking and at bedtime. Without a
+   fixed clock these suites pass or fail depending on what time of day they
+   happen to run, which is worse than either outcome. */
+const DAY_PHASE = fixed => {
+  const Real = Date; const held = new Real(fixed);
+  window.Date = class extends Real {
+    constructor(...a){ return a.length ? new Real(...a) : new Real(held); }
+    static now(){ return held.getTime(); }
+  };
+};
+/* Stated in UTC on purpose. These suites do not pin a timezone, so an offset
+   like +04:00 lands at 09:00 for the browser — which is the WAKE phase, not
+   the afternoon, and the console these checks need is hidden there. */
+const AT_MIDDAY = '2026-10-06T13:00:00Z';
+
 let fails = 0;
 const check = (n, ok, x='') => { console.log(`${ok?'PASS':'FAIL'}  ${n}${x?' :: '+x:''}`); if (!ok) fails++; };
 
@@ -30,6 +47,7 @@ const DISCARDS = `(()=>{const m={};Object.defineProperty(window,'localStorage',{
     const errs = [];
     p.on('pageerror', e => errs.push(e.message));
     if (breakage) await p.addInitScript(breakage);
+    await p.addInitScript(DAY_PHASE, AT_MIDDAY);
     await p.goto('http://localhost:8099/index.html', { waitUntil:'networkidle' });
     await p.waitForTimeout(1300);
     // Get past the first-run overlays, which are expected when nothing is stored.
@@ -57,7 +75,14 @@ const DISCARDS = `(()=>{const m={};Object.defineProperty(window,'localStorage',{
   check('The app still renders', await blocked.p.evaluate(() => !!document.querySelector('.view.active')));
   // The session has to keep working — refusing to run would be worse than
   // running without persistence, and the person may want to export.
-  await blocked.p.locator('#lazyStart').click();
+  /* Today is contextual now: going to bed is the moment's primary action
+     during SLEEP and the console button during the day. Take whichever this
+     hour offers, so the suite does not depend on when it runs. */
+  await blocked.p.evaluate(() => {
+    const bed = document.getElementById('lazyStart');
+    if (bed && bed.offsetParent !== null) return bed.click();
+    return document.getElementById('momentGo').click();
+  });
   await blocked.p.waitForTimeout(400);
   check('Lazy mode still works in memory', await blocked.p.locator('#lazyVeil').isVisible());
   check('There is a way to get the data out', await blocked.p.locator('#storageWarningExport').isVisible());

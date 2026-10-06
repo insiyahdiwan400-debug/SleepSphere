@@ -6,6 +6,23 @@
  * the pattern, the week strip and an experiment alongside a hand-filled one.
  */
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+/* Pinned to the middle of the afternoon. Today is contextual now: the night
+   console — which holds #lazyStart and the hero starfield — belongs to the
+   DAY and EVENING phases and is hidden at waking and at bedtime. Without a
+   fixed clock these suites pass or fail depending on what time of day they
+   happen to run, which is worse than either outcome. */
+const DAY_PHASE = fixed => {
+  const Real = Date; const held = new Real(fixed);
+  window.Date = class extends Real {
+    constructor(...a){ return a.length ? new Real(...a) : new Real(held); }
+    static now(){ return held.getTime(); }
+  };
+};
+/* Stated in UTC on purpose. These suites do not pin a timezone, so an offset
+   like +04:00 lands at 09:00 for the browser — which is the WAKE phase, not
+   the afternoon, and the console these checks need is hidden there. */
+const AT_MIDDAY = '2026-10-06T13:00:00Z';
+
 let fails = 0;
 const check = (n, ok, x='') => { console.log(`${ok?'PASS':'FAIL'}  ${n}${x?' :: '+x:''}`); if (!ok) fails++; };
 
@@ -38,8 +55,17 @@ const clockAt = (y,mo,d,h,mi) => `(()=>{const R=Date;const f=new R(${y},${mo},${
 
   // ---- Night: one tap, and it must not ask anything.
   const night = await open(null, clockAt(2026,8,9,23,40));
-  check('The way out is on the first screen', await night.p.locator('#lazyStart').isVisible());
-  await night.p.locator('#lazyStart').click();
+  /* Today is contextual now. At twenty to midnight the app is in its SLEEP
+     phase, so going to bed is THE primary action on the screen rather than a
+     secondary button under a dashboard — which is the whole point of the
+     phase. The old #lazyStart still exists for the day and evening; this
+     checks the path a tired person actually meets. */
+  check('The way out is the first thing on the screen',
+        (await night.p.evaluate(() => document.documentElement.dataset.phase)) === 'SLEEP'
+        && await night.p.locator('#momentGo').isVisible());
+  check('And it says what it does',
+        /goodnight/i.test(await night.p.locator('#momentGo').innerText()));
+  await night.p.locator('#momentGo').click();
   await night.p.waitForTimeout(400);
   check('Going to bed takes one tap', await night.p.locator('#lazyVeil').isVisible());
   const stored = (await read(night.p)).lazyNight;

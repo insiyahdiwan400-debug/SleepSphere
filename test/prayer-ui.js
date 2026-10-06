@@ -1,4 +1,21 @@
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+/* Pinned to the middle of the afternoon. Today is contextual now: the night
+   console — which holds #lazyStart and the hero starfield — belongs to the
+   DAY and EVENING phases and is hidden at waking and at bedtime. Without a
+   fixed clock these suites pass or fail depending on what time of day they
+   happen to run, which is worse than either outcome. */
+const DAY_PHASE = fixed => {
+  const Real = Date; const held = new Real(fixed);
+  window.Date = class extends Real {
+    constructor(...a){ return a.length ? new Real(...a) : new Real(held); }
+    static now(){ return held.getTime(); }
+  };
+};
+/* Stated in UTC on purpose. These suites do not pin a timezone, so an offset
+   like +04:00 lands at 09:00 for the browser — which is the WAKE phase, not
+   the afternoon, and the console these checks need is hidden there. */
+const AT_MIDDAY = '2026-10-06T13:00:00Z';
+
 const SS='/tmp/claude-0/-home-user-SleepSphere/9483097f-d154-5857-9fe7-4e2fdcbbaab8/scratchpad/prayer';
 require('fs').mkdirSync(SS,{recursive:true});
 let fails=0; const check=(n,ok,x='')=>{console.log(`${ok?'PASS':'FAIL'}  ${n}${x?' :: '+x:''}`);if(!ok)fails++;};
@@ -8,6 +25,9 @@ let fails=0; const check=(n,ok,x='')=>{console.log(`${ok?'PASS':'FAIL'}  ${n}${x
  const p=await ctx.newPage();
  const errs=[]; p.on('pageerror',e=>errs.push('pageerror: '+e.message)); p.on('console',m=>{if(m.type()==='error')errs.push(m.text());});
  await p.addInitScript(()=>{const R=Date;const f=new R(2026,11,15,21,0,0);class D extends R{constructor(...a){if(!a.length)return super(f.getTime());return super(...a);}static now(){return f.getTime();}}window.Date=D;});
+ await p.addInitScript(() => { window.goPlan = () => {
+   document.querySelector('.nav button[data-view="data"]').click();
+   document.querySelector('#data [data-go="plan"]').click(); }; });
  await p.goto('http://localhost:8099/index.html',{waitUntil:'networkidle'});
  await p.waitForTimeout(700);
  /* A genuinely fresh device now meets fieldwork onboarding first, so this
@@ -20,7 +40,7 @@ let fails=0; const check=(n,ok,x='')=>{console.log(`${ok?'PASS':'FAIL'}  ${n}${x
  await p.locator('#fwIdNext').click(); await p.waitForTimeout(500);
  await p.locator('#fwStorageNext').click();
  await p.locator('#fwDone').click(); await p.waitForTimeout(400);
- await p.evaluate(()=>document.querySelector('.nav button[data-view="plan"]').click());
+ await p.evaluate(()=>goPlan());
  await p.waitForTimeout(500);
 
  check('Prayer card asks for a location first', await p.locator('#prayerSetup').isVisible());
@@ -74,14 +94,14 @@ let fails=0; const check=(n,ok,x='')=>{console.log(`${ok?'PASS':'FAIL'}  ${n}${x
  await p.waitForTimeout(300);
  await p.evaluate(()=>document.querySelector('.nav button[data-view="today"]').click());
  await p.waitForTimeout(300);
- await p.evaluate(()=>document.querySelector('.nav button[data-view="plan"]').click());
+ await p.evaluate(()=>goPlan());
  await p.waitForTimeout(500);
  check('A hand-typed Fajr is respected', (await p.locator('#fajrTime').inputValue())==='05:00');
  check('And says so', /Set by you/.test(await p.locator('#fajrSource').innerText()));
 
  // Persistence
  await p.reload({waitUntil:'networkidle'}); await p.waitForTimeout(800);
- await p.evaluate(()=>document.querySelector('.nav button[data-view="plan"]').click());
+ await p.evaluate(()=>goPlan());
  await p.waitForTimeout(500);
  await p.locator('#planMode button[data-mode="fajr"]').click();
  await p.waitForTimeout(300);

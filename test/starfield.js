@@ -7,6 +7,23 @@
  * measures the twinkle and calls it motion.
  */
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+/* Pinned to the middle of the afternoon. Today is contextual now: the night
+   console — which holds #lazyStart and the hero starfield — belongs to the
+   DAY and EVENING phases and is hidden at waking and at bedtime. Without a
+   fixed clock these suites pass or fail depending on what time of day they
+   happen to run, which is worse than either outcome. */
+const DAY_PHASE = fixed => {
+  const Real = Date; const held = new Real(fixed);
+  window.Date = class extends Real {
+    constructor(...a){ return a.length ? new Real(...a) : new Real(held); }
+    static now(){ return held.getTime(); }
+  };
+};
+/* Stated in UTC on purpose. These suites do not pin a timezone, so an offset
+   like +04:00 lands at 09:00 for the browser — which is the WAKE phase, not
+   the afternoon, and the console these checks need is hidden there. */
+const AT_MIDDAY = '2026-10-06T13:00:00Z';
+
 let fails = 0;
 const check = (n, ok, x='') => { console.log(`${ok?'PASS':'FAIL'}  ${n}${x?' :: '+x:''}`); if (!ok) fails++; };
 
@@ -51,8 +68,14 @@ const clockAt = hour => `(()=>{const R=Date;const f=new R(2026,8,9,${hour},30,0)
   // regular 74px lattice of dots — the one pattern guaranteed to read as
   // "dots", on the largest surface in the app.
   const panel = pick(p0, 'console-stars');
-  check('The hero panel has its own field', panel && panel.onScreen >= 90,
-        panel ? `${panel.onScreen} on the panel` : 'no panel field');
+  /* The panel lives inside the night console, which Today now shows during
+     the DAY and EVENING phases and hides at waking and at bedtime. This probe
+     runs at 23:00 — the SLEEP phase — so the console is deliberately away and
+     its canvas has nothing to measure. What matters here is that the field
+     still EXISTS and did not error; it is measured for real in daylight
+     further down, where it is the only sky anyone can see. */
+  check('The hero panel still has its own field', Boolean(panel),
+        panel ? `${panel.onScreen} on the panel (console hidden at this hour)` : 'no panel field');
   check('No dot lattice survives anywhere', await phone.p.evaluate(() =>
     ![...document.styleSheets].some(sheet => {
       try { return [...sheet.cssRules].some(r => /background-size:\s*74px/.test(r.cssText)); }

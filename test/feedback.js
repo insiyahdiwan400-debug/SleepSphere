@@ -10,6 +10,23 @@
  * as the storage one, and it would waste a tester's honest answer.
  */
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+/* Pinned to the middle of the afternoon. Today is contextual now: the night
+   console — which holds #lazyStart and the hero starfield — belongs to the
+   DAY and EVENING phases and is hidden at waking and at bedtime. Without a
+   fixed clock these suites pass or fail depending on what time of day they
+   happen to run, which is worse than either outcome. */
+const DAY_PHASE = fixed => {
+  const Real = Date; const held = new Real(fixed);
+  window.Date = class extends Real {
+    constructor(...a){ return a.length ? new Real(...a) : new Real(held); }
+    static now(){ return held.getTime(); }
+  };
+};
+/* Stated in UTC on purpose. These suites do not pin a timezone, so an offset
+   like +04:00 lands at 09:00 for the browser — which is the WAKE phase, not
+   the afternoon, and the console these checks need is hidden there. */
+const AT_MIDDAY = '2026-10-06T13:00:00Z';
+
 let fails = 0;
 const check = (n, ok, x='') => { console.log(`${ok?'PASS':'FAIL'}  ${n}${x?' :: '+x:''}`); if (!ok) fails++; };
 
@@ -53,7 +70,9 @@ const SEED = `(()=>{localStorage.setItem('sleepsphere_state_v2', JSON.stringify(
     await p.evaluate(() => {
       document.getElementById('opening')?.remove();
       document.getElementById('welcomeOverlay')?.classList.remove('active');
-      document.querySelector('.nav button[data-view="test"]')?.click();
+      // Feedback is rehomed under Me rather than carrying its own tab.
+      document.querySelector('.nav button[data-view="data"]')?.click();
+      document.querySelector('#data [data-go="test"]')?.click();
     });
     await p.waitForTimeout(400);
     return { ctx, p, errs, posts, mails };
