@@ -1524,6 +1524,27 @@
       .topbar, .sidebar, .dusk-veil { transition:none; }
     }
 
+    /* ---- "You really mean now?" — one question, asked quietly.
+
+       Not a warning and not a modal stack: the same celestial ground as
+       everything else at this hour, a sentence, and two buttons. It must
+       never read as the app objecting to an early night. */
+    .early-veil { position:fixed; inset:0; z-index:68; display:grid; place-items:end center;
+      padding:0 16px calc(26px + env(safe-area-inset-bottom)); opacity:0;
+      transition:opacity .5s ease; background:rgba(4,6,13,.62); }
+    .early-veil.on { opacity:1; }
+    .early-veil[hidden] { display:none !important; }
+    .early-sheet { width:min(460px,100%); padding:24px 22px;
+      border-radius:22px; border:1px solid rgba(233,228,217,.12);
+      background:rgba(14,18,27,.97); box-shadow:0 20px 60px rgba(0,0,0,.5); }
+    .early-title { margin:0; color:#f4f1ea; font-family:var(--font-display);
+      font-weight:500; font-size:22px; letter-spacing:-.01em; }
+    .early-sub { margin:8px 0 0; color:#b5aea1; font-size:15px; line-height:1.55; }
+    .early-sub b { color:var(--gold-soft); font-weight:600; font-variant-numeric:tabular-nums; }
+    .early-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:20px; }
+    .early-actions .btn { flex:1 1 auto; min-height:50px; }
+    @media (prefers-reduced-motion: reduce) { .early-veil { transition:none; } }
+
     /* ---- The Living Night.
 
        The evening's answer to a screen that was either cluttered or bare.
@@ -2307,6 +2328,20 @@
   </svg>
   <!-- Lazy mode. The whole screen is the button: on a night when you have
        nothing left, aiming at a target is itself a demand. -->
+  <!-- Asked only when Goodnight is tapped before the participant's own
+       planned wind-down. Two choices, no alarm, and "Not yet" changes
+       nothing whatsoever. -->
+  <div class="early-veil" id="earlyVeil" hidden role="dialog" aria-modal="true" aria-labelledby="earlyTitle">
+    <div class="early-sheet">
+      <p class="early-title" id="earlyTitle">Calling it a night early?</p>
+      <p class="early-sub">Your night was planned for around <b id="earlyWhen">—</b>.</p>
+      <div class="early-actions">
+        <button type="button" class="btn primary" id="earlyYes">Yes, I’m sleeping now</button>
+        <button type="button" class="btn ghost" id="earlyNo">Not yet</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Build my night. Three panes, one at a time: what SleepSphere already
        knows, what is different tonight (only if there is any), and the night
        itself. A normal evening never sees the middle one. -->
@@ -3911,22 +3946,69 @@
      * always answer the same thing.
      * @returns {{phase:string, reason:string, anchors:object, recorded:boolean}}
      */
+    /* Calculated Maghrib for the day a given moment falls in, from the one
+       tested engine and nowhere else. Null when there is no location, which
+       is a real answer: the evening then falls back to the plan alone. */
+    function maghribMinutes(now = new Date()) {
+      const times = todayPrayerTimes(now);
+      return times && times.maghrib ? toMinutes(times.maghrib) : null;
+    }
+
+    /* Jamea edition: once there is a night to show, the evening begins at
+       Maghrib rather than at a fixed lead before wind-down. This changes WHEN
+       the Living Night appears; it does not change how it quiets, which stays
+       tied to the participant's own wind-down and sleep times.
+
+       Maghrib is used only when it genuinely starts the evening EARLIER than
+       the plan would have. A Maghrib later than the lead (far north in
+       summer) must not delay an evening, and one absurdly far from the
+       planned night must not swallow the day — hence the bound. */
+    const EVENING_MAX = 8 * 60;
+    function eveningFrom(anchors, now = new Date()) {
+      const lead = normalizeMinutes(anchors.windDown - EVENING_LEAD);
+      if (anchors.source !== 'plan') return lead;
+      const maghrib = maghribMinutes(now);
+      if (maghrib == null) return lead;
+      const viaMaghrib = forwardGap(maghrib, anchors.sleep);
+      const viaLead = forwardGap(lead, anchors.sleep);
+      return (viaMaghrib > viaLead && viaMaghrib <= EVENING_MAX) ? maghrib : lead;
+    }
+
+    /* An unfinished Goodnight is a direct signal and outranks the clock — but
+       only for as long as the night it describes could still be running.
+
+       It used to outrank the clock whenever more than WAKE_WINDOW had passed
+       since the wake anchor, which is a condition that becomes MORE true as
+       the day goes on: a Goodnight tapped once and never closed pinned Today
+       to its bedtime screen for every hour of every day afterwards. Measured
+       against the night's own length instead, it simply expires. */
+    function openNightHolds(state_, anchors, now) {
+      const night = state_.lazyNight;
+      if (!night || night.wakeTime || !night.startedAt) return false;
+      const started = Date.parse(night.startedAt);
+      if (!Number.isFinite(started)) return false;
+      const elapsed = (now.getTime() - started) / 60000;
+      if (elapsed < 0) return false;
+      /* From the bed time they stamped to the wake they planned, plus the
+         window in which waking is still the useful thing to offer. */
+      const bed = /^\d{2}:\d{2}$/.test(night.bedTime || '') ? toMinutes(night.bedTime) : null;
+      const expected = (bed == null ? 12 * 60 : forwardGap(bed, anchors.wake)) + WAKE_WINDOW;
+      return elapsed <= expected;
+    }
+
     function resolvePhase(now = new Date(), state_ = state) {
       const anchors = phaseAnchors(state_);
       const minutes = localMinutesNow(now);
       const key = now.toISOString().slice(0, 10);
       const recorded = (state_.mornings || []).some(item => !item.demo && item.date === key);
-      const openNight = Boolean(state_.lazyNight && !state_.lazyNight.wakeTime);
       const say = (phase, reason) => ({ phase, reason, anchors, recorded });
 
       // Bed time is stamped and no wake time yet: they are in the night,
-      // whatever the clock says. This outranks everything because it is the
-      // one signal the person gave us directly.
-      if (openNight && forwardGap(anchors.wake, minutes) > WAKE_WINDOW) return say('SLEEP', 'lazy-night-open');
+      // whatever the clock says — for as long as that night could still be
+      // running. See openNightHolds.
+      if (openNightHolds(state_, anchors, now)) return say('SLEEP', 'lazy-night-open');
 
       const sinceWake = forwardGap(anchors.wake, minutes);
-      const toWindDown = forwardGap(minutes, anchors.windDown);
-      const sinceWindDown = forwardGap(anchors.windDown, minutes);
       const sinceSleep = forwardGap(anchors.sleep, minutes);
 
       // Asleep: from the planned settle time until the planned wake.
@@ -3935,11 +4017,14 @@
       // Just up, and this morning is not down yet.
       if (sinceWake <= WAKE_WINDOW && !recorded) return say('WAKE', 'after-wake-not-recorded');
 
-      // Wind-down has begun.
-      if (sinceWindDown < forwardGap(anchors.windDown, anchors.sleep)) return say('EVENING', 'wind-down-started');
-
-      // Close enough to wind-down that preparing the night is the useful act.
-      if (toWindDown <= EVENING_LEAD) return say('EVENING', 'wind-down-approaching');
+      /* The evening: from Maghrib where there is a planned night and a
+         location, otherwise from the lead before wind-down, and in both cases
+         up to the planned sleep time. */
+      const from = eveningFrom(anchors, now);
+      if (forwardGap(from, minutes) < forwardGap(from, anchors.sleep)) {
+        return say('EVENING', from === normalizeMinutes(anchors.windDown - EVENING_LEAD)
+          ? 'wind-down-approaching' : 'after-maghrib');
+      }
 
       return say('DAY', recorded ? 'day-recorded' : 'day-unrecorded');
     }
@@ -3973,6 +4058,12 @@
       const span = forwardGap(start, anchors.sleep);
       if (span <= 0) return 1;
       const into = forwardGap(start, localMinutesNow(now));
+      /* The evening can now begin at Maghrib, which is before this ramp
+         starts. forwardGap wraps, so that stretch reads as a huge `into` and
+         would clamp to a fully settled screen — the opposite of the truth.
+         Nothing has quietened yet between Maghrib and wind-down, and that is
+         deliberate: the Living Night is whole for that whole stretch. */
+      if (into > span) return 0;
       return Math.min(1, Math.max(0, into / span));
     }
 
@@ -4884,7 +4975,7 @@
         /* Straight into the dua, which ends by starting the night state the
            app already had. The faith-aware setting still governs it: someone
            who turned that off keeps the plain one-tap goodnight. */
-        go.onclick = () => (state.settings.faith === 'off' ? startLazyNight() : openDua());
+        go.onclick = () => beginNight();
         return;
       }
 
@@ -7841,6 +7932,82 @@
       return d.toISOString().slice(0,10);
     }
 
+    /* ==================================================================
+       BEGINNING THE NIGHT
+
+       Every route to "the night starts now" comes through here: the
+       Goodnight moment, the night console's one-tap, and the deep links.
+       A deliberate action still decides it — the app never refuses — but a
+       tap that lands well before the night the participant planned is worth
+       one quiet question first, because an accidental one otherwise convinces
+       SleepSphere that bedtime has arrived.
+
+       THE THRESHOLD is the participant's own planned WIND-DOWN time, and it
+       is a threshold rather than a number: after wind-down has begun, going
+       to bed is the night happening, so it proceeds in silence; before it,
+       the night has not started by their own plan. Wind-down sits a settle
+       and a wind-down length before sleep — about three quarters of an hour
+       on the default — so "reasonably near the planned bedtime" needs no
+       separate constant, and a participant who moves their night moves this
+       with it. Asked only when there IS a saved night to be early against.
+       ================================================================== */
+    function nightIsEarly(now = new Date(), state_ = state) {
+      const { anchors } = resolvePhase(now, state_);
+      if (anchors.source !== 'plan') return false;
+      const minutes = localMinutesNow(now);
+      // Inside the planned night already: wind-down has begun, or later.
+      const sinceWindDown = forwardGap(anchors.windDown, minutes);
+      return sinceWindDown >= forwardGap(anchors.windDown, anchors.wake);
+    }
+
+    /* `next` is where this particular route goes once the night is agreed,
+       and it differs by entry point ON PURPOSE. Goodnight opens the dua;
+       the console's "Too tired — just go to bed" has always skipped straight
+       to the night, which is the whole meaning of its label. The early-night
+       question gates both; it does not change where either one leads. */
+    let earlyNext = null;
+    function beginNight(next = proceedIntoNight) {
+      if (nightIsEarly()) { askEarlyNight(next); return; }
+      next();
+    }
+
+    /* The faith-aware setting still governs what comes next: the dua, or the
+       plain one-tap goodnight for someone who turned that off. */
+    function proceedIntoNight() {
+      if (state.settings.faith === 'off') startLazyNight();
+      else openDua();
+    }
+
+    function askEarlyNight(next = proceedIntoNight) {
+      earlyNext = next;
+      const { anchors } = resolvePhase();
+      $('#earlyWhen').textContent = formatTime(anchors.sleep);
+      $('#earlyVeil').hidden = false;
+      requestAnimationFrame(() => $('#earlyVeil').classList.add('on'));
+      window.setTimeout(() => $('#earlyYes').focus({ preventScroll: true }), 320);
+    }
+
+    function closeEarlyNight() {
+      const veil = $('#earlyVeil');
+      veil.classList.remove('on');
+      window.setTimeout(() => { veil.hidden = true; }, 360);
+    }
+
+    /* "Not yet" changes nothing at all: no night opened, no plan touched, no
+       record written. The participant stays exactly where they were. */
+    $('#earlyNo')?.addEventListener('click', () => { earlyNext = null; closeEarlyNight(); });
+    $('#earlyYes')?.addEventListener('click', () => {
+      closeEarlyNight();
+      /* A confirmed early night is a real night. The bed time stamped below
+         is the actual one, and the plan it departs from is kept as it was —
+         the morning compares what happened with what was planned, and
+         rewriting either to agree would destroy the only comparison the
+         study is making. */
+      const go = earlyNext || proceedIntoNight;
+      earlyNext = null;
+      window.setTimeout(go, 380);
+    });
+
     function startLazyNight() {
       const now = new Date();
       state.lazyNight = { startedAt: now.toISOString(), bedTime: clockString(now) };
@@ -7881,6 +8048,12 @@
 
       state.lazyNight = Object.assign({}, night, { wakeTime, sleepTime, stale, date: nightDateFor(now) });
       saveState();
+      /* The night just closed, which changes the phase. renderAll() ran
+         before this function at boot, so without a repaint the screen keeps
+         the frame it painted while the night was still open — a bedtime
+         composition sitting over a morning. State changed; the screen has to
+         follow it. */
+      renderAll();
       $('#lazyMorningTimes').textContent =
         `${formatTime(toMinutes(night.bedTime))} to ${formatTime(toMinutes(wakeTime))}` +
         `${stale ? ' (estimated — the app was not opened)' : ''} · about ` +
@@ -7956,7 +8129,7 @@
       return `Recorded — ${hours}. Nothing to fix.`;
     }
 
-    $('#lazyStart')?.addEventListener('click', startLazyNight);
+    $('#lazyStart')?.addEventListener('click', () => beginNight(startLazyNight));
     $('#lazyGoodnight')?.addEventListener('click', () => { $('#lazyVeil').hidden = true; });
     $$('[data-lazy-rate]').forEach(button => button.addEventListener('click',
       () => finishLazyNight(Number(button.dataset.lazyRate))));
@@ -8676,13 +8849,23 @@
       });
     }
 
-    function todayPrayerTimes() {
+    /* Today's times, with the date a parameter so the context engine can ask
+       about a given moment rather than only about now. Memoised on date and
+       place: the phase is resolved on every render and once a minute after
+       that, and solarDay is real astronomy — the same answer should not be
+       recomputed a hundred times for one evening. */
+    let prayerMemo = null;
+    function todayPrayerTimes(now = new Date()) {
       const place = state.settings.place;
       if (!place || !Number.isFinite(place.latitude)) return null;
-      return prayerTimes({
-        latitude: place.latitude, longitude: place.longitude, date: new Date(),
-        highLatRule: state.settings.highLatRule || 'seventh'
+      const rule = state.settings.highLatRule || 'seventh';
+      const key = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}|${place.latitude}|${place.longitude}|${rule}`;
+      if (prayerMemo && prayerMemo.key === key) return prayerMemo.times;
+      const times = prayerTimes({
+        latitude: place.latitude, longitude: place.longitude, date: now, highLatRule: rule
       });
+      prayerMemo = { key, times };
+      return times;
     }
 
 
@@ -9177,8 +9360,8 @@
       flow:        () => openFlow('evening'),
       checkin:     () => openFlow('evening'),
       morningflow: () => openFlow('morning'),
-      lazy:        () => startLazyNight(),
-      bedtime:     () => startLazyNight(),
+      lazy:        () => beginNight(startLazyNight),
+      bedtime:     () => beginNight(startLazyNight),
       // Anything else is a view, by its own name.
       open:        () => navigate('today'),
       home:        () => navigate('today')
