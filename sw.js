@@ -1,5 +1,9 @@
-const CACHE = 'sleepsphere-v5-guided-prototype-20260903';
-const SHELL = ['./', './manifest.webmanifest', './favicon.svg', './sleepsphere-icon-192.png', './sleepsphere-icon-512.png'];
+const CACHE = 'sleepsphere-v8-build-my-night-20261006';
+/* The Arabic face is shell, not an extra. The dua is read at bedtime, which
+   is exactly when a phone is likeliest to be in a basement, on aeroplane
+   mode, or out of data — so it is fetched on install with everything else
+   rather than on first use. 43 KB. */
+const SHELL = ['./', './manifest.webmanifest', './favicon.svg', './apple-touch-icon.png', './sleepsphere-icon-192.png', './sleepsphere-icon-512.png', './fonts/amiri-naskh-v2.woff2'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
