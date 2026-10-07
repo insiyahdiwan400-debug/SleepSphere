@@ -115,14 +115,43 @@ const seed = blob => `(()=>{const k='sleepsphere_state_v2';
         ['WAKE','DAY','EVENING','SLEEP'].includes(await bare.p.evaluate(() => window.__phase().phase)));
   await bare.ctx.close();
 
-  // An open Lazy night outranks the clock.
+  /* An open Lazy night outranks the clock — for as long as the night it
+     describes could still be running.
+
+     THIS CHECK USED TO ASSERT THE OPPOSITE: that an open night read as SLEEP
+     "even at midday". That was the bug, found on a real device — a Goodnight
+     tapped once while testing and never closed pinned Today to its bedtime
+     screen at every hour of every day afterwards, because the old guard
+     (more than WAKE_WINDOW since the wake anchor) becomes MORE true the
+     later it gets. The signal is still honoured; it now expires. */
   const inBed = await open(state({ plan: PLAN,
-    lazyNight:{ date:'2026-10-06', bedTime:'23:10', sleepTime:'23:25', wakeTime:null } }),
-    '2026-10-06T13:00:00+04:00');
-  check('An open Lazy night reads as SLEEP even at midday',
+    lazyNight:{ date:'2026-10-06', bedTime:'23:10', sleepTime:'23:25', wakeTime:null,
+                startedAt:'2026-10-06T19:10:00.000Z' } }),
+    '2026-10-07T02:30:00+04:00');
+  check('An open Lazy night reads as SLEEP while that night could be running',
         (await inBed.p.evaluate(() => window.__phase().phase)) === 'SLEEP',
         await inBed.p.evaluate(() => window.__phase().reason));
   await inBed.ctx.close();
+
+  const staleBed = await open(state({ plan: PLAN,
+    lazyNight:{ date:'2026-10-06', bedTime:'23:10', sleepTime:'23:25', wakeTime:null,
+                startedAt:'2026-10-06T19:10:00.000Z' } }),
+    '2026-10-07T13:00:00+04:00');
+  check('But one that outran its own night no longer pins the next midday',
+        (await staleBed.p.evaluate(() => window.__phase().phase)) !== 'SLEEP',
+        await staleBed.p.evaluate(() => window.__phase().reason));
+  await staleBed.ctx.close();
+
+  /* A record with no startedAt cannot be dated, so it cannot be shown to be
+     still running. startLazyNight always writes one; a shape without it is
+     malformed, and the safe reading of a malformed night is that it is over. */
+  const undated = await open(state({ plan: PLAN,
+    lazyNight:{ date:'2026-10-06', bedTime:'23:10', wakeTime:null } }),
+    '2026-10-06T13:00:00+04:00');
+  check('An undated open night does not pin the clock either',
+        (await undated.p.evaluate(() => window.__phase().phase)) !== 'SLEEP',
+        await undated.p.evaluate(() => window.__phase().reason));
+  await undated.ctx.close();
 
   /* ------------------------------------------------ schedule preference
 

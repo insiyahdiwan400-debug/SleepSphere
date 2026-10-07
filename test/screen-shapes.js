@@ -118,7 +118,15 @@ const TENT  = { width:1135, height:  524 };   // tent / landscape
     if (bed && bed.offsetParent !== null) return bed.click();
     return document.getElementById('momentGo').click();
   });
-  await p.waitForTimeout(400);
+  await p.waitForTimeout(900);
+  /* Both of the screen's routes to bed now pass through the dua — "too
+     tired" skips the planning, not the ritual — so the night is stamped on
+     the second tap, not the first. Walked rather than seeded, because this
+     suite is about what survives a fold and the night has to exist first. */
+  if (await p.evaluate(() => !document.getElementById('duaVeil').hidden)) {
+    await p.click('#duaAmin');
+    await p.waitForTimeout(5400);
+  }
   await p.evaluate(() => { document.getElementById('lazyVeil').hidden = true; });
   const before = await p.evaluate(() =>
     JSON.parse(localStorage.getItem('sleepsphere_state_v2')).lazyNight);
