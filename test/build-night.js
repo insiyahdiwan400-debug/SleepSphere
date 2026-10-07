@@ -335,10 +335,16 @@ const clockAt = (h, mi) => `(()=>{const R=Date;const f=new R(2026,8,9,${h},${mi}
   await duty.p.locator('#changeDutyTime').fill('07:30');
   await duty.p.locator('#changeBuild').click();
   await duty.p.waitForTimeout(500);
+  /* Read across both lines under the drawing. #planEnds now carries what to
+     DO ("start winding down at...", "aim to be in bed around...") and
+     #planFacts carries the night's fixed points, the obligation among them.
+     What the check is about is unchanged: the obligation is on the screen,
+     with its time, under the night. */
+  const dutyUnder = async () =>
+    (await duty.p.locator('#planEnds').innerText()) + ' ' + (await duty.p.locator('#planFacts').innerText());
   check('The obligation is shown under the night',
-        /jamea/i.test(await duty.p.locator('#planEnds').innerText())
-        && /7:30/.test(await duty.p.locator('#planEnds').innerText()),
-        await duty.p.locator('#planEnds').innerText());
+        /jamea/i.test(await dutyUnder()) && /7:30/.test(await dutyUnder()),
+        await dutyUnder());
   await duty.p.locator('#planSave').click();
   await duty.p.waitForTimeout(600);
   const dutyPlan = (await read(duty.p)).plan;

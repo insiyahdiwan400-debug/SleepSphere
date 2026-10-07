@@ -1734,6 +1734,14 @@
       font-variant-numeric:tabular-nums; letter-spacing:.01em; }
     .jx-time.faint { fill:rgba(221,214,201,.45); }
 
+    /* The one sentence that says why tonight does not look like the plan.
+       Deliberately the same weight as the rest of the pane: it is a note
+       about the clock, not a warning, and a callout would read as a telling
+       off for being up late. */
+    .night-lead { margin:0; color:#cdc6b9; font-size:14px; line-height:1.5; }
+    .night-facts { margin:0; color:#9a9387; font-size:13px; letter-spacing:.01em;
+                   font-variant-numeric:tabular-nums; }
+    .night-facts b { color:#cdc6b9; font-weight:600; }
     .night-ends { margin:0; color:#9a9387; font-size:13px; letter-spacing:.01em; }
     .night-ends b { color:#cdc6b9; font-weight:600; font-variant-numeric:tabular-nums; }
     .night-window { margin:2px 0 0; color:#cdc6b9; font-size:15px; }
@@ -2411,8 +2419,10 @@
       <!-- 3. The night itself. -->
       <section class="night-pane" id="nightPlan" hidden>
         <p class="night-eyebrow">Tonight</p>
+        <p class="night-lead" id="planLead" hidden></p>
         <div class="night-journey" id="planJourney"></div>
         <p class="night-ends" id="planEnds"></p>
+        <p class="night-facts" id="planFacts"></p>
         <p class="night-window" id="planWindow"></p>
         <div class="night-intention">
           <p class="card-label">Tonight’s intention</p>
@@ -2530,6 +2540,19 @@
                    aria-label="Tonight, as planned">
             <div class="living-sky" id="livingJourney"></div>
             <p class="living-ends" id="livingEnds"></p>
+            <!-- There is deliberately no "it's later than planned" sentence
+                 on this screen. The plan only departs from itself in the last
+                 quarter of an hour before the planned bed time — that is the
+                 only window in which the bed time moves — and by then this
+                 screen has already given its explanation layer back, which is
+                 the whole point of it. A sentence pinned above the times would
+                 have to sit outside that layer and would still be taking up
+                 room at the hour the page is meant to be at its shortest; one
+                 placed inside it could never be seen at all. So the two times
+                 in #livingEnds carry the night on their own, and "Rebuild now"
+                 is the affordance that says something has changed. The
+                 sentence lives in the plan pane, where there is room for it
+                 and somebody is reading. -->
             <div class="living-detail" id="livingDetail">
               <p class="living-context" id="livingContext"></p>
               <p class="living-intention" id="livingIntention"></p>
@@ -3913,7 +3936,12 @@
     function phaseAnchors(state_ = state) {
       const plan = state_.plan;
       if (plan && Number.isFinite(Number(plan.windStart))) {
-        const wakeAt = toMinutes(plan.mode === 'fajr' ? (plan.finalWake || plan.fajr) : plan.wake);
+        /* The rising, via the one function that knows where it is. Reading
+           `plan.wake` here was the sixth copy of the same mistake: on a
+           stay-awake night that field is the morning obligation, not the
+           moment the night ends, and the phase would have held SLEEP for
+           over an hour after they were up for Fajr. */
+        const wakeAt = toMinutes(planFinalWake(plan));
         return {
           wake: normalizeMinutes(wakeAt),
           windDown: normalizeMinutes(Number(plan.windStart)),
@@ -4807,10 +4835,6 @@
          said they do. */
       let wake = input.wake || null;
       if (!wake && afterFajr === 'stay' && fajr) wake = fajr;
-      if (afterFajr === 'stay' && fajr && wake && forwardGap(toMinutes(fajr), toMinutes(wake)) < 12 * 60) {
-        // They stay up from Fajr, so the later "usual" time is not a waking.
-        wake = fajr;
-      }
       if (!wake) return null;   // Nothing reliable. The caller must ask.
 
       const mode = nightShape({ fajr, wake, afterFajr });
@@ -4837,7 +4861,20 @@
         };
       }
 
-      const sleepStart = normalizeMinutes(toMinutes(wake) - target);
+      /* Where the final waking actually happens, which is NOT always the hour
+         they gave. Someone who stays up from Fajr rises at Fajr — that is
+         what the answer means — so the night is built back from Fajr.
+
+         What this must not do is throw the given hour away. It used to:
+         `wake = fajr` overwrote it, and a participant who said "Fajr 4:50, I
+         stay up, I have to be ready by 6:00" had their 6:00 silently rewritten
+         into 4:50 and never saw it again. The rising moves; the obligation
+         stays, as `wake`, and planRequiredBy reads it back. */
+      const risesAtFajr = Boolean(afterFajr === 'stay' && fajr
+        && forwardGap(toMinutes(fajr), toMinutes(wake)) < 12 * 60);
+      const rising = risesAtFajr ? fajr : wake;
+
+      const sleepStart = normalizeMinutes(toMinutes(rising) - target);
       const settleStart = normalizeMinutes(sleepStart - settle);
       const windStart = normalizeMinutes(settleStart - wind);
       return {
@@ -4848,10 +4885,10 @@
            person's night whether or not it splits their sleep, the arc draws
            it, and the export needs it to be able to tell a stay-awake night
            from one where Fajr simply fell outside the window. */
-        fajr, finalWake: wake,
+        fajr, finalWake: rising,
         blockOne: target, blockTwo: 0, total: target,
         sleepStart, settleStart, windStart,
-        wakeAnchor: wake,
+        wakeAnchor: rising,
         afterFajr: afterFajr === 'stay' ? 'stay' : null
       };
     }
@@ -4867,7 +4904,324 @@
     function planFinalWake(plan) {
       if (!plan) return null;
       if (plan.mode === 'fajr') return plan.finalWake || plan.fajr || null;
+      /* finalWake before wake, because on a stay-awake night they differ:
+         finalWake is Fajr, where the sleep ends, and wake is the later hour
+         they have to be ready for. Every screen that asks this function a
+         question is asking about the rising. */
+      return plan.finalWake || plan.wake || null;
+    }
+
+    /* The hour the participant has to be up and available BY — their own
+       stated obligation, which is a different question from when sleep ends
+       and must never be quietly replaced by it.
+
+       On most nights the two coincide, and they are still asked separately:
+       a plan where they happen to be equal is not a plan where they are the
+       same thing. On a stay-awake night they genuinely diverge — sleep ends
+       at Fajr, the obligation is hours later — and that gap is awake time,
+       never sleep opportunity.
+
+       Internal to the engine in this patch: nothing exported reads it. */
+    function planRequiredBy(plan) {
+      if (!plan) return null;
+      if (plan.mode === 'fajr') return plan.finalWake || plan.wake || null;
       return plan.wake || plan.finalWake || null;
+    }
+
+    /* ==================================================================
+       SCHEDULE FEASIBILITY
+
+       buildNight() is pure clock arithmetic and knows nothing about now.
+       That is correct and it stays that way: the ideal night is a property
+       of tomorrow, not of the moment somebody opens the app. But an ideal
+       night ISSUED AS AN INSTRUCTION is a different object, and issuing one
+       unchecked told a participant building at 21:23 to wind down at 19:12 —
+       four hours into the past.
+
+       Three functions, in this order, never merged:
+
+         nightEvents(plan)        the ideal night as ordered clock events
+         nightFrame(plan, now)    those events attached to the right DATE
+         fitNight(plan, now)      the actionable night, from both plus now
+
+       The ORDER is the design, and it is the whole of the design. A clock
+       string cannot be dated on its own. Asking "when is 19:12?" before
+       asking "which night is this plan?" has exactly one answer available —
+       "the next 19:12 from now" — which is tomorrow's, and that is how a
+       passed instruction comes back wearing a future timestamp. So the night
+       is fixed first, from its END; the events are dated inside it second;
+       only then is anything compared against now.
+
+       There is deliberately no at(clock) helper anywhere in this file, and
+       nothing below resolves a clock value against the current time.
+
+       Everything feasibility depends on is an absolute local timestamp built
+       by `new Date(y, m, d + offset, hh, mm)`, so day arithmetic and DST are
+       the platform's to resolve and a 23- or 25-hour night is simply that
+       long. forwardGap and the 0..1439 minute values survive for ordering
+       and for drawing, and for nothing that decides what to tell somebody.
+       ================================================================== */
+
+    /* The smallest wind-down the product itself offers (the select has
+       15/30/45/60), so it is the floor a routine may be compressed to.
+       Below it the app does not shorten the routine further — it stops
+       presenting one, because a six-minute wind-down is a fiction. */
+    const MIN_WIND = 15;
+
+    /* How far short of the target an adapted plan may fall while still being
+       presented as the ordinary compressed experience. A product scheduling
+       tolerance and nothing else: every wind-down and settle option in this
+       app is a multiple of fifteen minutes, so fifteen is the granularity
+       the plan is already built in. It is NOT a sleep-science threshold, it
+       does not mean a quarter of an hour is physiologically negligible, and
+       no copy anywhere may imply either. The target remains the target; a
+       shortfall inside this tolerance is still reported as a shortfall. */
+    const SHORTFALL_TOLERANCE = 15;
+
+    /* Under two hours the app stops calling it a planned night. This is the
+       same boundary checkLazyMorning already applies to a finished night —
+       see the comment there — and it carries the same meaning: an existing
+       product and UX convention about what is worth modelling as a night,
+       NOT a medical or physiological sleep threshold. */
+    const MIN_NIGHT = 120;
+    const MINIMAL_FLOOR = MIN_NIGHT + MIN_WIND;
+
+    /* The ideal night as ordered events, each with the day it falls on
+       RELATIVE to the night's own start. No dates yet and no `now`: this is
+       the last clock arithmetic in the pipeline.
+
+       The spine — wind, settle, sleep, (return), rising, requiredBy — is
+       ordered by definition, so one forward walk with a carry dates it. The
+       carry tests `<` and not `<=`, which matters twice in practice: a zero
+       settle puts settleStart on sleepStart, and a night with no separate
+       obligation puts requiredBy on the rising. Neither is a new day. */
+    function nightEvents(plan) {
+      if (!plan || !Number.isFinite(Number(plan.windStart))) return null;
+      const rising = planFinalWake(plan);
+      if (!rising) return null;
+      const required = planRequiredBy(plan) || rising;
+
+      const spine = [
+        ['wind',        normalizeMinutes(Number(plan.windStart))],
+        ['settle',      normalizeMinutes(Number(plan.settleStart))],
+        ['sleep',       normalizeMinutes(Number(plan.sleepStart))],
+        ['returnSleep', plan.mode === 'fajr' && plan.returnSleep ? toMinutes(plan.returnSleep) : null],
+        ['finalRising', normalizeMinutes(toMinutes(rising))],
+        ['requiredBy',  normalizeMinutes(toMinutes(required))]
+      ].filter(entry => entry[1] != null);
+
+      const events = {};
+      let carry = 0;
+      let previous = null;
+      for (const [name, minutes] of spine) {
+        if (previous != null && minutes < previous) carry += 1;
+        events[name] = { minutes, dayOffset: carry };
+        previous = minutes;
+      }
+
+      /* Fajr is dated from the sleep forwards rather than walked with the
+         spine, because it is not always inside the night: a participant up
+         at 03:00 has a Fajr at 04:50 that falls AFTER their rising, and
+         letting it take part in the carry would push everything after it a
+         day out. Measured from sleep it lands correctly either way. */
+      if (plan.fajr) {
+        const fromSleep = forwardGap(events.sleep.minutes, toMinutes(plan.fajr));
+        const absolute = events.sleep.dayOffset * 1440 + events.sleep.minutes + fromSleep;
+        events.fajr = { minutes: normalizeMinutes(absolute), dayOffset: Math.floor(absolute / 1440) };
+      }
+      return events;
+    }
+
+    const stampEvent = (anchor, event) =>
+      new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() + event.dayOffset,
+               Math.floor(event.minutes / 60), event.minutes % 60, 0, 0);
+
+    const localMidnight = (now, shift = 0) =>
+      new Date(now.getFullYear(), now.getMonth(), now.getDate() + shift, 0, 0, 0, 0);
+
+    /* Which night this plan belongs to, and the plan's events as absolute
+       local timestamps inside it.
+
+       The anchor is chosen from the END of the night: the earliest candidate
+       evening whose last event is still at or after now. That single rule is
+       what makes a passed event stay passed. Three candidates and no more,
+       because a night's clock span is under twenty-four hours — so the night
+       that contains now, or the one about to begin, is one of these. At 00:10
+       it picks YESTERDAY evening, which is the night actually in progress,
+       and a 21:15 wind-down then reads as last evening rather than tonight. */
+    function nightFrame(plan, now = new Date()) {
+      const ideal = nightEvents(plan);
+      if (!ideal) return null;
+      const last = ideal.requiredBy || ideal.finalRising;
+
+      let anchor = null;
+      for (let shift = -1; shift <= 1 && !anchor; shift += 1) {
+        const candidate = localMidnight(now, shift);
+        if (stampEvent(candidate, last).getTime() >= now.getTime()) anchor = candidate;
+      }
+      /* Every candidate is behind us, which takes a plan whose last event is
+         more than a day old. Tomorrow evening then, said plainly rather than
+         by returning null and leaving the caller to guess. */
+      if (!anchor) anchor = localMidnight(now, 1);
+
+      const events = {};
+      for (const [name, event] of Object.entries(ideal)) {
+        const ts = stampEvent(anchor, event);
+        events[name] = { ...event, ts, passed: ts.getTime() < now.getTime() };
+      }
+      return { anchorDate: anchor, events };
+    }
+
+    /* The night that can still be had, derived from the ideal one and the
+       clock. Pure, and it writes nothing: the stored plan is always the
+       ideal plan, and this is recomputed every time it is needed, which is
+       also what keeps it from going stale while somebody sits on the screen.
+
+       Reduction order, when the ideal no longer fits:
+         1. the selected wind-down with the selected settle   (nothing given up)
+         2. the selected wind-down with no settle             (settle absorbs it all)
+         3. the floor wind-down with no settle
+       Never proportional. A thirty-minute wind-down with fifteen of settle
+       and thirty minutes of room becomes thirty and none, not twenty and ten:
+       the wind-down is the part that does something, settle is the slack. */
+    function fitNight(plan, now = new Date()) {
+      const frame = nightFrame(plan, now);
+      if (!frame) return null;
+      const ideal = frame.events;
+      const nowMs = now.getTime();
+      const since = (a, b) => (a.getTime() - b) / 60000;
+
+      const target = Number(plan.target) || 480;
+      const wind = Number.isFinite(Number(plan.wind)) ? Number(plan.wind) : 30;
+      const settle = Number.isFinite(Number(plan.settle)) ? Number(plan.settle) : 15;
+
+      /* Sleep opportunity ends at the RISING, never at the obligation: the
+         stretch between them on a stay-awake night is time spent awake and
+         counting it would hand the participant an hour of sleep they are not
+         going to get. The bridge around Fajr comes out for the same reason,
+         clipped to whatever of it is still ahead of us. */
+      const bridgeFrom = from => (ideal.returnSleep && ideal.fajr)
+        ? Math.max(0, since(ideal.returnSleep.ts, Math.max(from, ideal.fajr.ts.getTime())))
+        : 0;
+      const opportunity = Math.max(0, since(ideal.finalRising.ts, nowMs) - bridgeFrom(nowMs));
+
+      /* What the plan ITSELF arranges, in clock minutes — which is not always
+         the target. The bridge branch of buildNight clamps the first block at
+         zero, an obligation can leave less room than the target asks for, and
+         an older saved plan may simply carry a target its own times never
+         met. Measuring feasibility against the target in those cases declares
+         a participant who is exactly on time to be already behind, and starts
+         compressing a routine that was never too long.
+
+         So the quantity this layer protects is the lesser of the two: never
+         more than the target, and never more than the plan actually promised
+         on screen. On every plan where the two agree — which is every plan
+         this app builds — the distinction costs nothing. */
+      const clockBridge = (ideal.returnSleep && ideal.fajr)
+        ? forwardGap(ideal.fajr.minutes, ideal.returnSleep.minutes) : 0;
+      const plannedSleep = forwardGap(ideal.sleep.minutes, ideal.finalRising.minutes) - clockBridge;
+      const protect = Math.min(target, Math.max(0, plannedSleep));
+
+      /* THE BED TIME. One decision, and the only one that can move it.
+
+         The planned bed time is kept unless there is no longer a usable
+         runway in front of it — fewer than fifteen minutes, the smallest
+         wind-down this product offers. An ideal bed time six minutes away is
+         not honoured by inventing a six-minute wind-down; bed moves to
+         fifteen minutes from now instead, and the ideal stays untouched in
+         `ideal`.
+
+         What must NOT move it is the routine merely being under way. At
+         21:00, with a wind-down that began at 20:30 and bed at 21:15, the
+         participant is thirty minutes into exactly what they planned. An
+         earlier version of this measured the whole selected routine against
+         the time left and declared that night compressed, which told
+         somebody who was perfectly on time to start winding down again.
+
+         Bed can also move EARLIER, for exactly one reason: the night the
+         clocks go forward. 22:00 to 06:00 is seven real hours there, not
+         eight, so keeping the planned bed time would quietly cost an hour
+         while the arithmetic still said there was room. The deficit is the
+         difference between the night the plan was written in CLOCK minutes
+         and the night the calendar actually has — zero on every ordinary
+         night, sixty once a year.
+
+         It is deliberately NOT "the last bed time that would deliver the
+         target". A saved plan whose stored blocks no longer quite agree with
+         its own times is not this layer's business to correct, and pulling
+         somebody's bed time half an hour earlier on that basis would be the
+         silent rewrite this whole patch exists to remove. */
+      const realSpan = (ideal.finalRising.ts.getTime() - ideal.sleep.ts.getTime()) / 60000
+        - bridgeFrom(ideal.sleep.ts.getTime());
+      const idealBed = ideal.sleep.ts.getTime() - Math.max(0, plannedSleep - realSpan) * 60000;
+
+      const minimal = opportunity < MINIMAL_FLOOR;
+      const sleepTs = new Date(minimal ? nowMs : Math.max(idealBed, nowMs + MIN_WIND * 60000));
+
+      /* THE ROUTINE, fitted into whatever runway is left in front of bed.
+
+         Settle absorbs the whole loss before the wind-down gives up a
+         minute, which is the approved order: thirty of wind-down with
+         fifteen of settle and thirty minutes of runway becomes thirty and
+         none, never twenty and ten. The wind-down is the part that does
+         something; settle is the slack. Only once settle is gone does the
+         wind-down shorten — and it cannot go below the fifteen minutes that
+         bed time itself is held open for. */
+      let routine = null;
+      let windTs = null;
+      let settleTs = null;
+      if (!minimal) {
+        const runway = since(sleepTs, nowMs);
+        const windLen = Math.min(wind, runway);
+        const settleLen = Math.min(settle, runway - windLen);
+        routine = { wind: Math.round(windLen), settle: Math.round(settleLen) };
+        settleTs = new Date(sleepTs.getTime() - settleLen * 60000);
+        windTs = new Date(settleTs.getTime() - windLen * 60000);
+      }
+
+      const sleepMinutes = Math.max(0,
+        since(ideal.finalRising.ts, sleepTs.getTime()) - bridgeFrom(sleepTs.getTime()));
+      const shortfall = Math.max(0, protect - sleepMinutes);
+
+      /* The state describes the SLEEP, not the routine. Nothing given up at
+         all is ample; a routine trimmed while the sleep survives is
+         compressed; sleep itself shorter than planned by more than the
+         scheduling tolerance is a late night; and under two hours there is
+         nothing to plan. */
+      const phase = minimal ? 'MINIMAL'
+        : (routine.wind === wind && routine.settle === settle
+           && sleepTs.getTime() === idealBed && shortfall === 0) ? 'AMPLE'
+        : shortfall <= SHORTFALL_TOLERANCE ? 'COMPRESSED'
+        : 'LATE';
+
+      return {
+        phase, anchorDate: frame.anchorDate, ideal, routine,
+        opportunity: Math.round(opportunity),
+        sleepMinutes: Math.round(sleepMinutes),
+        /* Measured against what the fit undertook to deliver, so the state
+           and the shortfall can never disagree — AMPLE with an hour missing
+           was a real inconsistency before this. `target` is reported beside
+           it, unchanged, because it is still what the participant aims for
+           and the copy names it. */
+        shortfall: Math.round(shortfall),
+        target, protect: Math.round(protect),
+        actionable: {
+          wind: windTs, settle: settleTs, sleep: sleepTs,
+          fajr: ideal.fajr ? ideal.fajr.ts : null,
+          returnSleep: ideal.returnSleep ? ideal.returnSleep.ts : null,
+          finalRising: ideal.finalRising.ts,
+          requiredBy: ideal.requiredBy ? ideal.requiredBy.ts : null
+        },
+        /* True when the BED TIME differs from the one that was planned,
+           which is the only thing the interface needs in order to choose
+           between showing the plan and offering to rebuild it.
+
+           Deliberately not "the wind-down differs". Being partway through
+           the planned routine is following the plan, not departing from it,
+           and a screen that announced a change at that point would be
+           telling somebody who is exactly on time that something is wrong. */
+        adapted: !routine || sleepTs.getTime() !== ideal.sleep.ts.getTime()
+      };
     }
 
     /* ---- Tonight's intention.
@@ -5370,6 +5724,73 @@
       tonight.dutyTime = tonight.duty && /^\d{2}:\d{2}$/.test(dutyTime) ? dutyTime : '';
     }
 
+    /* ---- The night said in words, from whichever version of it is true.
+
+       None of the four internal feasibility states is named here, and none
+       of them ever reaches a participant. They decide what there is to say;
+       the words are about the clock and nothing else. Nothing in this copy
+       promises how tomorrow will feel — no rested, no restored, no recovered,
+       no sharper — because the app arranges an opportunity and does not know
+       what happens inside it. */
+    const FIT_LEAD = Object.freeze({
+      AMPLE: '',
+      COMPRESSED: 'Tonight is tighter than planned. This is the night that fits.',
+      LATE: 'It’s later than planned. Let’s work with the night you have.',
+      MINIMAL: 'It’s very late. Go to bed — there’s nothing worth planning now.'
+    });
+
+    const fitClock = ts => formatTime(ts.getHours() * 60 + ts.getMinutes());
+
+    /* What to actually do, in order, and never a time that has gone. */
+    function fitSteps(fit, now = new Date()) {
+      if (!fit.routine) return ['Go to bed now.'];
+      const soon = fit.actionable.wind.getTime() <= now.getTime() + 60000;
+      const steps = [soon ? 'Start winding down now.'
+                          : `Start winding down at ${fitClock(fit.actionable.wind)}.`];
+      steps.push(`Aim to be in bed around ${fitClock(fit.actionable.sleep)}.`);
+      return steps;
+    }
+
+    /* The fixed points of the night. Fajr and the rising are shown once
+       between them when they are the same instant, and the obligation is
+       shown separately whenever it is a different one — which is the whole
+       point of keeping them apart in the model. */
+    function fitFacts(fit, plan) {
+      const facts = [];
+      const rising = fit.actionable.finalRising;
+      const required = fit.actionable.requiredBy || rising;
+      const fajr = fit.actionable.fajr;
+      if (fajr) facts.push(`Fajr · <b>${escapeHtml(fitClock(fajr))}</b>`);
+      if (required.getTime() !== rising.getTime()
+          && !(fajr && fajr.getTime() === rising.getTime())) {
+        facts.push(`Up at · <b>${escapeHtml(fitClock(rising))}</b>`);
+      }
+      facts.push(`Required by · <b>${escapeHtml(fitClock(required))}</b>`);
+      if (plan.obligation && plan.obligation.time) {
+        facts.push(`${escapeHtml(OBLIGATION[plan.obligation.kind])} · <b>${escapeHtml(formatTime(toMinutes(plan.obligation.time)))}</b>`);
+      }
+      return facts;
+    }
+
+    /* The actionable night as a plan-shaped object, for DRAWING ONLY.
+
+       The arc and the dua read clock minutes, so an adapted night needs
+       those minutes to draw — but this object is never saved and never
+       exported. The stored plan stays the ideal one; see saveNight. */
+    function fitProjection(plan, fit) {
+      if (!fit.routine) return plan;
+      const mins = ts => ts.getHours() * 60 + ts.getMinutes();
+      return { ...plan,
+        windStart: mins(fit.actionable.wind),
+        settleStart: mins(fit.actionable.settle),
+        sleepStart: mins(fit.actionable.sleep),
+        wind: fit.routine.wind, settle: fit.routine.settle,
+        total: fit.sleepMinutes,
+        blockOne: plan.mode === 'fajr'
+          ? Math.max(0, fit.sleepMinutes - (Number(plan.blockTwo) || 0))
+          : fit.sleepMinutes };
+    }
+
     /* ---- Pane 3. The night, built. */
     function renderNightPlan() {
       const plan = buildNight({
@@ -5382,22 +5803,52 @@
       plan.obligation = tonight.duty && tonight.dutyTime ? { kind: tonight.duty, time: tonight.dutyTime } : null;
       tonight.plan = plan;
 
-      $('#planJourney').innerHTML = journeySvg(plan);
-      /* Wind-down and the fixed thing tomorrow bracket the night rather than
-         sitting inside it, so they are said in words under the drawing. Five
-         times across one arc collide on a phone, and a time nobody can read
-         is worse than a time printed plainly. */
-      const ends = [`Wind down <b>${escapeHtml(formatTime(plan.windStart))}</b>`];
-      if (plan.obligation) {
-        ends.push(`${escapeHtml(OBLIGATION[plan.obligation.kind])} <b>${escapeHtml(formatTime(toMinutes(plan.obligation.time)))}</b>`);
+      /* The ideal night, and then the night it is still possible to have.
+         They are the same object most evenings and the pane looks exactly as
+         it always did; the moment they differ, what is SHOWN is the second
+         one, because the first contains instructions that have gone. */
+      const now = new Date();
+      const fit = fitNight(plan, now);
+
+      /* Nothing left to plan. Straight into the bedtime the app already has
+         rather than a pane of times pretending to be a routine. */
+      if (fit && fit.phase === 'MINIMAL') {
+        closeBuildNight();
+        toast(FIT_LEAD.MINIMAL);
+        proceedIntoNight();
+        return;
       }
-      $('#planEnds').innerHTML = ends.join(' · ');
-      $('#planWindow').innerHTML = plan.mode === 'fajr'
-        ? `<b>${escapeHtml(formatDuration(plan.total))}</b> of sleep opportunity, in two parts around Fajr.`
-        : plan.afterFajr === 'stay'
-          ? `<b>${escapeHtml(formatDuration(plan.total))}</b> of sleep opportunity, up from Fajr.`
-          : `<b>${escapeHtml(formatDuration(plan.total))}</b> of sleep opportunity.`;
-      $('#planIntention').textContent = nightIntention(plan, tonight.knowledge);
+
+      const shown = fit ? fitProjection(plan, fit) : plan;
+      $('#planJourney').innerHTML = journeySvg(shown);
+
+      $('#planLead').textContent = fit ? FIT_LEAD[fit.phase] : '';
+      $('#planLead').hidden = !(fit && FIT_LEAD[fit.phase]);
+
+      /* What to do, said as steps rather than as a row of times. "Wind down
+         7:12 PM" is only readable as an instruction if 7:12 PM has not
+         already happened, which was the whole defect. */
+      $('#planEnds').innerHTML = fit
+        ? escapeHtml(fitSteps(fit, now).join(' '))
+        : `Wind down <b>${escapeHtml(formatTime(plan.windStart))}</b>`;
+      $('#planFacts').innerHTML = fit ? fitFacts(fit, plan).join(' · ') : '';
+
+      /* The opportunity as it actually stands, and how it compares with what
+         they aim for — said as plain arithmetic against the TARGET, which is
+         the only number the participant recognises. A shortfall inside the
+         fifteen-minute scheduling tolerance is still a shortfall and is
+         still named here: the tolerance decides how much of the experience
+         changes, never whether the participant is told. */
+      const opportunity = fit ? fit.sleepMinutes : plan.total;
+      const tail = plan.mode === 'fajr' ? ', in two parts around Fajr.'
+                 : plan.afterFajr === 'stay' ? ', up from Fajr.' : '.';
+      const underTarget = fit ? Math.max(0, fit.target - fit.sleepMinutes) : 0;
+      const short = underTarget > 0
+        ? ` That is <b>${escapeHtml(formatDuration(underTarget))}</b> under the ${escapeHtml(formatDuration(fit.target))} you aim for.`
+        : '';
+      $('#planWindow').innerHTML =
+        `<b>${escapeHtml(formatDuration(opportunity))}</b> of sleep opportunity${tail}${short}`;
+      $('#planIntention').textContent = nightIntention(shown, tonight.knowledge);
 
       /* Warnings are statements of arithmetic, never verdicts. */
       let warn = '';
@@ -5558,14 +6009,50 @@
       section.hidden = !plan;
       if (!plan) { livingWhyOpen = false; return; }
 
-      $('#livingJourney').innerHTML = journeySvg(plan);
+      /* The planned night, unless the clock has moved past part of it — in
+         which case this screen shows the night that is still available and
+         offers the rebuild, rather than displaying a wind-down time that
+         went by two hours ago as though it were tonight's instruction.
 
-      const ends = [`Wind down <b>${escapeHtml(formatTime(plan.windStart))}</b>`,
-                    `<b>${escapeHtml(formatDuration(plan.total))}</b> of opportunity`];
+         Nothing is written. The saved plan stays exactly as it was saved;
+         this is derived every time the screen draws, which is also why it
+         cannot go stale while somebody is sitting in front of it. */
+      const fit = fitNight(plan, new Date());
+      const adapted = Boolean(fit && fit.adapted);
+      const shown = adapted ? fitProjection(plan, fit) : plan;
+
+      $('#livingJourney').innerHTML = journeySvg(shown);
+
+      /* The same compact shape as ever — times, not sentences. This is the
+         one line on the screen that does NOT fade or collapse, so it has to
+         stay short right to the end of the evening: the full "start winding
+         down now, aim to be in bed around..." wording belongs in the plan
+         pane, where there is room for it and somebody is reading. Here only
+         the values change, and none of them is ever in the past. */
+      const ends = !adapted
+        ? [`Wind down <b>${escapeHtml(formatTime(plan.windStart))}</b>`,
+           `<b>${escapeHtml(formatDuration(plan.total))}</b> of opportunity`]
+        : fit.routine
+          /* Two values, not three. The duration is the least actionable of
+             them at this hour, it is reported with its shortfall in the plan
+             pane where it belongs, and a third chip here wraps this line
+             onto an extra row that never goes away again. */
+          ? [`Wind down <b>${escapeHtml(fit.actionable.wind.getTime() <= Date.now() + 60000
+                ? 'now' : fitClock(fit.actionable.wind))}</b>`,
+             `In bed <b>${escapeHtml(fitClock(fit.actionable.sleep))}</b>`]
+          : ['<b>Time to go to bed</b>'];
       if (plan.obligation && plan.obligation.time) {
         ends.push(`${escapeHtml(OBLIGATION[plan.obligation.kind])} <b>${escapeHtml(formatTime(toMinutes(plan.obligation.time)))}</b>`);
       }
       $('#livingEnds').innerHTML = ends.join(' · ');
+      /* There is deliberately no separate "rebuild" control here either.
+         Measured on this screen: the bed time only moves inside the last
+         fifteen minutes before it, and the controls row has already been
+         given back by then — the two windows overlap by about one minute.
+         A control nobody can reach is worse than no control, so rebuilding
+         lives in the plan pane, which is where somebody who is re-planning
+         actually is. "Change tonight" opens it, and on a night that has
+         gone past itself that pane shows the night that is left. */
 
       $('#livingContext').textContent = plan.brainDay
         ? `Tomorrow · ${BRAIN_DAY[plan.brainDay]}`
@@ -7791,6 +8278,54 @@
         nightKnowledge(override || state, iso ? new Date(iso) : new Date());
       window.__nightShape = input => nightShape(input);
       window.__planFinalWake = plan => planFinalWake(plan);
+      window.__planRequiredBy = plan => planRequiredBy(plan);
+      /* The feasibility layer, exposed as the three separate functions it
+         is, so a test can assert the ORDER as well as the answers: which
+         night, then which dates, then what is still possible. Timestamps
+         come back as ISO strings with the local offset intact, because a
+         test that compares UTC cannot tell a DST bug from a correct one. */
+      const localIso = ts => {
+        if (!ts) return null;
+        const pad = (n, width = 2) => String(Math.abs(n)).padStart(width, '0');
+        const offset = -ts.getTimezoneOffset();
+        return `${ts.getFullYear()}-${pad(ts.getMonth() + 1)}-${pad(ts.getDate())}`
+             + `T${pad(ts.getHours())}:${pad(ts.getMinutes())}`
+             + `${offset < 0 ? '-' : '+'}${pad(Math.floor(Math.abs(offset) / 60))}:${pad(Math.abs(offset) % 60)}`;
+      };
+      window.__nightEvents = plan => nightEvents(plan);
+      window.__nightFrame = (plan, iso) => {
+        const frame = nightFrame(plan, iso ? new Date(iso) : new Date());
+        if (!frame) return null;
+        return {
+          anchorDate: localIso(frame.anchorDate),
+          events: Object.fromEntries(Object.entries(frame.events).map(([name, event]) =>
+            [name, { minutes: event.minutes, dayOffset: event.dayOffset,
+                     at: localIso(event.ts), passed: event.passed }]))
+        };
+      };
+      window.__fitNight = (plan, iso) => {
+        const fit = fitNight(plan, iso ? new Date(iso) : new Date());
+        if (!fit) return null;
+        const now = iso ? new Date(iso) : new Date();
+        return {
+          phase: fit.phase, routine: fit.routine, adapted: fit.adapted,
+          opportunity: fit.opportunity, sleepMinutes: fit.sleepMinutes,
+          shortfall: fit.shortfall, target: fit.target, protect: fit.protect,
+          shortOfTarget: Math.max(0, fit.target - fit.sleepMinutes),
+          anchorDate: localIso(fit.anchorDate),
+          actionable: Object.fromEntries(Object.entries(fit.actionable).map(([name, ts]) =>
+            [name, localIso(ts)])),
+          ideal: Object.fromEntries(Object.entries(fit.ideal).map(([name, event]) =>
+            [name, { at: localIso(event.ts), passed: event.passed, dayOffset: event.dayOffset }])),
+          /* Proved rather than asserted: the engine reports its own floor.
+             Only the three INSTRUCTIONS are listed — Fajr and the rising are
+             facts about the night and may perfectly well have happened. */
+          beforeNow: ['wind', 'settle', 'sleep']
+            .filter(name => fit.actionable[name] && fit.actionable[name].getTime() < now.getTime()),
+          steps: fitSteps(fit, now), facts: fitFacts(fit, plan), lead: FIT_LEAD[fit.phase],
+          constants: { MIN_WIND, SHORTFALL_TOLERANCE, MIN_NIGHT, MINIMAL_FLOOR }
+        };
+      };
       window.__intention = (plan, knowledge) => nightIntention(plan, knowledge || {});
       window.__journeyText = plan => journeyText(plan);
       /* The deep-link router, so the published link semantics can be

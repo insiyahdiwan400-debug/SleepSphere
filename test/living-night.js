@@ -95,7 +95,12 @@ const clockAt = (h, mi) => `(()=>{const R=Date;const f=new R(2026,8,9,${h},${mi}
       goHidden: go.hidden,
       goText: go.hidden ? '' : go.innerText.trim(),
       goArea: go.hidden ? 0 : (r => r.width * r.height)(go.getBoundingClientRect()),
-      links: [...el.querySelectorAll('.living-link')].map(n => n.textContent.trim()),
+      /* Only the links actually OFFERED. "Rebuild from now" lives in the
+         same row but appears solely when the clock has moved past part of
+         the plan, and a control nobody can see is not one of the evening's
+         actions. */
+      links: [...el.querySelectorAll('.living-link')]
+        .filter(n => n.offsetParent !== null).map(n => n.textContent.trim()),
       scanShown: (() => { const s = document.getElementById('nightScan'); return s && s.offsetParent !== null; })(),
       scanOpacity: (() => { const s = document.getElementById('nightScan');
         return s && s.offsetParent !== null ? parseFloat(getComputedStyle(s).opacity) : null; })(),
@@ -366,8 +371,14 @@ const clockAt = (h, mi) => `(()=>{const R=Date;const f=new R(2026,8,9,${h},${mi}
       const panel = document.getElementById('livingNight');
       // The faintest each layer ever gets while still displayed.
       const read = (sel, carrier) => {
-        const el = panel.querySelector(sel);
-        if (!el || el.offsetParent === null) return null;
+        /* The first MATCH is not always the first thing on screen: the
+           actions row holds a rebuild link that is only shown once the clock
+           has moved past part of the plan. Taking the first displayed one
+           keeps this measuring what a participant can actually see — and
+           keeps it measuring SOMETHING, since a hidden element returns null
+           and would quietly drop the check from the run. */
+        const el = [...panel.querySelectorAll(sel)].find(n => n.offsetParent !== null);
+        if (!el) return null;
         const a = parseFloat(getComputedStyle(panel).opacity)
                 * parseFloat(getComputedStyle(carrier ? panel.querySelector(carrier) : el).opacity);
         return ratio(over(parse(getComputedStyle(el).color), GROUND, a), GROUND);
