@@ -83,7 +83,16 @@ const DISCARDS = `(()=>{const m={};Object.defineProperty(window,'localStorage',{
     if (bed && bed.offsetParent !== null) return bed.click();
     return document.getElementById('momentGo').click();
   });
-  await blocked.p.waitForTimeout(400);
+  await blocked.p.waitForTimeout(900);
+  /* Going to bed now passes through the dua on both of the screen's routes —
+     "too tired" skips the planning, not the ritual — so the walk to the night
+     is two taps. Walked in full here rather than seeded around, because the
+     point of this check is that the whole path still works when storage is
+     refusing to persist anything. */
+  if (await blocked.p.locator('#duaVeil').isVisible()) {
+    await blocked.p.locator('#duaAmin').click();
+    await blocked.p.waitForTimeout(5400);
+  }
   check('Lazy mode still works in memory', await blocked.p.locator('#lazyVeil').isVisible());
   check('There is a way to get the data out', await blocked.p.locator('#storageWarningExport').isVisible());
   await blocked.ctx.close();

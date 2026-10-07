@@ -251,15 +251,17 @@ const clockAt = (h, mi, d = 7) => `(()=>{const R=Date;const f=new R(2026,9,${d},
   await early.p.waitForTimeout(500);
   await early.p.locator('#earlyYes').click();
   await early.p.waitForTimeout(1200);
-  /* The confirmation gates the route; it does not redirect it. This one is
-     the console's "Too tired — just go to bed", which has always gone
-     straight to the night, so that is where confirming takes it. The dua
-     belongs to the Goodnight moment and is exercised below. */
-  check('Confirming continues down the route that was taken',
+  /* The confirmation gates the route; it does not redirect it. Both of the
+     screen's routes lead to the dua in the faith-aware edition. */
+  check('Confirming goes on into the dua as always',
+        await early.p.locator('#duaVeil').isVisible());
+  check('Which still names the planned final rising',
+        (await early.p.locator('#duaLine2').innerText()).endsWith('٦:٣٠'),
+        await early.p.locator('#duaLine2').innerText());
+  await early.p.locator('#duaAmin').click();
+  await early.p.waitForTimeout(5400);
+  check('And the night legitimately begins',
         await early.p.locator('#lazyVeil').isVisible());
-  check('And the dua text is still the one the plan implies',
-        (await early.p.evaluate(() => window.__dua().line2)).endsWith('٦:٣٠'),
-        await early.p.evaluate(() => window.__dua().line2));
   const confirmed = await early.p.evaluate(k => JSON.parse(localStorage.getItem(k)), KEY);
   check('With the bed time it actually happened at',
         confirmed.lazyNight && confirmed.lazyNight.bedTime === '19:00',
@@ -272,6 +274,105 @@ const clockAt = (h, mi, d = 7) => `(()=>{const R=Date;const f=new R(2026,9,${d},
   check('No console errors through the early-night flow',
         early.errs.length === 0, early.errs.join(' | '));
   await early.ctx.close();
+
+  /* ================================================================
+     "TOO TIRED — JUST GO TO BED"
+
+     It skips the planning and the questions. It does not skip the ritual:
+     the dua asks nothing of anybody, and in the faith-aware edition it is
+     the point of bedtime. No intermediate screen on the way.
+     ================================================================ */
+  const tiredLate = await open({ hour: 21, minute: 50 });   // wind-down has begun
+  await tiredLate.p.locator('#lazyStart').click();
+  await tiredLate.p.waitForTimeout(900);
+  const tl = await tiredLate.p.evaluate(() => ({
+    early: !document.getElementById('earlyVeil').hidden,
+    dua: !document.getElementById('duaVeil').hidden,
+    lazy: !document.getElementById('lazyVeil').hidden,
+    build: !document.getElementById('nightVeil').hidden
+  }));
+  check('Too tired, after wind-down, goes straight to the dua',
+        tl.dua && !tl.early && !tl.lazy, JSON.stringify(tl));
+  check('With no intermediate screen on the way', !tl.build);
+  check('Naming the planned final rising',
+        (await tiredLate.p.locator('#duaLine2').innerText()).endsWith('٦:٣٠'));
+  await tiredLate.p.locator('#duaAmin').click();
+  await tiredLate.p.waitForTimeout(5400);
+  check('And one tap carries on into the night',
+        await tiredLate.p.locator('#lazyVeil').isVisible());
+  check('No console errors', tiredLate.errs.length === 0, tiredLate.errs.join(' | '));
+  await tiredLate.ctx.close();
+
+  /* Before wind-down: the question first, then the same destination. */
+  const tiredEarly = await open({ hour: 19, minute: 0 });
+  const tiredBefore = await read(tiredEarly.p);
+  await tiredEarly.p.locator('#lazyStart').click();
+  await tiredEarly.p.waitForTimeout(800);
+  check('Too tired, before wind-down, asks first',
+        await tiredEarly.p.evaluate(() => !document.getElementById('earlyVeil').hidden));
+  check('And nothing has begun while it asks', await tiredEarly.p.evaluate(() =>
+    document.getElementById('duaVeil').hidden && document.getElementById('lazyVeil').hidden));
+  await tiredEarly.p.locator('#earlyYes').click();
+  await tiredEarly.p.waitForTimeout(1300);
+  check('Confirming goes to the dua, directly',
+        await tiredEarly.p.locator('#duaVeil').isVisible());
+  check('Still with no intermediate screen',
+        await tiredEarly.p.evaluate(() => document.getElementById('nightVeil').hidden));
+  await tiredEarly.ctx.close();
+
+  /* And "Not yet" on that route changes nothing either. */
+  const tiredNotYet = await open({ hour: 19, minute: 0 });
+  const notYetBefore = await read(tiredNotYet.p);
+  await tiredNotYet.p.locator('#lazyStart').click();
+  await tiredNotYet.p.waitForTimeout(700);
+  await tiredNotYet.p.locator('#earlyNo').click();
+  await tiredNotYet.p.waitForTimeout(700);
+  check('Too tired then “Not yet” leaves the evening exactly as it was',
+        (await look(tiredNotYet.p)).phase === 'EVENING'
+        && await tiredNotYet.p.evaluate(() => document.getElementById('livingNight').offsetParent !== null));
+  check('With no dua, no night and no record',
+        await tiredNotYet.p.evaluate(() =>
+          document.getElementById('duaVeil').hidden && document.getElementById('lazyVeil').hidden));
+  check('And the stored state byte-for-byte unchanged',
+        (await read(tiredNotYet.p)) === notYetBefore);
+  await tiredNotYet.ctx.close();
+
+  /* Faith-aware off: the plain goodnight, and no Arabic forced on anyone. */
+  const plain = await open({ hour: 21, minute: 50,
+    extra: { settings: Object.assign({}, BASE, { faith: 'off' }) } });
+  await plain.p.locator('#lazyStart').click();
+  await plain.p.waitForTimeout(900);
+  check('With faith-aware off, too tired goes straight to the plain goodnight',
+        await plain.p.locator('#lazyVeil').isVisible());
+  check('And no dua is shown',
+        await plain.p.evaluate(() => document.getElementById('duaVeil').hidden));
+  check('No Arabic is forced on the screen at all', await plain.p.evaluate(() =>
+    ![...document.querySelectorAll('[lang="ar"]')].some(el => el.offsetParent !== null)));
+  check('The early question still gates that route too', await (async () => {
+    const c = await open({ hour: 19, minute: 0,
+      extra: { settings: Object.assign({}, BASE, { faith: 'off' }) } });
+    await c.p.locator('#lazyStart').click();
+    await c.p.waitForTimeout(700);
+    const asked = await c.p.evaluate(() => !document.getElementById('earlyVeil').hidden);
+    await c.ctx.close();
+    return asked;
+  })());
+  check('No console errors with faith-aware off', plain.errs.length === 0, plain.errs.join(' | '));
+  await plain.ctx.close();
+
+  /* The deep links keep the semantics they were published with: they stamp
+     bed time immediately, for a bedtime automation where nobody is holding
+     the phone to answer a question. Changing that is a separate decision. */
+  const link = await open({ hour: 19, minute: 0 });
+  await link.p.evaluate(() => window.__deepLink ? window.__deepLink('lazy') : null);
+  await link.p.waitForTimeout(700);
+  const dl = await link.p.evaluate(() => ({
+    early: !document.getElementById('earlyVeil').hidden,
+    lazy: !document.getElementById('lazyVeil').hidden
+  }));
+  check('The lazy deep link still stamps bed time with no question',
+        dl.lazy && !dl.early, JSON.stringify(dl));
+  await link.ctx.close();
 
   /* Near the planned bedtime there is no question at all. */
   const onTime = await open({ hour: 22, minute: 40 });

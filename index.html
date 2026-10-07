@@ -7755,6 +7755,9 @@
       window.__planFinalWake = plan => planFinalWake(plan);
       window.__intention = (plan, knowledge) => nightIntention(plan, knowledge || {});
       window.__journeyText = plan => journeyText(plan);
+      /* The deep-link router, so the published link semantics can be
+         asserted rather than assumed. */
+      window.__deepLink = raw => goDeepLink(raw);
       window.__provenance = () => {
         const plan = tonightsPlan();
         return plan ? { lines: nightProvenance(plan), limit: PROVENANCE_LIMIT } : null;
@@ -7960,11 +7963,16 @@
       return sinceWindDown >= forwardGap(anchors.windDown, anchors.wake);
     }
 
-    /* `next` is where this particular route goes once the night is agreed,
-       and it differs by entry point ON PURPOSE. Goodnight opens the dua;
-       the console's "Too tired — just go to bed" has always skipped straight
-       to the night, which is the whole meaning of its label. The early-night
-       question gates both; it does not change where either one leads. */
+    /* `next` is where this route goes once the night is agreed. Both of the
+       screen's routes — the Goodnight moment and the console's "Too tired —
+       just go to bed" — lead to the same place, because "too tired" means
+       skip the planning and the questions, not skip the ritual: the dua asks
+       nothing of anybody. proceedIntoNight honours the faith-aware setting,
+       so someone who turned it off still gets the plain goodnight.
+
+       The parameter stays because the deep links do NOT come through here:
+       they are published as stamping bed time immediately, and a question
+       nobody is there to answer would strand a bedtime automation. */
     let earlyNext = null;
     function beginNight(next = proceedIntoNight) {
       if (nightIsEarly()) { askEarlyNight(next); return; }
@@ -8129,7 +8137,7 @@
       return `Recorded — ${hours}. Nothing to fix.`;
     }
 
-    $('#lazyStart')?.addEventListener('click', () => beginNight(startLazyNight));
+    $('#lazyStart')?.addEventListener('click', () => beginNight());
     $('#lazyGoodnight')?.addEventListener('click', () => { $('#lazyVeil').hidden = true; });
     $$('[data-lazy-rate]').forEach(button => button.addEventListener('click',
       () => finishLazyNight(Number(button.dataset.lazyRate))));
@@ -9360,8 +9368,13 @@
       flow:        () => openFlow('evening'),
       checkin:     () => openFlow('evening'),
       morningflow: () => openFlow('morning'),
-      lazy:        () => beginNight(startLazyNight),
-      bedtime:     () => beginNight(startLazyNight),
+      /* Documented as stamping bed time immediately, for an iOS Shortcut on a
+         bedtime automation where going to bed costs zero taps (native/APP_STORE.md).
+         A confirmation nobody is holding the phone to answer would strand that
+         automation, so these keep the semantics they were published with. Changing
+         them is a separate decision, not a consequence of this one. */
+      lazy:        () => startLazyNight(),
+      bedtime:     () => startLazyNight(),
       // Anything else is a view, by its own name.
       open:        () => navigate('today'),
       home:        () => navigate('today')
