@@ -7448,6 +7448,25 @@
     const StarSky = (() => {
       // Cream, old gold and a cold blue-white: the palette the rest of the
       // app already uses, so the sky belongs to it.
+      /* ---- How fast the sky turns.
+
+         0.0000092 radians per millisecond: one revolution in about eleven
+         and a half minutes. It was 0.0000035 — a thirty-minute turn, which
+         measured 1.25px/s at the edge of a phone-sized field and was
+         reported from a real device as indistinguishable from wallpaper.
+
+         The number alone is not what makes it visible, and raising it alone
+         would have made it a screensaver. What carries it is `depth` below:
+         near stars now drift about two and a half times faster than far
+         ones, and neighbours separating is what the eye catches at these
+         speeds. Nothing crosses the screen, there is no loop to notice, and
+         at bedtime the whole thing still drops to about a third. */
+      const STAR_RATE = 0.0000092;
+      /* The mean of 0.45 + weight * 0.7 where weight is rand^2.2, whose
+         expectation is 1/3.2. The band's haze is drawn at this rather than
+         at full depth so it stays under the stars it belongs to. */
+      const DEPTH_MEAN = 0.669;
+
       const HUES = [[255,250,238], [236,216,174], [202,212,242], [255,246,226]];
       const calm = window.matchMedia('(prefers-reduced-motion: reduce)');
       const fields = [];
@@ -7543,9 +7562,21 @@
               phase: Math.random() * Math.PI * 2,
               // Faint stars scintillate hardest — true, and it leaves the
               // bright anchors steady while everything around them shimmers.
-              rate: 0.4 + Math.random() * 1.9,
+              /* Slower than it was. The drift below is now perceptible, and
+                 the two together must read as a sky moving rather than a sky
+                 flickering — so as one speeds up the other steps back.
+                 Periods run from about four seconds to twenty-two. */
+              rate: 0.28 + Math.random() * 1.25,
               swing: 0.3 + (1 - weight) * 0.45,
-              depth: 0.65 + weight * 0.35
+              /* THE PARALLAX. This was 0.65 + weight * 0.35 — a spread of
+                 1.54x, and since weight is rand^2.2 its mean is 0.31, so
+                 almost every star sat between 0.65 and 0.75. Near and far
+                 drifted at nearly one rate, which is why the field read as
+                 static even while it moved: slow uniform drift has no
+                 reference, and what the eye actually catches is neighbours
+                 separating. 2.6x spread gives about 3.5px/s of separation at
+                 the field edge where there was 0.67. */
+              depth: 0.45 + weight * 0.7
             });
           }
         };
@@ -7564,7 +7595,11 @@
           ctx.clearRect(0, 0, w, h);
 
           // The band's haze, so the dense stripe sits on something.
-          const ba = -0.58 + spin;
+          /* At the mean depth, not at 1.0. The haze is the band's ground
+             and the band's stars average DEPTH_MEAN, so drawing it at full
+             depth slid it out from under them — visible over a long sitting,
+             and twice as fast now that depth is spread wider. */
+          const ba = -0.58 + spin * DEPTH_MEAN;
           const hx = cx + Math.cos(ba) * radius * 0.2, hy = cy + Math.sin(ba) * radius * 0.2;
           const haze = ctx.createRadialGradient(hx, hy, 0, hx, hy, radius * 0.9);
           haze.addColorStop(0, `rgba(150,170,220,${(0.07 * opt.gain).toFixed(3)})`);
@@ -7645,7 +7680,7 @@
            speed. The purpose of this screen is calm, so the one thing it
            must not do is give the eye something to follow while someone is
            trying to stop. */
-        if (!calm.matches) spin += dt * 0.0000035 * (1 - 0.66 * duskNow());
+        if (!calm.matches) spin += dt * STAR_RATE * (1 - 0.66 * duskNow());
         /* Build my night covers the sky with a ground that is over 99%
            opaque, so every star drawn while it is open is painted to be
            looked at by nobody. The loop keeps turning — the spin has to stay
@@ -7700,6 +7735,9 @@
         // canvas is a different star from one sample to the next.
         probe: () => ({
           spin, running: frame !== null, reduced: calm.matches,
+          /* Exposed so a test can say "a third of the day rate" instead of
+             pinning a literal that goes stale the moment the sky is tuned. */
+          rate: STAR_RATE,
           fields: fields.map(f => ({
             id: f.canvas.id || f.canvas.className, count: f.stars.length,
             radius: f.radius, active: f.active(),

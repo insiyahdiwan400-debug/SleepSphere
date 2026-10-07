@@ -24,6 +24,11 @@ const DAY_PHASE = fixed => {
    the afternoon, and the console these checks need is hidden there. */
 const AT_MIDDAY = '2026-10-06T13:00:00Z';
 
+/* The depth range the field is built across; see makeField in index.html.
+   Near stars drift fastest, far ones slowest, and the gap between them is
+   what makes slow motion legible. */
+const NEAR = 1.15, FAR = 0.45, TYPICAL = 0.669;
+
 let fails = 0;
 const check = (n, ok, x='') => { console.log(`${ok?'PASS':'FAIL'}  ${n}${x?' :: '+x:''}`); if (!ok) fails++; };
 
@@ -99,6 +104,41 @@ const clockAt = hour => `(()=>{const R=Date;const f=new R(2026,8,9,${hour},30,0)
   check('The field still turns at bedtime', settledDrift > 1 && settledDrift < 14,
         `${settledDrift.toFixed(1)}px at the edge over 5s`);
 
+  /* ---- PERCEPTIBILITY, in CSS pixels at phone scale.
+
+     Reported from a real device: the sky was indistinguishable from
+     wallpaper. The old rate moved a typical star 1.25px/s at the edge of a
+     548px field — about six pixels in five seconds, which is below what
+     anybody notices without staring.
+
+     What actually carries slow motion is not the absolute speed but
+     neighbours separating: a uniformly drifting field has no reference. So
+     both are asserted, in the units the complaint was made in, and both
+     have an upper bound as well as a lower one — this must read as a night
+     sky and not as a screensaver. */
+  const motion = await phone.p.evaluate(() => new Promise(resolve => {
+    const probe = window.__starProbe();
+    const field = probe.fields.find(f => f.id === 'starfield');
+    const start = probe.spin, t0 = performance.now();
+    setTimeout(() => {
+      const spin = window.__starProbe().spin;
+      const perSecond = (spin - start) / ((performance.now() - t0) / 1000);
+      resolve({ radius: field.radius, perSecond, rate: probe.rate });
+    }, 4000);
+  }));
+  const pxPerSec = depth => motion.perSecond * motion.radius * depth;
+  /* This probe sits at 23:00 — the SLEEP phase, where the sky is
+     deliberately at about a third of its daytime rate. So what is asserted
+     HERE is the bedtime target: still moving, and about where the whole sky
+     used to be in daylight, which is the calmest the app ever gets. The
+     evening's full-rate targets are measured further down. */
+  check('At bedtime a typical star still drifts enough to see',
+        pxPerSec(TYPICAL) * 5 >= 4,
+        `${(pxPerSec(TYPICAL) * 5).toFixed(1)}px in 5s at ${pxPerSec(TYPICAL).toFixed(2)}px/s`);
+  check('And never fast enough to pull at a tired eye',
+        pxPerSec(NEAR) <= 3, `${pxPerSec(NEAR).toFixed(2)}px/s at the nearest`);
+  const bedPerSecond = motion.perSecond;
+
   // Twinkle: individual, so the field shimmers unevenly rather than pulsing.
   const shimmer = await phone.p.evaluate(() => new Promise(res => {
     const c = document.getElementById('starfield'), g = c.getContext('2d');
@@ -138,6 +178,40 @@ const clockAt = hour => `(()=>{const R=Date;const f=new R(2026,8,9,${hour},30,0)
         `${drift.toFixed(1)}px at the edge over 5s`);
   check('And faster than it does at bedtime', drift > settledDrift * 2,
         `${drift.toFixed(1)}px against ${settledDrift.toFixed(1)}px`);
+
+  /* ---- PERCEPTIBILITY, in CSS pixels at phone scale.
+
+     Reported from a real device: the sky was indistinguishable from
+     wallpaper. The old rate moved a typical star 1.25px/s at the edge of a
+     548px field — about six pixels in five seconds, below what anybody
+     notices without staring.
+
+     What actually carries slow motion is not the absolute speed but
+     neighbours separating: a uniformly drifting field has no reference, and
+     the old depth spread of 1.54x gave only 0.67px/s between near and far.
+     So both are asserted, in the units the complaint was made in, and both
+     have an upper bound as well as a lower one — this has to read as a
+     night sky and not as a screensaver. */
+  const ev = await evening.p.evaluate(() => {
+    const probe = window.__starProbe();
+    return { radius: probe.fields.find(f => f.id === 'starfield').radius };
+  });
+  const evPerSecond = (e1.spin - e0.spin) / 5;
+  const px = depth => evPerSecond * ev.radius * depth;
+  check('A typical star drifts fast enough to notice in five seconds',
+        px(TYPICAL) * 5 >= 10,
+        `${(px(TYPICAL) * 5).toFixed(1)}px in 5s at ${px(TYPICAL).toFixed(2)}px/s`);
+  check('And slowly enough that nothing crosses the screen',
+        px(NEAR) <= 9, `${px(NEAR).toFixed(2)}px/s at the nearest`);
+  check('Near stars visibly outpace far ones, which is what the eye catches',
+        (px(NEAR) - px(FAR)) * 5 >= 12,
+        `${((px(NEAR) - px(FAR)) * 5).toFixed(1)}px of parallax in 5s`);
+  check('A full turn is still slow enough to have no loop to notice',
+        (2 * Math.PI / evPerSecond) / 60 >= 8,
+        `${((2 * Math.PI / evPerSecond) / 60).toFixed(1)} minutes a revolution`);
+  check('And the evening is about three times the bedtime rate',
+        evPerSecond > bedPerSecond * 2.2 && evPerSecond < bedPerSecond * 3.8,
+        `${(evPerSecond / bedPerSecond).toFixed(2)}x`);
   check('No console errors in the evening', evening.errs.length === 0, evening.errs.join(' | '));
   await evening.ctx.close();
 

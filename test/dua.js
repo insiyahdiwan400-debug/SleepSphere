@@ -168,9 +168,20 @@ const settings = extra => Object.assign({}, DEFAULT_SETTINGS, extra);
                   .find(f => f.id === 'starfield');
   check('There are still stars behind the dua', field.onScreen >= 250,
         `${field.onScreen} on screen`);
+  /* Measured against the sky's own declared day rate rather than a literal.
+     This check used to pin 0.0000035 * 1000 * 0.5 — the base rate of the
+     day, written into the test — so retuning the sky broke it for a reason
+     that had nothing to do with the dua. What it is really asserting is the
+     relationship: at bedtime the field turns at about a third of its
+     daytime rate, and that holds whatever the rate is. */
+  const dayRate = (await night.p.evaluate(() => window.__starProbe().rate)) * 1000;
+  const bedRate = (spin1 - spin0) / 3;
   check('But the field turns more slowly than in the day',
-        spin1 > spin0 && (spin1 - spin0) / 3 < 0.0000035 * 1000 * 0.5,
-        `${((spin1 - spin0) / 3).toExponential(2)} radians per second`);
+        spin1 > spin0 && bedRate < dayRate * 0.5,
+        `${bedRate.toExponential(2)} against a day rate of ${dayRate.toExponential(2)} rad/s`);
+  check('And at roughly the third it is meant to be',
+        bedRate > dayRate * 0.25 && bedRate < dayRate * 0.42,
+        `${(bedRate / dayRate).toFixed(2)} of the day rate`);
 
   /* One tap ends it, and the record is untouched by having read a dua. */
   const before = await read(night.p);
