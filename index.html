@@ -4757,6 +4757,35 @@
        stays visible and stays exported — it just stops being evidence. */
     function trustedMornings() { return realMornings().filter(recordTrusted); }
 
+    /* ---- Sleep duration, which is allowed not to exist.
+
+       `Number(record.sleepMinutes) || 0` reads an unknown sleep total as a
+       night of NO SLEEP. It is the same class of mistake as the one that
+       started all of this — a confident number standing in for an absent
+       one — and it is worse in an average, where a zero drags the mean down
+       for every other night as well. `Number.isFinite` is no defence either:
+       Number(null) is 0, and 0 is finite.
+
+       So there is one accessor, it returns null for "not known", and the
+       sites that compute averages take their records from
+       withSleepDuration() rather than filtering by hand. */
+    function sleepMinutesOf(record) {
+      if (!record) return null;
+      const raw = record.sleepMinutes;
+      if (raw === null || raw === undefined || raw === '') return null;
+      const value = Number(raw);
+      return Number.isFinite(value) ? value : null;
+    }
+
+    /* The records an average, a median or a debt over SLEEP DURATION may be
+       built from: trusted, and carrying a duration at all. Both conditions
+       matter and they are different — a times-only night is excluded because
+       its total is unknown, an unconfirmed sixteen-hour night because its
+       total is not believable. */
+    function withSleepDuration(records) {
+      return (records || []).filter(item => recordTrusted(item) && sleepMinutesOf(item) !== null);
+    }
+
     /* ---- Correcting a night without destroying what it replaced.
 
        Correcting October 8 used to delete the original outright and reuse
@@ -6659,13 +6688,17 @@
          stand behind, and the count of the others is stated rather than
          quietly folded in. */
       const sound = records.filter(recordTrusted);
-      const unsure = nights - sound.length;
-      const mean7 = mean(sound.map(item => Number(item.sleepMinutes) || 0));
-      const restMean = mean(sound.map(item => Number(item.rest) || 0));
-      summary.textContent = !sound.length
-        ? `${nights} night${nights === 1 ? '' : 's'} recorded · none with confirmed times yet, so there is no average to show.`
-        : `${nights} night${nights === 1 ? '' : 's'} recorded · about ${formatDuration(mean7)} of sleep a night · restoration averaging ${restMean.toFixed(1)} out of 5`
-          + (unsure ? ` · ${unsure} night${unsure === 1 ? '' : 's'} left out, ${unsure === 1 ? 'its times are' : 'their times are'} unconfirmed.` : '.');
+      /* Not the same set as `sound`: a trusted night can still have an
+         unknown sleep total, and `|| 0` would have averaged it in as zero. */
+      const usable = withSleepDuration(records);
+      const unsure = nights - usable.length;
+      const mean7 = mean(usable.map(sleepMinutesOf));
+      const restMean = mean(sound.filter(item => Number(item.rest) >= 1).map(item => Number(item.rest)));
+      summary.textContent = !usable.length
+        ? `${nights} night${nights === 1 ? '' : 's'} recorded · none with a sleep length the app can stand behind yet, so there is no average to show.`
+        : `${nights} night${nights === 1 ? '' : 's'} recorded · about ${formatDuration(mean7)} of sleep a night`
+          + (restMean === null ? '' : ` · restoration averaging ${restMean.toFixed(1)} out of 5`)
+          + (unsure ? ` · ${unsure} night${unsure === 1 ? '' : 's'} left out of the average.` : '.');
     }
 
     /* Milestones mark things that genuinely became available, not arbitrary
@@ -7022,14 +7055,41 @@
 
     function renderDataSummary() {
       const records = recentFourteenDays();
+      /* Two different counts, and the summary says which is which.
+
+         NIGHTS RECORDED is every record in the window, because a night that
+         happened belongs in the count whatever the app thinks of its times.
+         NIGHTS WITH A USABLE SLEEP TOTAL is the subset an average may rest
+         on. This panel used to average the first set with `|| 0`, so an
+         unknown total counted as a sleepless night and an unconfirmed
+         sixteen-hour one counted in full — in a summary explicitly offered
+         for a participant to take to a professional. */
+      const usable = withSleepDuration(records);
+      const sound = records.filter(recordTrusted);
       $('#reportCount').textContent = records.length;
-      $('#reportSleep').textContent = records.length ? formatDuration(mean(records.map(item => Number(item.sleepMinutes) || 0))) : '—';
-      $('#reportRest').textContent = records.length ? `${mean(records.map(item => Number(item.rest) || 0)).toFixed(1)} / 5` : '—';
+      $('#reportSleep').textContent = usable.length
+        ? formatDuration(mean(usable.map(sleepMinutesOf))) : '—';
+      /* The restoration rating is the participant's own answer and is not
+         affected by a doubted timestamp, so it is averaged over every night
+         they rated. */
+      const rated = records.filter(item => Number(item.rest) >= 1);
+      $('#reportRest').textContent = rated.length
+        ? `${mean(rated.map(item => Number(item.rest))).toFixed(1)} / 5` : '—';
       $('#reportTitle').textContent = records.length ? `${state.settings.name ? `${state.settings.name}’s ` : ''}recent sleep picture` : 'Not enough records yet';
-      $('#reportIntro').textContent = records.length ? `This summary contains ${records.length} record${records.length === 1 ? '' : 's'} from the last fourteen calendar days. It reports entries and repetitions without diagnosing a condition.` : 'Add morning records to build a summary you can use for personal reflection or take to a qualified professional.';
+      $('#reportIntro').textContent = records.length
+        ? `This summary contains ${records.length} record${records.length === 1 ? '' : 's'} from the last fourteen calendar days`
+          + (usable.length === records.length
+             ? '. '
+             : `, of which ${usable.length} ${usable.length === 1 ? 'has' : 'have'} a sleep length the app can stand behind — the average below uses only those. `)
+          + 'It reports entries and repetitions without diagnosing a condition.'
+        : 'Add morning records to build a summary you can use for personal reflection or take to a qualified professional.';
       const observations = [];
-      if (records.length >= 3) {
-        const analysis = calculateCompass(records);
+      /* The compass reads timestamps, so it takes the trusted set — the same
+         set My Pattern uses. Passing the raw window here meant the printable
+         summary and the on-screen compass could disagree about the same
+         fourteen days. */
+      if (sound.length >= 3) {
+        const analysis = calculateCompass(sound);
         if (analysis.gap > 8) observations.push(`Recorded opportunity was ${Math.round(analysis.gap)} points above felt restoration.`);
         else if (analysis.gap < -8) observations.push(`Felt restoration was higher than the opportunity score; this does not make repeated short sleep safe.`);
         else observations.push('Recorded opportunity and felt restoration were broadly aligned.');
@@ -7974,11 +8034,18 @@
     function wakeObservation(record) {
       const history = trustedMornings().filter(item => item.date !== record.date);
       if (history.length < 3) return 'Got it. Have a good morning.';
-      const usualSleep = medianOf(history.map(item => Number(item.sleepMinutes)).filter(Number.isFinite));
+      /* Number(null) is 0, and 0 passes Number.isFinite — so the old filter
+         let an unknown total into the median as a sleepless night. */
+      const usualSleep = medianOf(withSleepDuration(history).map(sleepMinutesOf));
       const usualRest  = medianOf(history.map(item => Number(item.rest)).filter(Number.isFinite));
       if (!Number.isFinite(usualSleep) || !Number.isFinite(usualRest)) return 'Got it. Have a good morning.';
 
-      const sleepGap = Number(record.sleepMinutes) - usualSleep;
+      /* This night's own total may be unknown, in which case there is no
+         comparison to make and the app says the one true thing instead of
+         reporting a shorter night than usual on no evidence. */
+      const mine = sleepMinutesOf(record);
+      if (mine === null) return 'Recorded. How much of it was sleep is not known, so there is nothing to compare yet.';
+      const sleepGap = mine - usualSleep;
       const restGap  = Number(record.rest) - usualRest;
       const similarSleep = Math.abs(sleepGap) <= 30;
 
@@ -8054,22 +8121,37 @@
 
       // The ring reads sleep against a ten-hour dial so it always lands
       // somewhere sensible, and the number counts up in hours and minutes.
-      const minutes = record.sleepMinutes;
+      /* A dial cannot show an unknown length. Null would have drawn 0% — a
+         full empty ring — beside a dash, which reads as a night with no
+         sleep at all rather than a night nobody measured. */
+      const minutes = sleepMinutesOf(record);
       const ring = $('#revealRing');
       const num = $('#revealNum');
-      const pct = clamp(minutes / 600 * 100, 0, 100);
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        num.textContent = formatDuration(minutes);
-        ring.style.setProperty('--harmony', pct);
+      /* An unknown length gets no dial and no counting number. Left to the
+         arithmetic below it would animate up to "0m" on an empty ring, which
+         states a night of no sleep — the exact false confidence this whole
+         patch exists to remove. */
+      if (minutes === null) {
+        /* No early return here: the two buttons below still have to be
+           wired, and returning would have left the reveal screen's own
+           controls dead. */
+        num.textContent = 'Not known';
+        ring.style.setProperty('--harmony', 0);
       } else {
-        window.requestAnimationFrame(() => ring.style.setProperty('--harmony', pct));
-        const start = performance.now();
-        const tick = now => {
-          const progress = Math.min(1, (now - start) / 1100);
-          num.textContent = formatDuration(Math.round(minutes * (1 - Math.pow(1 - progress, 3))));
-          if (progress < 1) window.requestAnimationFrame(tick);
-        };
-        window.requestAnimationFrame(tick);
+        const pct = clamp(minutes / 600 * 100, 0, 100);
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          num.textContent = formatDuration(minutes);
+          ring.style.setProperty('--harmony', pct);
+        } else {
+          window.requestAnimationFrame(() => ring.style.setProperty('--harmony', pct));
+          const start = performance.now();
+          const tick = now => {
+            const progress = Math.min(1, (now - start) / 1100);
+            num.textContent = formatDuration(Math.round(minutes * (1 - Math.pow(1 - progress, 3))));
+            if (progress < 1) window.requestAnimationFrame(tick);
+          };
+          window.requestAnimationFrame(tick);
+        }
       }
 
       $('#revealPattern').addEventListener('click', () => { closeFlow(); navigate('twin'); });
@@ -8639,6 +8721,8 @@
              sleepMinutes:item.sleepMinutes, supersedes:item.supersedes || null,
              supersededBy:item.supersededBy || null })) : [];
       };
+      window.__sleepMinutesOf = record => sleepMinutesOf(record);
+      window.__withSleepDuration = records => withSleepDuration(records).map(item => item.date);
       window.__recordFlags = record => recordFlags(record);
       window.__recordVerification = record => recordVerification(record);
       window.__recordTrusted = record => recordTrusted(record);
@@ -9435,10 +9519,13 @@
           why:'Discomfort fragments sleep, so the same rest takes longer to accumulate.' });
       }
 
-      const recent = trustedMornings().slice(-4);
+      /* Only nights with a sleep total can owe anything. An unknown total
+         read as zero would have charged the participant a full target of
+         debt for a night nobody measured. */
+      const recent = withSleepDuration(trustedMornings()).slice(-4);
       if (recent.length) {
         const debt = recent.reduce((total,item) =>
-          total + Math.max(0, (Number(item.targetMinutes) || baseline) - (Number(item.sleepMinutes) || 0)), 0);
+          total + Math.max(0, (Number(item.targetMinutes) || baseline) - sleepMinutesOf(item)), 0);
         const repay = Math.min(45, Math.round(debt * 0.3 / 5) * 5);
         if (repay >= 5) parts.push({ label:'Recent sleep debt', minutes:repay,
           why:`${formatDuration(debt)} short across your last ${recent.length} night${recent.length === 1 ? '' : 's'}. Debt is not repaid in one night, so this adds back about a third.` });

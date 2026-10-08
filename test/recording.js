@@ -645,6 +645,125 @@ const AT_1817    = '2026-10-07T12:47:00.000Z';   // 18:17 IST
   await legacy.ctx.close();
 
   /* ================================================================
+     UNKNOWN IS NOT ZERO.
+
+     `Number(record.sleepMinutes) || 0` reads an unknown sleep total as a
+     night of no sleep. In an average that is worse than wrong about one
+     night: a single zero drags the mean down for every other night too, and
+     the fourteen-day panel it was in is explicitly offered for a
+     participant to take to a professional.
+
+     Number.isFinite is no defence either — Number(null) is 0, and 0 is
+     finite — which is why these checks pin the accessor itself as well as
+     the screens that use it.
+     ================================================================ */
+  const nums = await open({ iso:'2026-10-09T04:51:00.000Z' });
+  const sleepOf = r => nums.p.evaluate(x => window.__sleepMinutesOf(x), r);
+  check('An unknown sleep total reads as null, never as zero',
+        await sleepOf({ sleepMinutes:null }) === null
+        && await sleepOf({ sleepMinutes:undefined }) === null
+        && await sleepOf({}) === null,
+        'null / undefined / absent');
+  check('And a real total reads as itself, including a genuine zero',
+        await sleepOf({ sleepMinutes:400 }) === 400
+        && await sleepOf({ sleepMinutes:0 }) === 0);
+  check('A non-numeric value is unknown rather than NaN',
+        await sleepOf({ sleepMinutes:'' }) === null
+        && await sleepOf({ sleepMinutes:'abc' }) === null);
+  check('Number(null) passing Number.isFinite is the trap this closes',
+        await nums.p.evaluate(() => Number.isFinite(Number(null)) && Number(null) === 0) === true,
+        'so isFinite alone was never enough');
+
+  /* The set an average may rest on excludes BOTH an unknown total and an
+     untrusted one, and those are different exclusions. */
+  const sets = await nums.p.evaluate(() => {
+    const base = { date:'d', rest:3, targetMinutes:540 };
+    return {
+      ordinary:   window.__withSleepDuration([{ ...base, date:'a', sleepMinutes:400, lazy:true, opportunityMinutes:450 }]).length,
+      unknown:    window.__withSleepDuration([{ ...base, date:'b', sleepMinutes:null, verified:'times-only', opportunityMinutes:515 }]).length,
+      untrusted:  window.__withSleepDuration([{ ...base, date:'c', sleepMinutes:883, opportunityMinutes:964, lazy:true }]).length,
+      confirmed:  window.__withSleepDuration([{ ...base, date:'e', sleepMinutes:883, opportunityMinutes:964, verified:'confirmed' }]).length
+    };
+  });
+  check('An ordinary night is usable',           sets.ordinary === 1);
+  check('An unknown total is not usable',        sets.unknown === 0);
+  check('An untrusted total is not usable',      sets.untrusted === 0);
+  check('A confirmed long night IS usable again', sets.confirmed === 1);
+  await nums.ctx.close();
+
+  /* ---- The fourteen-day printable summary: the live bug. */
+  const today = new Date().toISOString().slice(0,10);
+  const dayBefore = new Date(Date.now() - 86400000).toISOString().slice(0,10);
+  const twoBefore = new Date(Date.now() - 2 * 86400000).toISOString().slice(0,10);
+  const panel = await open({ extra:{ mornings:[
+    { ...ordinary(twoBefore,'23:00','00:02',19), sleepMinutes:480, opportunityMinutes:510 },
+    { ...ordinary(dayBefore,'23:00','00:02',19), sleepMinutes:420, opportunityMinutes:450 },
+    /* An unknown total and an unconfirmed sixteen-hour night, in the window. */
+    { ...BAD, date:today, sleepMinutes:null, efficiency:null, awakeMinutes:null,
+      opportunityMinutes:515, verified:'times-only', rest:2 }
+  ] } });
+  const read = await panel.p.evaluate(() => {
+    document.querySelector('.nav button[data-view="data"]').click();
+    return { count: document.getElementById('reportCount').textContent,
+             sleep: document.getElementById('reportSleep').textContent,
+             rest:  document.getElementById('reportRest').textContent,
+             intro: document.getElementById('reportIntro').textContent };
+  });
+  check('REGRESSION · the fourteen-day average ignores the unknown total',
+        read.sleep === '7h 30m', read.sleep);
+  check('REGRESSION · it is the mean of the two usable nights, not of three',
+        read.sleep !== '5h' && read.sleep !== '5h 0m', `480 and 420 average 450, not 300`);
+  check('Every recorded night is still counted and shown',
+        read.count === '3', read.count);
+  check('And the summary says how many have a usable sleep length',
+        /2 have a sleep length the app can stand behind/.test(read.intro), read.intro);
+  check('The restoration average still uses the participant\u2019s own ratings',
+        read.rest === '2.7 / 5', read.rest);
+  check('No console errors on the summary', panel.errs.length === 0, panel.errs.join(' | '));
+
+  /* With no usable night at all, there is no average rather than zero. */
+  await panel.ctx.close();
+
+  /* With nothing usable at all there must be no average rather than 0h.
+     A fresh page rather than a reload: addInitScript re-runs on every
+     navigation and would re-seed the records this case needs absent. */
+  const bare = await open({ extra:{ mornings:[
+    { ...BAD, date:today, sleepMinutes:null, efficiency:null, awakeMinutes:null,
+      opportunityMinutes:515, verified:'times-only', rest:2 }
+  ] } });
+  const emptyRead = await bare.p.evaluate(() => {
+    document.querySelector('.nav button[data-view="data"]').click();
+    return { sleep: document.getElementById('reportSleep').textContent,
+             count: document.getElementById('reportCount').textContent };
+  });
+  check('With nothing usable the average is a dash, never 0h',
+        emptyRead.sleep === '\u2014', emptyRead.sleep);
+  check('And the night is still counted as recorded',
+        emptyRead.count === '1', emptyRead.count);
+  check('No console errors with only an unknown total', bare.errs.length === 0, bare.errs.join(' | '));
+  await bare.ctx.close();
+
+  /* ---- Sleep debt must not charge for a night nobody measured. */
+  const debt = await open({ iso:'2026-10-09T04:51:00.000Z', extra:{ mornings:[
+    { ...ordinary('2026-10-06','23:00','00:02',19), sleepMinutes:null, verified:'times-only',
+      opportunityMinutes:515, targetMinutes:540 }
+  ] } });
+  const need = await debt.p.evaluate(() => ({
+    usable: window.__withSleepDuration(
+      JSON.parse(localStorage.getItem('sleepsphere_state_v2')).mornings).length,
+    /* The whole page, so a debt line cannot hide in a panel this test did
+       not think to look at. The baseline recommendation legitimately names
+       a duration; a DEBT component is what must be absent. */
+    debtLine: /sleep debt/i.test(document.body.innerText)
+  }));
+  check('DEBT · a night with an unknown total contributes no debt',
+        need.usable === 0 && need.debtLine === false,
+        `${need.usable} usable nights, debt line shown: ${need.debtLine}`);
+  check('No console errors with only unknown totals present',
+        debt.errs.length === 0, debt.errs.join(' | '));
+  await debt.ctx.close();
+
+  /* ================================================================
      "NOT NOW" — a provisional reading is taken once.
      ================================================================ */
   const skip = await open({ iso: AT_MORNING, extra:{ lazyNight: OPEN } });
