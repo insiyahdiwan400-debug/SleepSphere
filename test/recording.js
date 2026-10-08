@@ -541,6 +541,92 @@ const AT_1817    = '2026-10-07T12:47:00.000Z';   // 18:17 IST
         JSON.stringify(roundTrip));
   await sup.ctx.close();
 
+  /* ---- A REAL round trip: export the backup to a file, import that file
+     back through the app's own importer, and check the chain survived. The
+     earlier check re-parsed localStorage, which proves the JSON is
+     well-formed but not that shapeState carries the new array through an
+     import — and an import that silently dropped it would lose every
+     correction a participant had ever made. */
+  const trip = await open({ iso:'2026-10-09T04:51:00.000Z', extra:{ mornings:[...HISTORY, BAD] } });
+  trip.p.on('dialog', async d => await d.accept());
+  await trip.p.evaluate(() => {
+    document.getElementById('morningForm').open = true;
+    const set = (id, v) => { const n = document.getElementById(id); n.value = v;
+      n.dispatchEvent(new Event('input', { bubbles:true })); };
+    set('logDate','2026-10-08'); set('actualBed','01:20'); set('actualSleep','01:20'); set('actualWake','09:55');
+    const u = document.getElementById('sleepUnknown');
+    u.checked = true; u.dispatchEvent(new Event('change', { bubbles:true }));
+    ['rest','energy','focus','calm'].forEach(k =>
+      document.querySelector(`[data-rating="${k}"]`).querySelectorAll('button')[1].click());
+    document.getElementById('saveMorning').click();
+  });
+  await trip.p.waitForTimeout(800);
+  const exportedState = await trip.p.evaluate(() => localStorage.getItem('sleepsphere_state_v2'));
+  const backupPath = require('path').join(require('os').tmpdir(), 'sleepsphere-roundtrip.json');
+  require('fs').writeFileSync(backupPath, exportedState);
+  // Wipe, then import the file through the app's own importer.
+  await trip.p.evaluate(() => localStorage.removeItem('sleepsphere_state_v2'));
+  await trip.p.reload({ waitUntil:'networkidle' });
+  await trip.p.waitForTimeout(900);
+  await trip.p.setInputFiles('#backupFile', backupPath);
+  await trip.p.waitForTimeout(1200);
+  const imported = await trip.p.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('sleepsphere_state_v2'));
+    return { revisions: (s.morningRevisions || []).length,
+             original: (s.morningRevisions || [])[0],
+             live: (s.mornings || []).filter(m => !m.demo && m.date === '2026-10-08'),
+             chain: window.__chain('2026-10-08') };
+  });
+  check('ROUND TRIP · a real import through the app keeps the archive',
+        imported.revisions === 1 && imported.original.opportunityMinutes === 964
+        && imported.original.bedTime === '18:17',
+        JSON.stringify({ n:imported.revisions, o:imported.original && imported.original.opportunityMinutes }));
+  check('ROUND TRIP · still one authoritative night, and the link holds',
+        imported.live.length === 1 && imported.chain.length === 2
+        && imported.original.supersededBy === imported.live[0].id,
+        JSON.stringify({ live:imported.live.length, chain:imported.chain.length }));
+  check('ROUND TRIP · and the unknown sleep total is still unknown',
+        imported.live[0].sleepMinutes === null && imported.live[0].verified === 'times-only',
+        String(imported.live[0].sleepMinutes));
+  check('No console errors through the round trip', trip.errs.length === 0, trip.errs.join(' | '));
+  await trip.ctx.close();
+
+  /* ---- An experiment baseline points at a record BY ID. Superseding that
+     record would leave the pointer dangling and silently drop a baseline
+     value out of the comparison, so the pointer follows the correction. */
+  const base = await open({ iso:'2026-10-09T04:51:00.000Z', extra:{
+    mornings:[...HISTORY, BAD],
+    activeExperiment:{ id:'exp1', catalogKey:'custom', name:'Test', action:'x', days:7,
+      metric:'rest', threshold:1, baselineIds:['oct8','h2026-10-03'], startedAt:'2026-10-07T00:00:00.000Z' } } });
+  base.p.on('dialog', async d => await d.accept());
+  await base.p.evaluate(() => {
+    document.getElementById('morningForm').open = true;
+    const set = (id, v) => { const n = document.getElementById(id); n.value = v;
+      n.dispatchEvent(new Event('input', { bubbles:true })); };
+    set('logDate','2026-10-08'); set('actualBed','01:20'); set('actualSleep','01:20'); set('actualWake','09:55');
+    ['rest','energy','focus','calm'].forEach(k =>
+      document.querySelector(`[data-rating="${k}"]`).querySelectorAll('button')[1].click());
+    document.getElementById('saveMorning').click();
+  });
+  await base.p.waitForTimeout(800);
+  const pointers = await base.p.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('sleepsphere_state_v2'));
+    const live = s.mornings.find(m => m.date === '2026-10-08');
+    return { ids: s.activeExperiment.baselineIds, liveId: live.id,
+             resolves: s.activeExperiment.baselineIds
+               .every(id => s.mornings.some(m => m.id === id)) };
+  });
+  check('BASELINE · an experiment pointer follows the correction',
+        pointers.ids.includes(pointers.liveId) && !pointers.ids.includes('oct8'),
+        pointers.ids.join(','));
+  check('And every baseline id still resolves to a live record',
+        pointers.resolves === true, pointers.ids.join(','));
+  check('An untouched baseline id is left alone',
+        pointers.ids.includes('h2026-10-03'));
+  check('No console errors superseding a baseline record',
+        base.errs.length === 0, base.errs.join(' | '));
+  await base.ctx.close();
+
   /* ---- Records written before any of this existed. */
   const legacy = await open({ iso:'2026-10-09T04:51:00.000Z', extra:{ mornings:[...HISTORY] } });
   const legacyState = await legacy.p.evaluate(() => {
