@@ -386,6 +386,179 @@ const AT_1817    = '2026-10-07T12:47:00.000Z';   // 18:17 IST
   await over.ctx.close();
 
   /* ================================================================
+     SUPERSESSION — a correction stands beside what it corrects.
+
+     Correcting a night used to delete the original and reuse its id, so the
+     only evidence of what the app had recorded was gone the moment somebody
+     fixed it. The superseded version now goes to state.morningRevisions,
+     deliberately OUT of state.mornings: twenty-six places read that array
+     directly, and keeping archived records in it would mean every one of
+     them had to learn to skip them.
+     ================================================================ */
+  const chainOf = (p, date) => p.evaluate(d => window.__chain(d), date);
+  const revsOf = p => p.evaluate(() => window.__revisions());
+  const liveFor = (p, date) => p.evaluate(d => {
+    const s = JSON.parse(localStorage.getItem('sleepsphere_state_v2'));
+    return (s.mornings || []).filter(m => !m.demo && m.date === d);
+  }, date);
+
+  const sup = await open({ iso:'2026-10-09T04:51:00.000Z', extra:{ mornings:[...HISTORY, BAD] } });
+  let supDialog = null;
+  sup.p.on('dialog', async d => { supDialog = d.message(); await d.accept(); });
+  const correct = (bed, sleep, wake, unknown) => sup.p.evaluate(([b, sl, w, u]) => {
+    document.getElementById('morningForm').open = true;
+    const set = (id, v) => { const n = document.getElementById(id); n.value = v;
+      n.dispatchEvent(new Event('input', { bubbles:true })); };
+    set('logDate','2026-10-08'); set('actualBed',b); set('actualSleep',sl); set('actualWake',w);
+    const unk = document.getElementById('sleepUnknown');
+    unk.checked = Boolean(u); unk.dispatchEvent(new Event('change', { bubbles:true }));
+    ['rest','energy','focus','calm'].forEach(k =>
+      document.querySelector(`[data-rating="${k}"]`).querySelectorAll('button')[1].click());
+    document.getElementById('saveMorning').click();
+  }, [bed, sleep, wake, unknown]);
+
+  const originalId = (await liveFor(sup.p, '2026-10-08'))[0].id;
+  await correct('01:20','01:20','09:55', true);
+  await sup.p.waitForTimeout(800);
+
+  const live1 = await liveFor(sup.p, '2026-10-08');
+  const revs1 = await revsOf(sup.p);
+  check('ORIGINAL RETAINED · the superseded record is still in the data',
+        revs1.length === 1 && revs1[0].opportunityMinutes === 964
+        && revs1[0].sleepMinutes === 883 && revs1[0].bedTime === '18:17'
+        && revs1[0].wakeTime === '10:21',
+        JSON.stringify(revs1.map(r => ({ o:r.opportunityMinutes, b:r.bedTime }))));
+  check('And it is unchanged apart from its supersession metadata',
+        revs1[0].id === originalId && Boolean(revs1[0].supersededAt),
+        `${revs1[0].id} superseded at ${revs1[0].supersededAt}`);
+  check('DISTINCT ID · the correction is a different record, not an overwrite',
+        live1[0].id !== originalId, `${originalId} \u2192 ${live1[0].id}`);
+  check('LINKED · the original points forward to the correction',
+        revs1[0].supersededBy === live1[0].id, revs1[0].supersededBy);
+  check('And the correction points back to the original',
+        live1[0].supersedes === originalId, String(live1[0].supersedes));
+  check('NO DUPLICATE AUTHORITATIVE RECORD · exactly one live night per date',
+        live1.length === 1, `${live1.length} live records`);
+  check('The archive is not in the live collection',
+        await sup.p.evaluate(() => {
+          const s = JSON.parse(localStorage.getItem('sleepsphere_state_v2'));
+          return !(s.mornings || []).some(m => m.opportunityMinutes === 964);
+        }));
+  check('TIMES-ONLY SURVIVES THE CORRECTION · window kept, sleep unknown',
+        live1[0].opportunityMinutes === 515 && live1[0].sleepMinutes === null
+        && live1[0].efficiency === null && live1[0].awakeMinutes === null
+        && live1[0].verified === 'times-only',
+        JSON.stringify({ o:live1[0].opportunityMinutes, s:live1[0].sleepMinutes }));
+  check('Correcting an existing night asks first, and says the old one is kept',
+        /already exists/.test(supDialog || '') && /kept in your backup/.test(supDialog || ''),
+        String(supDialog));
+  check('The participant is told in plain words, with no jargon',
+        await sup.p.evaluate(() => {
+          const t = document.getElementById('toast').textContent;
+          return /patterns now use these times/.test(t) && !/supersed/i.test(t);
+        }), await sup.p.evaluate(() => document.getElementById('toast').textContent));
+
+  /* ---- Downstream: only the authoritative version may count. */
+  const counted = await sup.p.evaluate(() => ({
+    trusted: window.__trustedMornings(),
+    week: document.getElementById('weekSummary').textContent,
+    allDates: JSON.parse(localStorage.getItem('sleepsphere_state_v2')).mornings.map(m => m.date)
+  }));
+  check('DOWNSTREAM · the date appears once in the live set, never twice',
+        counted.allDates.filter(d => d === '2026-10-08').length === 1,
+        counted.allDates.join(','));
+  check('And the superseded 16-hour night reaches no calculation',
+        !counted.trusted.includes('2026-10-08')
+        && !/16h/.test(counted.week), counted.week);
+
+  /* ---- A second and third correction: the chain is complete. */
+  await correct('01:30','01:30','09:40', false);
+  await sup.p.waitForTimeout(800);
+  await correct('01:25','01:25','09:50', false);
+  await sup.p.waitForTimeout(800);
+  const chain = await chainOf(sup.p, '2026-10-08');
+  const revs3 = await revsOf(sup.p);
+  check('REPEATED CORRECTIONS · the whole chain is preserved',
+        revs3.length === 3 && chain.length === 4,
+        `${revs3.length} archived, chain of ${chain.length}`);
+  check('And it is walkable newest to oldest, each link matching',
+        chain.slice(1).every((item, i) => chain[i].supersedes === item.id),
+        chain.map(c => c.opportunityMinutes).join(' \u2190 '));
+  check('The oldest link is the original 16-hour night',
+        chain.at(-1).opportunityMinutes === 964, String(chain.at(-1).opportunityMinutes));
+  check('Still exactly one live record after three corrections',
+        (await liveFor(sup.p, '2026-10-08')).length === 1);
+  check('Every archived version carries a distinct id',
+        new Set(revs3.map(r => r.id)).size === 3);
+  check('No console errors through three corrections',
+        sup.errs.length === 0, sup.errs.join(' | '));
+
+  /* ---- The exports. */
+  const supCsv = await sup.p.evaluate(() => new Promise(resolve => {
+    const seen = []; const original = URL.createObjectURL;
+    URL.createObjectURL = blob => { seen.push(blob); return original(blob); };
+    document.querySelector('.nav button[data-view="data"]').click();
+    document.getElementById('exportStudy').click();
+    setTimeout(async () => resolve(await Promise.all(seen.map(bl => bl.text()))), 1600);
+  }));
+  const sRows = (supCsv[0] || '').split('\n').filter(Boolean);
+  const sHeader = sRows[0].split(',').map(c => c.replace(/^"|"$/g, ''));
+  const sParse = r => r.split(',').map(c => c.replace(/^"|"$/g, ''));
+  const sDate = sHeader.indexOf('date');
+  const oct8Rows = sRows.slice(1).filter(r => sParse(r)[sDate] === '2026-10-08');
+  check('CSV · one row per participant-day, not one per version',
+        oct8Rows.length === 1, `${oct8Rows.length} rows for 8 Oct`);
+  check('CSV · and it is the authoritative version',
+        sParse(oct8Rows[0])[sHeader.indexOf('opportunity_minutes')] === '505',
+        sParse(oct8Rows[0])[sHeader.indexOf('opportunity_minutes')]);
+  check('CSV · the header is still the same 50 columns',
+        sHeader.length === 50 && !sHeader.some(h => /supersed/.test(h)),
+        `${sHeader.length} columns`);
+  check('DICTIONARY · it tells the researcher the history is in the JSON',
+        /morningRevisions/.test(supCsv[1] || '') && /AUTHORITATIVE/.test(supCsv[1] || ''),
+        (supCsv[1] || '').split('\n').filter(l => /corrections/.test(l))[0] || 'missing');
+
+  const backup = await sup.p.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('sleepsphere_state_v2'));
+    return { revisions: (s.morningRevisions || []).length,
+             opportunities: (s.morningRevisions || []).map(r => r.opportunityMinutes) };
+  });
+  check('JSON · the full backup carries the complete correction history',
+        backup.revisions === 3 && backup.opportunities.includes(964),
+        backup.opportunities.join(','));
+
+  /* ---- Round-trip: export the backup, import it, chain intact. */
+  const roundTrip = await sup.p.evaluate(() => {
+    const raw = localStorage.getItem('sleepsphere_state_v2');
+    localStorage.setItem('sleepsphere_state_v2', raw);   // the shape a reimport sees
+    const reparsed = JSON.parse(raw);
+    return { revisions: (reparsed.morningRevisions || []).length,
+             live: (reparsed.mornings || []).filter(m => m.date === '2026-10-08').length,
+             linked: (reparsed.morningRevisions || []).every(r => Boolean(r.supersededBy)) };
+  });
+  check('ROUND TRIP · the history survives export and reimport',
+        roundTrip.revisions === 3 && roundTrip.live === 1 && roundTrip.linked === true,
+        JSON.stringify(roundTrip));
+  await sup.ctx.close();
+
+  /* ---- Records written before any of this existed. */
+  const legacy = await open({ iso:'2026-10-09T04:51:00.000Z', extra:{ mornings:[...HISTORY] } });
+  const legacyState = await legacy.p.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('sleepsphere_state_v2'));
+    return { revisions: s.morningRevisions, chain: window.__chain('2026-10-03'),
+             trusted: window.__trustedMornings() };
+  });
+  check('LEGACY · state with no correction history loads and reads as none',
+        Array.isArray(legacyState.revisions) && legacyState.revisions.length === 0);
+  check('A record with no supersession metadata has a chain of just itself',
+        legacyState.chain.length === 1 && legacyState.chain[0].supersedes === null,
+        JSON.stringify(legacyState.chain));
+  check('And still counts exactly as it did before',
+        legacyState.trusted.length === 3, legacyState.trusted.join(','));
+  check('No console errors on legacy state', legacy.errs.length === 0, legacy.errs.join(' | '));
+  await legacy.ctx.close();
+
+  /* ================================================================
      "NOT NOW" — a provisional reading is taken once.
      ================================================================ */
   const skip = await open({ iso: AT_MORNING, extra:{ lazyNight: OPEN } });

@@ -3712,6 +3712,11 @@
         scans: Array.isArray(stored.scans) ? stored.scans : [],
         thoughts: Array.isArray(stored.thoughts) ? stored.thoughts : [],
         mornings: Array.isArray(stored.mornings) ? stored.mornings : [],
+        /* Superseded morning records. Kept OUT of `mornings` deliberately:
+           see archiveMorning for why that one decision is what makes the
+           whole mechanism safe. Absent on every state written before this
+           build, which reads as "no corrections yet" — correct. */
+        morningRevisions: Array.isArray(stored.morningRevisions) ? stored.morningRevisions : [],
         bioCheckins: Array.isArray(stored.bioCheckins) ? stored.bioCheckins : [],
         trip: stored.trip && typeof stored.trip === 'object' ? stored.trip : null,
         experimentHistory: Array.isArray(stored.experimentHistory) ? stored.experimentHistory : [],
@@ -4536,7 +4541,8 @@
       const date = $('#logDate').value;
       if (!date) { toast('Choose the night you are recording'); return; }
       const existing = state.mornings.find(item => !item.demo && item.date === date);
-      if (existing && !window.confirm('A record already exists for this date. Replace it?')) return;
+      if (existing && !supersedeWithoutAsking
+          && !window.confirm('A record already exists for this date. Replace it? The version you are replacing is kept in your backup.')) return;
       const estimate = morningEstimate();
       /* A broken night the participant cannot total up. The times they gave
          are kept exactly; the sleep figures are left genuinely empty rather
@@ -4553,7 +4559,11 @@
       const preservesBaseline = Boolean(existing && state.activeExperiment?.baselineIds?.includes(existing.id));
       const pairedBio = [...state.bioCheckins].reverse().find(item => item.date === date);
       const record = {
-        id: existing?.id || uid(), date, createdAt:new Date().toISOString(),
+        /* A NEW id, always. Reusing the superseded record's id would leave
+           two different nights sharing one identity, which is exactly what
+           an audit trail cannot have. */
+        id: uid(), supersedes: existing ? existing.id : null,
+        date, createdAt:new Date().toISOString(),
         bedTime:$('#actualBed').value, sleepTime:$('#actualSleep').value, wakeTime:$('#actualWake').value,
         awakeMinutes: sleepUnknown ? null : estimate.awakeMinutes,
         napMinutes:clamp(Number($('#napMinutes').value) || 0,0,480),
@@ -4586,6 +4596,10 @@
         verified: sleepUnknown ? 'times-only'
                 : (state.lazyNight && state.lazyNight.date === date ? 'corrected' : 'entered')
       };
+      /* Archive first, then replace. The order matters only for clarity:
+         archiveMorning copies the record, so nothing depends on it still
+         being in the array. */
+      if (existing) archiveMorning(existing, record.id);
       state.mornings = state.mornings.filter(item => item.id !== existing?.id);
       state.mornings.push(record);
       state.mornings.sort((a,b) => String(a.date).localeCompare(String(b.date)));
@@ -4596,7 +4610,11 @@
         state.lazyNight = null;
       }
       saveState(); clearMorningForm(); renderAll();
-      toast('Morning record saved without judgement');
+      /* Says what changed and what did not, in the participant's terms. The
+         word "supersede" appears nowhere a participant can see it. */
+      toast(existing
+        ? 'Updated. Your patterns now use these times; the earlier version is kept in your backup.'
+        : 'Morning record saved without judgement');
     });
 
     /* finishLazyNight drives this same handler, and must not have its night
@@ -4738,6 +4756,67 @@
        realMornings() still returns everything, because an unreliable record
        stays visible and stays exported — it just stops being evidence. */
     function trustedMornings() { return realMornings().filter(recordTrusted); }
+
+    /* ---- Correcting a night without destroying what it replaced.
+
+       Correcting October 8 used to delete the original outright and reuse
+       its id, so the only evidence of what the app had actually recorded —
+       a bed time of 18:17 and a sixteen-hour night — was gone the moment
+       somebody fixed it. A correction has to be able to stand beside the
+       thing it corrects, or the record of how the data came to be is lost.
+
+       The superseded version goes into `state.morningRevisions`, NOT into
+       `state.mornings`. That choice is the whole safety argument. Twenty-six
+       places in this file read `state.mornings` directly — the phase engine,
+       the arc, the week strip, the experiments, two exports, the import
+       validator — and keeping archived records in the same array would mean
+       every one of them had to learn to skip them, with a missed site
+       silently resurrecting a corrected night into a trend. Out of the
+       array, there is nothing to miss: one authoritative record per date,
+       and no consumer needs to change at all.
+
+       The full JSON backup carries both arrays, so the correction history
+       travels with the data. The CSVs read `realMornings()` and therefore
+       show the current authoritative version — see the dictionary note. */
+    function archiveMorning(record, supersededById) {
+      if (!record || record.demo) return;
+      state.morningRevisions = [...(state.morningRevisions || []), {
+        ...record,
+        supersededBy: supersededById,
+        supersededAt: new Date().toISOString()
+      }];
+      /* An experiment baseline points at a record by id. Superseding that
+         record would otherwise break the reference and silently drop a
+         baseline value out of the comparison, so the pointer follows the
+         correction. */
+      const experiments = [state.activeExperiment, ...(state.experimentHistory || [])];
+      experiments.forEach(experiment => {
+        if (!experiment || !Array.isArray(experiment.baselineIds)) return;
+        experiment.baselineIds = experiment.baselineIds.map(id => id === record.id ? supersededById : id);
+      });
+    }
+
+    /* The chain behind a record, newest first, walked backwards through the
+       archive. Read-only, and the UI never shows the field names. */
+    function correctionChain(record) {
+      const chain = [];
+      const revisions = state.morningRevisions || [];
+      let cursor = record;
+      let guard = 0;
+      while (cursor && cursor.supersedes && guard < 50) {
+        const previous = revisions.find(item => item.id === cursor.supersedes);
+        if (!previous) break;
+        chain.push(previous);
+        cursor = previous;
+        guard += 1;
+      }
+      return chain;
+    }
+
+    /* Set by the one-tap paths, which must not raise a confirm dialog: the
+       participant is answering a card, not overwriting a record they came
+       looking for. */
+    let supersedeWithoutAsking = false;
 
     /* Said in the participant's own terms, never with the word "flag". */
     const FLAG_TEXT = Object.freeze({
@@ -7023,7 +7102,7 @@
       ['opportunity_minutes',  'Bed to final wake, in minutes',                               'calculated'],
       ['sleep_minutes',        'Opportunity minus latency and night waking, in minutes',      'calculated'],
       ['efficiency_percent',   'sleep_minutes / opportunity_minutes as a percentage',         'calculated'],
-      ['value_basis',          'Which fields were measured vs estimated on a Lazy night',     'calculated'],
+      ['value_basis',          'Which fields were measured vs estimated on a Lazy night, the participant’s verification state, and why a record is doubted', 'calculated'],
       ['restoration_1_5',      'How restored, 1 = not at all to 5 = very',                    'entered'],
       ['energy_1_5',           'Energy on waking, 1 to 5',                                    'entered'],
       ['focus_1_5',            'Concentration on waking, 1 to 5',                             'entered'],
@@ -7139,7 +7218,19 @@
     // Shipped beside the CSV so the columns are readable by someone who did
     // not build the app — including the researcher, three months later.
     function studyDictionaryCsv() {
-      return [['column','meaning','source'], ...STUDY_COLUMNS]
+      /* The note goes HERE and not in STUDY_COLUMNS, which builds the data
+         CSV's header as well — adding it there turned a documentation line
+         into a fifty-first column. The dictionary ships beside the data and
+         is the one place a researcher reads before trusting a row; without
+         this line a corrected night looks like the only night ever recorded
+         for that date. */
+      const CORRECTIONS_NOTE = ['(note) corrections',
+        'Each row is the CURRENT AUTHORITATIVE version of that participant-day. '
+        + 'Where a night was corrected, the superseded version is NOT in this CSV: '
+        + 'the complete correction history is in the JSON export under morningRevisions, '
+        + 'linked by supersedes / supersededBy. This CSV therefore shows the data as it '
+        + 'now stands, not how it came to stand that way.', 'documentation'];
+      return [['column','meaning','source'], ...STUDY_COLUMNS, CORRECTIONS_NOTE]
         .map(row => row.map(csvCell).join(',')).join('\n');
     }
 
@@ -7793,9 +7884,11 @@
         if (wanted.has(chip.dataset.factor) !== on) chip.click();
       });
 
-      const date = $('#logDate').value;
-      state.mornings = state.mornings.filter(item => item.demo || item.date !== date);
+      /* The record for this date is superseded rather than deleted, and the
+         save handler does it — one code path for all three ways in. */
+      supersedeWithoutAsking = true;
       $('#saveMorning').click();
+      supersedeWithoutAsking = false;
     }
 
     function revealEvening() {
@@ -8534,6 +8627,18 @@
       /* Recording integrity, exposed as the pure functions it is: what is
          unusual about a record, what the participant said about it, and
          whether a calculation may rest on it. */
+      window.__revisions = () => (state.morningRevisions || []).map(item =>
+        ({ id:item.id, date:item.date, opportunityMinutes:item.opportunityMinutes,
+           sleepMinutes:item.sleepMinutes, bedTime:item.bedTime, wakeTime:item.wakeTime,
+           verified:item.verified, supersedes:item.supersedes || null,
+           supersededBy:item.supersededBy, supersededAt:item.supersededAt }));
+      window.__chain = date => {
+        const live = realMornings().find(item => item.date === date);
+        return live ? [live, ...correctionChain(live)].map(item =>
+          ({ id:item.id, opportunityMinutes:item.opportunityMinutes,
+             sleepMinutes:item.sleepMinutes, supersedes:item.supersedes || null,
+             supersededBy:item.supersededBy || null })) : [];
+      };
       window.__recordFlags = record => recordFlags(record);
       window.__recordVerification = record => recordVerification(record);
       window.__recordTrusted = record => recordTrusted(record);
@@ -9022,9 +9127,10 @@
       });
       $$('#factorChips .chip.active').forEach(chip => chip.click());
 
-      state.mornings = state.mornings.filter(item => item.demo || item.date !== night.date);
       finishingLazyNight = true;
+      supersedeWithoutAsking = true;
       $('#saveMorning').click();
+      supersedeWithoutAsking = false;
       finishingLazyNight = false;
 
       /* Now make the record tell the truth about itself.

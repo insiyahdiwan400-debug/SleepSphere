@@ -367,9 +367,23 @@ const THROWS = `Object.defineProperty(window,'localStorage',{configurable:true,
    'plan_mode','schema_version'].forEach(column => {
     check(`Export has a ${column} column`, at(column) >= 0);
   });
-  check('Every dictionary row explains a real column',
-        dictCsv.trim().split('\n').length - 1 === header.length,
-        `${dictCsv.trim().split('\n').length - 1} entries for ${header.length} columns`);
+  /* Stronger than the count this used to compare. The dictionary now also
+     carries documentation rows that are deliberately NOT columns — the
+     corrections note, which tells a researcher that each row is the current
+     authoritative version of a participant-day and that the correction
+     history lives in the JSON. So the assertion is: every row either
+     explains a real column, or is explicitly marked as a note. An orphaned
+     entry for a column that no longer exists still fails. */
+  const dictRows = dictCsv.trim().split('\n').slice(1)
+    .map(row => (row.split(',')[0] || '').replace(/^"|"$/g, ''));
+  const orphans = dictRows.filter(name => !name.startsWith('(note)') && at(name) < 0);
+  check('Every dictionary row explains a real column or is a marked note',
+        orphans.length === 0, orphans.join(',') || 'none');
+  check('And every column has an entry',
+        header.every(column => dictRows.includes(column)),
+        header.filter(c => !dictRows.includes(c)).join(',') || 'all documented');
+  check('The corrections note is there, and is not a column',
+        dictRows.includes('(note) corrections') && at('(note) corrections') < 0);
 
   // One row per study day, including the day nobody recorded anything.
   check('One row per study day, missing days included', lines.length - 1 === 3,
