@@ -123,6 +123,13 @@ const TENT  = { width:1135, height:  524 };   // tent / landscape
      tired" skips the planning, not the ritual — so the night is stamped on
      the second tap, not the first. Walked rather than seeded, because this
      suite is about what survives a fold and the night has to exist first. */
+  /* An hour that is not bedtime now asks before it stamps anything, so the
+     walk may pass through that question first depending on when this suite
+     runs. Answering it is what a participant would do. */
+  if (await p.evaluate(() => !document.getElementById('earlyVeil').hidden)) {
+    await p.click('#earlyYes');
+    await p.waitForTimeout(900);
+  }
   if (await p.evaluate(() => !document.getElementById('duaVeil').hidden)) {
     await p.click('#duaAmin');
     await p.waitForTimeout(5400);

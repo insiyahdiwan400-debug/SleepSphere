@@ -583,7 +583,10 @@ const day = iso => (iso || '').slice(0, 10);
      last fifteen minutes before it, so that is the only time this screen
      shows anything but the plan. Measured on a night whose planned bed time
      is 22:35, eight minutes out. */
-  const BRIDGE_TONIGHT = { ...BRIDGE, savedDate:new Date().toISOString().slice(0,10) };
+  /* Dated to the frozen page clock, not to Node's. Taking today's date from
+     the runner made this check pass only while the two agreed, and it broke
+     silently the first time the suite ran after midnight UTC. */
+  const BRIDGE_TONIGHT = { ...BRIDGE, savedDate:'2026-10-07' };
   const nearBed = await open({ extra:{ plan: BRIDGE_TONIGHT }, iso: at(2026,10,7,22,27) });
   const seenOnScreen = await nearBed.p.evaluate(() => {
     const shown = id => { const n = document.getElementById(id); return n && n.offsetParent !== null; };

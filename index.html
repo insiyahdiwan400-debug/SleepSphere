@@ -977,6 +977,15 @@
     .lazy-word { font-family:var(--display,ui-serif,Georgia,serif); font-weight:500;
       font-size:clamp(40px,11vw,64px); line-height:1; letter-spacing:-2px; color:#f3efe4; }
     .lazy-note { max-width:19rem; color:#9aa6b8; font-size:14.5px; line-height:1.5; }
+    .lazy-note b { color:#e3dcd0; font-weight:600; font-variant-numeric:tabular-nums; }
+    .unknown-sleep { display:flex; gap:10px; align-items:flex-start; margin-top:14px;
+      color:var(--muted); font-size:13.5px; line-height:1.5; cursor:pointer; }
+    .unknown-sleep input { margin-top:2px; flex:0 0 auto; }
+    /* What the app is unsure about, said in the same quiet voice as the rest
+       of the sheet. It is a note about the evidence, not an alarm — nobody
+       needs a red banner at six in the morning. */
+    .lazy-why { max-width:19rem; color:#7f8a9b; font-size:12.5px; line-height:1.5; }
+    .lazy-estimate { color:#9aa6b8; }
     .lazy-dismiss { margin-top:18px; color:#5d6879; font-size:12px; letter-spacing:.4px; }
     .lazy-choices { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; width:100%; margin-top:8px; }
     .lazy-choice { display:grid; gap:7px; justify-items:center; min-height:104px; padding:16px 8px;
@@ -2467,12 +2476,23 @@
     </button>
   </div>
 
+  <!-- The times come first and are answered first. The rating row below is
+       hidden until they are, because a judgement about how the morning feels
+       is not agreement to a set of timestamps — which is exactly how a
+       sixteen-hour night reached the diary on one tap of "Rough". -->
   <div class="lazy-veil" id="lazyMorningVeil" hidden>
     <div class="lazy-sheet lazy-morning">
-      <span class="lazy-eyebrow">Last night, on one tap</span>
-      <strong class="lazy-word">How was it?</strong>
+      <span class="lazy-eyebrow">Good morning. Let’s check last night.</span>
+      <strong class="lazy-word" id="lazyMorningWord">Are these times right?</strong>
       <span class="lazy-note" id="lazyMorningTimes">—</span>
-      <div class="lazy-choices">
+      <span class="lazy-why" id="lazyMorningWhy" hidden></span>
+      <span class="lazy-why lazy-estimate" id="lazyMorningEstimate"></span>
+      <div class="lazy-choices" id="lazyConfirmRow">
+        <button type="button" class="lazy-choice" data-lazy-confirm="confirmed"><span>✓</span>Yes</button>
+        <button type="button" class="lazy-choice" data-lazy-confirm="correct"><span>✎</span>Not right</button>
+        <button type="button" class="lazy-choice" data-lazy-confirm="uncertain"><span>?</span>Not sure</button>
+      </div>
+      <div class="lazy-choices" id="lazyRateRow" hidden>
         <button type="button" class="lazy-choice" data-lazy-rate="2"><span>😮‍💨</span>Rough</button>
         <button type="button" class="lazy-choice" data-lazy-rate="3"><span>😐</span>OK</button>
         <button type="button" class="lazy-choice" data-lazy-rate="4"><span>🙂</span>Good</button>
@@ -2907,7 +2927,11 @@
               <h3 style="margin:6px 0 8px">A few quick taps, then your result.</h3>
               <p class="helper">One question at a time. If you saved a plan last night, this creates your Restoration Twin.</p>
               <div class="button-row" style="margin-top:16px"><button class="btn primary" id="startMorningFlow">Record this morning</button></div>
-              <details style="margin-top:18px">
+              <!-- Given an id because the morning card's "Not right" opens it
+                   directly: landing a participant who has just said the times
+                   are wrong on a collapsed section they have to go and find
+                   would be a correction flow that discourages correcting. -->
+              <details style="margin-top:18px" id="morningForm">
                 <summary style="cursor:pointer;color:var(--muted);font-size:14px;font-weight:650">Prefer to fill it in as one form?</summary>
               <div class="form-grid three" style="margin-top:14px">
                 <div class="field"><label for="logDate">Night of</label><input id="logDate" type="date" /></div>
@@ -2917,6 +2941,17 @@
                 <div class="field"><label for="awakeMinutes">Total awake during the night</label><input id="awakeMinutes" type="number" min="0" max="600" value="20" /></div>
                 <div class="field"><label for="napMinutes">Daytime nap yesterday</label><input id="napMinutes" type="number" min="0" max="480" value="0" /></div>
               </div>
+              <!-- The honest answer for a broken night, until Stage 2's
+                   interval recorder exists. Waking for Fajr and three more
+                   times does not add up to a number anybody can give, and
+                   the alternative was a prefilled median quietly becoming a
+                   claim: correcting a night to 01:20-09:55 recorded 8h 16m
+                   of sleep at 96% efficiency, neither of which was known. -->
+              <label class="unknown-sleep" for="sleepUnknown">
+                <input type="checkbox" id="sleepUnknown" />
+                <span>I woke during the night and can’t say how much I actually slept.
+                  Record the times I know and leave the sleep total unknown.</span>
+              </label>
 
               <div class="form-grid three">
                 <div class="field"><label>How restored do you feel?</label><div class="scale" data-rating="rest"><button type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">4</button><button type="button">5</button></div><div class="scale-legend"><span>Not restored</span><span>Very restored</span></div></div>
@@ -4462,13 +4497,19 @@
       const awakeMinutes = clamp(Number($('#awakeMinutes').value) || 0, 0, 600);
       const sleepMinutes = clamp(sleepWindow - awakeMinutes, 0, opportunityMinutes);
       const efficiency = opportunityMinutes ? Math.round((sleepMinutes / opportunityMinutes) * 100) : 0;
-      $('#estimatedSleep').textContent = formatDuration(sleepMinutes);
+      /* Say "not known" rather than a number nobody can stand behind. */
+      $('#estimatedSleep').textContent = $('#sleepUnknown')?.checked
+        ? 'Not known' : formatDuration(sleepMinutes);
       $('#morningOpportunity').textContent = formatDuration(opportunityMinutes);
       $('#morningEfficiency').textContent = `${efficiency}%`;
       return { opportunityMinutes, sleepMinutes, efficiency, awakeMinutes };
     }
 
     ['actualBed','actualSleep','actualWake','awakeMinutes'].forEach(id => document.getElementById(id).addEventListener('input', morningEstimate));
+    $('#sleepUnknown')?.addEventListener('change', () => {
+      $('#awakeMinutes').disabled = $('#sleepUnknown').checked;
+      morningEstimate();
+    });
     $$('[data-rating]').forEach(scale => scale.querySelectorAll('button').forEach(button => button.addEventListener('click', () => {
       const key = scale.dataset.rating;
       ratings[key] = Number(button.textContent);
@@ -4485,6 +4526,9 @@
       $$('[data-rating] button, #factorChips .chip').forEach(button => button.classList.remove('selected'));
       $('#morningNote').value = '';
       $('#experimentAdherence').value = state.activeExperiment ? 'partly' : 'not_applicable';
+      /* Reset with the rest of the form: an "I don't know" left ticked would
+         silently blank the sleep total on the next night recorded. */
+      if ($('#sleepUnknown')) { $('#sleepUnknown').checked = false; $('#awakeMinutes').disabled = false; }
     }
 
     $('#saveMorning').addEventListener('click', () => {
@@ -4494,6 +4538,10 @@
       const existing = state.mornings.find(item => !item.demo && item.date === date);
       if (existing && !window.confirm('A record already exists for this date. Replace it?')) return;
       const estimate = morningEstimate();
+      /* A broken night the participant cannot total up. The times they gave
+         are kept exactly; the sleep figures are left genuinely empty rather
+         than computed from a prefilled median they never supplied. */
+      const sleepUnknown = Boolean($('#sleepUnknown')?.checked);
       // spanMinutes treats an identical start and end as a full day, which is
       // right for a sleep window and wrong for sleep latency: someone who got
       // into bed and fell asleep at the same time waited zero minutes, not
@@ -4507,8 +4555,15 @@
       const record = {
         id: existing?.id || uid(), date, createdAt:new Date().toISOString(),
         bedTime:$('#actualBed').value, sleepTime:$('#actualSleep').value, wakeTime:$('#actualWake').value,
-        awakeMinutes:estimate.awakeMinutes, napMinutes:clamp(Number($('#napMinutes').value) || 0,0,480),
-        opportunityMinutes:estimate.opportunityMinutes, sleepMinutes:estimate.sleepMinutes, efficiency:estimate.efficiency,
+        awakeMinutes: sleepUnknown ? null : estimate.awakeMinutes,
+        napMinutes:clamp(Number($('#napMinutes').value) || 0,0,480),
+        /* Time in bed is known either way — it is just the two times they
+           gave. Sleep and efficiency are claims about what happened inside
+           it, so when that is unknown they are null, and null exports as
+           empty rather than as a figure. */
+        opportunityMinutes:estimate.opportunityMinutes,
+        sleepMinutes: sleepUnknown ? null : estimate.sleepMinutes,
+        efficiency: sleepUnknown ? null : estimate.efficiency,
         rest:ratings.rest, energy:ratings.energy, focus:ratings.focus, calm:ratings.calm, fajr:$('#fajrStatus').value,
         factors:[...selectedFactors], note:$('#morningNote').value.trim(),
         targetMinutes:Number(state.settings.target) || 480,
@@ -4522,14 +4577,31 @@
                   ?? state.brainDays?.[date] ?? state.plan?.brainDay ?? null,
         bioHarmonyId:pairedBio?.id || null, bioHarmonySnapshot:pairedBio ? clone(pairedBio) : null,
         experimentId:preservesBaseline ? (existing.experimentId || null) : (state.activeExperiment?.id || null),
-        adherence:preservesBaseline ? (existing.adherence || 'not_applicable') : (state.activeExperiment ? $('#experimentAdherence').value : 'not_applicable'), demo:false
+        adherence:preservesBaseline ? (existing.adherence || 'not_applicable') : (state.activeExperiment ? $('#experimentAdherence').value : 'not_applicable'), demo:false,
+        /* Typed into this form by the participant, so the times are theirs.
+           A record that arrives here from the morning card's "Not right" is
+           the same thing — a correction is still their own account — and
+           finishLazyNight overwrites this with the one-tap answer when the
+           quick path used the form as its writer. */
+        verified: sleepUnknown ? 'times-only'
+                : (state.lazyNight && state.lazyNight.date === date ? 'corrected' : 'entered')
       };
       state.mornings = state.mornings.filter(item => item.id !== existing?.id);
       state.mornings.push(record);
       state.mornings.sort((a,b) => String(a.date).localeCompare(String(b.date)));
+      /* A corrected night is a closed night. Without this the provisional
+         lazyNight would still be open and the morning card would come back
+         tomorrow offering the times the participant has just rejected. */
+      if (state.lazyNight && state.lazyNight.date === date && !finishingLazyNight) {
+        state.lazyNight = null;
+      }
       saveState(); clearMorningForm(); renderAll();
       toast('Morning record saved without judgement');
     });
+
+    /* finishLazyNight drives this same handler, and must not have its night
+       closed out from under it before it has finished annotating the record. */
+    let finishingLazyNight = false;
 
     let demoMode = false;
     let twinDemoMode = false;
@@ -4552,6 +4624,136 @@
     }
 
     function realMornings() { return state.mornings.filter(item => !item.demo).sort((a,b) => String(a.date).localeCompare(String(b.date))); }
+
+    /* ==================================================================
+       RECORDING INTEGRITY
+
+       A morning record is evidence, and the app has to know how good that
+       evidence is before it builds anything on top of it.
+
+       The night this exists for: a bed time was stamped at 18:17 by a tap in
+       daylight, the app was next opened at 10:21 the following morning, and
+       "the app was opened" was taken to mean "the participant woke". That
+       produced a sixteen-hour night, fourteen and three quarter hours of
+       "sleep", and a Restoration Twin that interpreted it — none of which
+       happened. Every number was arithmetically correct and every premise
+       was false. The word doing the damage was "measured": it meant stamped
+       by a tap, and the record let it read as observed.
+
+       Two ideas, kept apart on purpose:
+
+         FLAGS are derived, never stored. They say what is unusual about a
+         record — and because they are computed on read, a record already on
+         disk can be recognised as unreliable without anybody editing it.
+         That is what lets the October 8 record stay exactly as it was saved
+         while stopping it from being counted.
+
+         VERIFICATION is what the participant said about it. It outranks the
+         flags in both directions: somebody who confirms a genuinely long
+         night is believed, and somebody who says they are not sure is not
+         second-guessed into certainty.
+
+       A flag is a reason to ASK, never grounds to discard. Night shifts,
+       travel, illness and Ramadan all produce legitimately strange nights,
+       and an app that quietly deleted them would be lying in the other
+       direction.
+       ================================================================== */
+
+    /* Fourteen hours. Longer nights exist — illness, a shifted body clock,
+       catching up after travel — which is exactly why this triggers a
+       question rather than a correction. It is a plausibility boundary for
+       recording, not a statement about healthy sleep. */
+    const MAX_PLAUSIBLE_OPPORTUNITY = 14 * 60;
+
+    /* Midday to seven in the evening. A bed time stamped in this window is
+       usually a tap during the day, not a night beginning — and the one that
+       caused this was 18:17. A participant who genuinely goes to bed at six
+       can confirm it and be believed. */
+    const DAYTIME_BED_FROM = 12 * 60;
+    const DAYTIME_BED_TO = 19 * 60;
+
+    const inDaytime = minutes => minutes >= DAYTIME_BED_FROM && minutes < DAYTIME_BED_TO;
+
+    /* What is unusual about this record. Pure, derived from the record
+       alone, and never written to disk — so it applies to records saved
+       long before any of this existed. */
+    function recordFlags(record) {
+      if (!record) return [];
+      const flags = [];
+      const opportunity = Number(record.opportunityMinutes) || 0;
+      if (opportunity > MAX_PLAUSIBLE_OPPORTUNITY) flags.push('long-opportunity');
+      if (/^\d{2}:\d{2}$/.test(record.bedTime || '') && inDaytime(toMinutes(record.bedTime))) {
+        flags.push('daytime-bedtime');
+      }
+      /* A wake time that is only "when the app was next opened" is not an
+         observation of waking. Recorded from this build onwards; absent on
+         older records, which is why it is one flag among several rather
+         than the only test. */
+      if (record.wakeSource === 'app-open' && !record.verified) flags.push('wake-inferred');
+      if (record.stale) flags.push('wake-estimated');
+      /* The sleep total is genuinely not known. Flagged rather than filled,
+         so no average, chart or twin treats a blank as a zero or as a
+         number somebody gave. */
+      if (record.sleepMinutes === null || record.sleepMinutes === undefined) {
+        if ('sleepMinutes' in record) flags.push('sleep-unknown');
+      }
+      /* Not one of the times was observed: the quick three-question morning
+         fills all four from the night PLAN. Comparing a plan against itself
+         and reporting the agreement as a finding is circular, and the
+         Restoration Twin was doing exactly that. */
+      if ((record.estimated || []).includes('bedTime')) flags.push('times-inferred');
+      return flags;
+    }
+
+    /* What the participant said about it, with an honest answer for records
+       that predate the question. A record typed into the full morning form
+       was supplied by them and needs no separate confirmation; a one-tap
+       record never was. */
+    function recordVerification(record) {
+      if (!record) return 'unverified';
+      if (record.verified) return record.verified;
+      return (record.lazy || record.quick) ? 'unverified' : 'entered';
+    }
+
+    /* Whether a calculation may rest on this record.
+
+       Note what is NOT here: "unverified" alone does not disqualify a
+       record. Months of ordinary one-tap nights are unverified and perfectly
+       sound, and excluding them would erase a participant's history to fix
+       one bad night. What disqualifies a record is something visibly wrong
+       with it, or the participant saying they do not know. */
+    function recordTrusted(record) {
+      const verification = recordVerification(record);
+      if (verification === 'uncertain') return false;
+      /* The times are theirs and the sleep total is not knowable. Good
+         evidence about when they were in bed; no evidence at all about how
+         much of it they slept — and since every calculation downstream wants
+         sleepMinutes, the record cannot carry one. */
+      if (verification === 'times-only') return false;
+      if (verification === 'confirmed' || verification === 'corrected') return true;
+      return recordFlags(record).length === 0;
+    }
+
+    /* The records a trend, an average or an estimate may be built from.
+       realMornings() still returns everything, because an unreliable record
+       stays visible and stays exported — it just stops being evidence. */
+    function trustedMornings() { return realMornings().filter(recordTrusted); }
+
+    /* Said in the participant's own terms, never with the word "flag". */
+    const FLAG_TEXT = Object.freeze({
+      'long-opportunity': 'that is a very long night',
+      'daytime-bedtime':  'the bed time is in the afternoon',
+      'wake-inferred':    'the wake time came from when the app was opened',
+      'wake-estimated':   'the app was not opened in the morning, so the wake time is an estimate',
+      'sleep-unknown':    'how much of it was sleep is not known',
+      'times-inferred':   'the times came from the night plan rather than from you'
+    });
+
+    function flagSentence(record) {
+      const flags = recordFlags(record);
+      if (!flags.length) return '';
+      return `Worth checking — ${flags.map(flag => FLAG_TEXT[flag]).filter(Boolean).join(', and ')}.`;
+    }
     function ratingScore(records, key) { return clamp((mean(records.map(item => Number(item[key])).filter(Boolean)) || 0) / 5 * 100, 0, 100); }
     function regularityTime(time, isSleep) { let value = toMinutes(time); if (isSleep && value < 720) value += 1440; return value; }
 
@@ -4621,7 +4823,7 @@
     }
 
     function renderCompass() {
-      const real = realMornings();
+      const real = trustedMornings();
       const usingDemo = demoMode;
       const records = (usingDemo ? demoRecords() : real).slice(-14);
       renderTrend(records, usingDemo);
@@ -6297,6 +6499,13 @@
       if (!legend) return;
       if (!plan) {
         legend.innerHTML = '<span class="arc-key empty">Tonight is unplanned — the band appears once you save a night plan.</span>';
+      } else if (morning && !recordTrusted(morning)) {
+        /* A comparison is a claim about both halves. With the recorded half
+           unconfirmed there is nothing to compare, and printing "+7h 4m"
+           against a night nobody slept is how this screen first reported a
+           sixteen-hour night as fact. */
+        legend.innerHTML = `<span class="arc-key planned">Planned ${formatDuration(Number(plan.total || plan.target || 0))}</span>
+          <span class="arc-key empty">Last night’s times are not confirmed yet, so there is nothing to compare.</span>`;
       } else if (morning) {
         const planned = Number(plan.total || plan.target || 0);
         const actual = Number(morning.opportunityMinutes || 0);
@@ -6365,9 +6574,19 @@
       const summary = $('#weekSummary');
       if (!summary) return;
       const nights = records.length;
-      const mean7 = mean(records.map(item => Number(item.sleepMinutes) || 0));
-      const restMean = mean(records.map(item => Number(item.rest) || 0));
-      summary.textContent = `${nights} night${nights === 1 ? '' : 's'} recorded · about ${formatDuration(mean7)} of sleep a night · restoration averaging ${restMean.toFixed(1)} out of 5.`;
+      /* The week still SHOWS every night — a night that happened belongs on
+         the chart whatever the app thinks of its times. The average is a
+         different claim, so it is taken only over the nights the app can
+         stand behind, and the count of the others is stated rather than
+         quietly folded in. */
+      const sound = records.filter(recordTrusted);
+      const unsure = nights - sound.length;
+      const mean7 = mean(sound.map(item => Number(item.sleepMinutes) || 0));
+      const restMean = mean(sound.map(item => Number(item.rest) || 0));
+      summary.textContent = !sound.length
+        ? `${nights} night${nights === 1 ? '' : 's'} recorded · none with confirmed times yet, so there is no average to show.`
+        : `${nights} night${nights === 1 ? '' : 's'} recorded · about ${formatDuration(mean7)} of sleep a night · restoration averaging ${restMean.toFixed(1)} out of 5`
+          + (unsure ? ` · ${unsure} night${unsure === 1 ? '' : 's'} left out, ${unsure === 1 ? 'its times are' : 'their times are'} unconfirmed.` : '.');
     }
 
     /* Milestones mark things that genuinely became available, not arbitrary
@@ -6414,7 +6633,7 @@
     }
 
     function renderTwin() {
-      const records = realMornings();
+      const records = trustedMornings();
       renderSignature(records);
       $('#loadTwinDemo').textContent = twinDemoMode ? 'Return to my Restoration Twin' : 'Preview a labelled example twin';
       const example = {
@@ -6502,7 +6721,7 @@
     };
 
     function wakeRegularityScore() {
-      const records = realMornings().slice(-7);
+      const records = trustedMornings().slice(-7);
       if (records.length < 2) return { score:70, basis:'neutral placeholder: fewer than 2 recorded wake times' };
       const variation = stddev(records.map(item => regularityTime(item.wakeTime || '07:00',false))) || 0;
       return { score:clamp(100-variation,0,100), basis:`${Math.round(variation)}-minute variation across ${records.length} recent wake times` };
@@ -6649,7 +6868,7 @@
       const chosen = customName ? { name:customName,action:customAction } : experimentCatalog[selectedExperiment];
       if (!chosen) { toast('Select an experiment or define a custom one'); return; }
       const metric = $('#experimentMetric').value;
-      const eligible = realMornings().filter(item => metricValue(item,metric) != null).slice(-3);
+      const eligible = trustedMornings().filter(item => metricValue(item,metric) != null).slice(-3);
       state.activeExperiment = {
         id:uid(), catalogKey:selectedExperiment || 'custom', name:chosen.name, action:chosen.action,
         days:Number($('#experimentDays').value), metric, threshold:Number($('#experimentThreshold').value),
@@ -6860,9 +7079,29 @@
         const experiment = record?.experimentId
           ? [state.activeExperiment, ...state.experimentHistory].find(item => item?.id === record.experimentId)
           : null;
-        const basis = record?.lazy
-          ? `measured: ${(record.measured || []).join(' ')}; estimated: ${(record.estimated || []).join(' ')}`
-          : (record ? 'all entered' : '');
+        /* value_basis, extended rather than replaced.
+
+           The first two forms are byte-for-byte what this column has always
+           produced, so re-exporting a participant's existing history gives
+           the same rows it gave before. What is appended — and only when
+           there is something to append — is the verification state and the
+           reason a record is doubted, because a row that reads "measured:
+           bedTime wakeTime" for a sixteen-hour night is technically true
+           and practically a lie: stamped is not confirmed.
+
+           No column is added, renamed or removed. See the report for what a
+           dedicated column would mean for the dictionary and for analyses
+           already written against this header. */
+        const basis = !record ? '' : [
+          record.lazy
+            ? `measured: ${(record.measured || []).join(' ')}; estimated: ${(record.estimated || []).join(' ')}`
+            : 'all entered',
+          recordVerification(record) === 'entered' ? '' : `verification: ${recordVerification(record)}`,
+          recordTrusted(record) ? '' : 'excluded from this participant’s averages',
+          recordFlags(record).length ? `unusual: ${recordFlags(record).join(' ')}` : '',
+          record.bedSource ? `bed stamped by: ${record.bedSource}` : '',
+          record.wakeSource ? `wake from: ${record.wakeSource}` : ''
+        ].filter(Boolean).join('; ');
 
         rows.push([
           study.participantId, study.cohort,
@@ -7640,7 +7879,7 @@
     /* One acknowledgement. Never a score, never a diagnosis, and never a
        cause — three nights cannot establish one, and the language says so. */
     function wakeObservation(record) {
-      const history = realMornings().filter(item => item.date !== record.date);
+      const history = trustedMornings().filter(item => item.date !== record.date);
       if (history.length < 3) return 'Got it. Have a good morning.';
       const usualSleep = medianOf(history.map(item => Number(item.sleepMinutes)).filter(Number.isFinite));
       const usualRest  = medianOf(history.map(item => Number(item.rest)).filter(Number.isFinite));
@@ -8292,6 +8531,21 @@
              + `T${pad(ts.getHours())}:${pad(ts.getMinutes())}`
              + `${offset < 0 ? '-' : '+'}${pad(Math.floor(Math.abs(offset) / 60))}:${pad(Math.abs(offset) % 60)}`;
       };
+      /* Recording integrity, exposed as the pure functions it is: what is
+         unusual about a record, what the participant said about it, and
+         whether a calculation may rest on it. */
+      window.__recordFlags = record => recordFlags(record);
+      window.__recordVerification = record => recordVerification(record);
+      window.__recordTrusted = record => recordTrusted(record);
+      window.__trustedMornings = () => trustedMornings().map(item => item.date);
+      window.__nightIsEarly = (iso, override) =>
+        nightIsEarly(iso ? new Date(iso) : new Date(), override || state);
+      window.__integrity = () => ({
+        maxOpportunity: MAX_PLAUSIBLE_OPPORTUNITY,
+        daytimeFrom: DAYTIME_BED_FROM, daytimeTo: DAYTIME_BED_TO,
+        lazyNight: state.lazyNight ? { ...state.lazyNight } : null,
+        answer: lazyAnswer
+      });
       window.__nightEvents = plan => nightEvents(plan);
       window.__nightFrame = (plan, iso) => {
         const frame = nightFrame(plan, iso ? new Date(iso) : new Date());
@@ -8479,7 +8733,7 @@
     /** How long this person usually takes to fall asleep, from their own
         history. Fifteen minutes is the fallback, not the assumption. */
     function typicalLatency() {
-      const found = medianOf(realMornings().slice(-30).map(item =>
+      const found = medianOf(trustedMornings().slice(-30).map(item =>
         item.bedTime && item.sleepTime
           ? (item.bedTime === item.sleepTime ? 0 : spanMinutes(item.bedTime, item.sleepTime))
           : NaN));
@@ -8492,7 +8746,7 @@
         the measured nights look better than the recalled ones for no
         reason but the recording method. */
     function typicalAwake() {
-      const found = medianOf(realMornings().slice(-30).map(item =>
+      const found = medianOf(trustedMornings().slice(-30).map(item =>
         Number.isFinite(Number(item.awakeMinutes)) ? Number(item.awakeMinutes) : NaN));
       return clamp(found === null ? 12 : found, 0, 120);
     }
@@ -8528,10 +8782,19 @@
        with it. Asked only when there IS a saved night to be early against.
        ================================================================== */
     function nightIsEarly(now = new Date(), state_ = state) {
-      const { anchors } = resolvePhase(now, state_);
-      if (anchors.source !== 'plan') return false;
       const minutes = localMinutesNow(now);
-      // Inside the planned night already: wind-down has begun, or later.
+      /* Daylight asks, whatever else is or is not known. "Too tired — just
+         go to bed" sits on the night console from the DAY phase onwards, so
+         it is tappable at six in the evening, and closing the dua stamps a
+         bed time. That is how 18:17 became a night. Somebody who really is
+         going to bed at six answers yes and is believed. */
+      if (inDaytime(minutes)) return true;
+      const { anchors } = resolvePhase(now, state_);
+      /* The anchors used to have to come from a saved plan, which meant the
+         question never appeared on the nights most likely to need it: with
+         nothing planned there was nothing to be early for. The fallback
+         anchors are built from the participant's own usual wake time and are
+         good enough to ask a question with. */
       const sinceWindDown = forwardGap(anchors.windDown, minutes);
       return sinceWindDown >= forwardGap(anchors.windDown, anchors.wake);
     }
@@ -8589,9 +8852,14 @@
       window.setTimeout(go, 380);
     });
 
-    function startLazyNight() {
+    /* `source` is recorded so the bed time can be reviewed later. A stamp
+       from a bedtime automation is a different kind of evidence from one a
+       participant tapped, and until now the record kept no trace of which
+       it was — so the October 8 audit could not establish how 18:17 was
+       stamped, only that it had been. */
+    function startLazyNight(source = 'goodnight') {
       const now = new Date();
-      state.lazyNight = { startedAt: now.toISOString(), bedTime: clockString(now) };
+      state.lazyNight = { startedAt: now.toISOString(), bedTime: clockString(now), bedSource: source };
       saveState();
       const wake = state.plan?.wakeTime || $('#continuousWake')?.value || '';
       $('#lazyNote').textContent = wake
@@ -8616,10 +8884,21 @@
       // Over twenty hours the app was simply not opened, and "now" is no
       // longer evidence of anything. Fall back to the planned wake rather
       // than inventing a thirty-hour night.
-      const stale = elapsed > 20 * 60;
-      const wakeTime = stale
+      /* A provisional wake time, once taken, is never retaken.
+
+         It used to be recomputed on every load, so dismissing the morning
+         card with "Not now" and opening the app the next day silently
+         replaced a real 10:21 with the planned wake time — the one honest
+         value in the record, overwritten without a word. The first reading
+         stands until the participant confirms, corrects or discards it. */
+      const stale = night.wakeTime ? Boolean(night.stale) : elapsed > 20 * 60;
+      const wakeTime = night.wakeTime || (stale
         ? (night.wakeGuess || state.plan?.wakeTime || '07:00')
-        : clockString(now);
+        : clockString(now));
+      /* Where it came from, kept so the morning card can say so and the
+         record can carry it. "app-open" is the honest name for a timestamp
+         that is evidence the app was opened and nothing more. */
+      const wakeSource = night.wakeSource || (stale ? 'plan-estimate' : 'app-open');
       const latency = typicalLatency();
       const bedMinutes = toMinutes(night.bedTime);
       const opportunity = spanMinutes(night.bedTime, wakeTime);
@@ -8627,7 +8906,8 @@
       const usedLatency = Math.min(latency, Math.max(0, opportunity - 30));
       const sleepTime = `${String(Math.floor(((bedMinutes + usedLatency) % 1440) / 60)).padStart(2,'0')}:${String((bedMinutes + usedLatency) % 60).padStart(2,'0')}`;
 
-      state.lazyNight = Object.assign({}, night, { wakeTime, sleepTime, stale, date: nightDateFor(now) });
+      state.lazyNight = Object.assign({}, night,
+        { wakeTime, sleepTime, stale, wakeSource, date: nightDateFor(now) });
       saveState();
       /* The night just closed, which changes the phase. renderAll() ran
          before this function at boot, so without a repaint the screen keeps
@@ -8635,17 +8915,82 @@
          composition sitting over a morning. State changed; the screen has to
          follow it. */
       renderAll();
-      $('#lazyMorningTimes').textContent =
-        `${formatTime(toMinutes(night.bedTime))} to ${formatTime(toMinutes(wakeTime))}` +
-        `${stale ? ' (estimated — the app was not opened)' : ''} · about ` +
-        `${formatDuration(Math.max(0, opportunity - usedLatency - typicalAwake()))} asleep`;
+      openLazyMorning();
+    }
+
+    /* The morning card. It shows what the app believes and asks whether that
+       is right, which it never used to: the times were printed and the only
+       controls were three restoration ratings, so tapping "Rough" wrote a
+       sixteen-hour night to disk as though the participant had agreed to it.
+
+       The rating now comes second, and only after the times have been
+       answered. A judgement about how the morning feels is not consent to a
+       set of timestamps. */
+    let lazyAnswer = null;
+    function openLazyMorning() {
+      const night = state.lazyNight;
+      if (!night || !night.wakeTime) return;
+      lazyAnswer = null;
+      const opportunity = spanMinutes(night.bedTime, night.wakeTime);
+      const asleep = Math.max(0, opportunity - spanMinutes(night.bedTime, night.sleepTime) - typicalAwake());
+
+      $('#lazyMorningTimes').innerHTML =
+        `<b>${escapeHtml(formatTime(toMinutes(night.bedTime)))}</b> to ` +
+        `<b>${escapeHtml(formatTime(toMinutes(night.wakeTime)))}</b> · ` +
+        `${escapeHtml(formatDuration(opportunity))} in bed`;
+
+      /* What the app is NOT sure about, said before anything is counted.
+         The estimated figure is deliberately not the headline any more —
+         "about 14h 43m asleep" was printed in bold confidence about a night
+         nobody had slept. */
+      const provisional = {
+        opportunityMinutes: opportunity, bedTime: night.bedTime,
+        wakeSource: night.wakeSource, stale: night.stale
+      };
+      const concern = flagSentence(provisional);
+      $('#lazyMorningWhy').textContent = concern
+        || (night.wakeSource === 'app-open'
+            ? 'Wake time taken from when you opened the app. Sleep onset and time awake are estimated from your own past nights.'
+            : 'Sleep onset and time awake are estimated from your own past nights.');
+      $('#lazyMorningWhy').hidden = false;
+      $('#lazyMorningEstimate').textContent = `About ${formatDuration(asleep)} asleep, if these times are right.`;
+
+      $('#lazyMorningWord').textContent = 'Are these times right?';
+      $('#lazyConfirmRow').hidden = false;
+      $('#lazyRateRow').hidden = true;
       $('#lazyMorningVeil').hidden = false;
     }
 
-    /** One tap closes the night. Everything else is already known. */
-    function finishLazyNight(rating) {
+    /* Confirm, correct, or say you are not sure. Three taps on one row, and
+       every one of them is a real answer that the record carries. */
+    function answerLazyTimes(answer) {
       const night = state.lazyNight;
-      if (!night || !night.wakeTime) return;
+      if (!night) return;
+      if (answer === 'correct') {
+        /* Into the full form, prefilled with what the app believed, so
+           correcting is editing rather than retyping a night from memory.
+           The night stays open until they save — nothing is written here. */
+        prefillLazyForm(night);
+        $('#lazyMorningVeil').hidden = true;
+        navigate('morning');
+        const form = $('#morningForm');
+        if (form) { form.open = true; form.scrollIntoView({ block:'center' }); }
+        window.setTimeout(() => $('#actualBed')?.focus({ preventScroll:true }), 260);
+        toast('Correct whatever is wrong, then save');
+        return;
+      }
+      lazyAnswer = answer;                       // 'confirmed' | 'uncertain'
+      $('#lazyMorningWord').textContent = 'How was it?';
+      $('#lazyConfirmRow').hidden = true;
+      $('#lazyRateRow').hidden = false;
+      if (answer === 'uncertain') {
+        $('#lazyMorningWhy').textContent =
+          'Kept as uncertain. It stays in your diary and is left out of your averages.';
+      }
+    }
+
+    /* The provisional night, in the full form's own fields. */
+    function prefillLazyForm(night) {
       $('#logDate').value = night.date;
       $('#actualBed').value = night.bedTime;
       $('#actualSleep').value = night.sleepTime;
@@ -8653,10 +8998,21 @@
       $('#awakeMinutes').value = Math.min(typicalAwake(),
         Math.max(0, spanMinutes(night.sleepTime, night.wakeTime) - 60));
       $('#napMinutes').value = 0;
-      $('#morningNote').value = night.stale
-        ? 'Lazy mode. Bed time measured; wake time estimated because the app was not opened.'
-        : 'Lazy mode. Bed and wake times measured, not recalled.';
       morningEstimate();
+    }
+
+    /** One tap closes the night. Everything else is already known. */
+    function finishLazyNight(rating) {
+      const night = state.lazyNight;
+      if (!night || !night.wakeTime) return;
+      /* Nothing is written until the times have been answered. The rating
+         row is not even on screen before then, so this is a guard against a
+         future caller rather than against the participant. */
+      if (!lazyAnswer) return;
+      prefillLazyForm(night);
+      $('#morningNote').value = night.stale
+        ? `Lazy mode. Bed time stamped; wake time estimated because the app was not opened. Times ${lazyAnswer === 'confirmed' ? 'confirmed' : 'marked uncertain'} by me.`
+        : `Lazy mode. Bed and wake times stamped by the app, not recalled. Times ${lazyAnswer === 'confirmed' ? 'confirmed' : 'marked uncertain'} by me.`;
 
       // Drive the app's own controls so the record is written by exactly the
       // handlers the full form uses, and nothing downstream has to know.
@@ -8667,7 +9023,9 @@
       $$('#factorChips .chip.active').forEach(chip => chip.click());
 
       state.mornings = state.mornings.filter(item => item.demo || item.date !== night.date);
+      finishingLazyNight = true;
       $('#saveMorning').click();
+      finishingLazyNight = false;
 
       /* Now make the record tell the truth about itself.
 
@@ -8687,7 +9045,14 @@
         saved.energy = null; saved.focus = null; saved.calm = null;
         saved.measured = ['bedTime', night.stale ? null : 'wakeTime'].filter(Boolean);
         saved.estimated = ['sleepTime', 'awakeMinutes'].concat(night.stale ? ['wakeTime'] : []);
+        /* What the participant actually said, and where the wake time came
+           from. These two fields are the whole difference between a record
+           the app believes and a record the app is merely reporting. */
+        saved.verified = lazyAnswer;
+        saved.wakeSource = night.wakeSource || null;
+        saved.bedSource = night.bedSource || null;
       }
+      lazyAnswer = null;
       state.lazyNight = null;
       saveState();
       $('#lazyMorningVeil').hidden = true;
@@ -8699,6 +9064,13 @@
     /** One sentence. Not a dashboard, and never a scolding. */
     function lazyVerdict(record, rating) {
       if (!record) return 'Night recorded.';
+      /* A night whose times the app cannot stand behind gets no duration
+         quoted back and no advice attached. "Recorded — 14h 43m. Rough
+         nights happen inside good windows too" was this sentence reading
+         out an artefact and then consoling somebody about it. */
+      if (!recordTrusted(record)) {
+        return 'Recorded as unconfirmed. It stays in your diary and is left out of your averages.';
+      }
       const hours = formatDuration(record.sleepMinutes);
       if (rating >= 4) return `Recorded — ${hours}, and it felt good.`;
       if (rating <= 2) {
@@ -8712,9 +9084,17 @@
 
     $('#lazyStart')?.addEventListener('click', () => beginNight());
     $('#lazyGoodnight')?.addEventListener('click', () => { $('#lazyVeil').hidden = true; });
+    $$('[data-lazy-confirm]').forEach(button => button.addEventListener('click',
+      () => answerLazyTimes(button.dataset.lazyConfirm)));
     $$('[data-lazy-rate]').forEach(button => button.addEventListener('click',
       () => finishLazyNight(Number(button.dataset.lazyRate))));
-    $('#lazyMorningSkip')?.addEventListener('click', () => { $('#lazyMorningVeil').hidden = true; });
+    /* "Not now" hides the sheet and nothing else. The provisional night
+       stays exactly as it was first read — see checkLazyMorning — so coming
+       back to it tomorrow finds the same times rather than new ones. */
+    $('#lazyMorningSkip')?.addEventListener('click', () => {
+      lazyAnswer = null;
+      $('#lazyMorningVeil').hidden = true;
+    });
 
     /* ------------------------------------------------------------------
        Travel.
@@ -8949,7 +9329,7 @@
           why:'Discomfort fragments sleep, so the same rest takes longer to accumulate.' });
       }
 
-      const recent = realMornings().slice(-4);
+      const recent = trustedMornings().slice(-4);
       if (recent.length) {
         const debt = recent.reduce((total,item) =>
           total + Math.max(0, (Number(item.targetMinutes) || baseline) - (Number(item.sleepMinutes) || 0)), 0);
@@ -9946,8 +10326,12 @@
          A confirmation nobody is holding the phone to answer would strand that
          automation, so these keep the semantics they were published with. Changing
          them is a separate decision, not a consequence of this one. */
-      lazy:        () => startLazyNight(),
-      bedtime:     () => startLazyNight(),
+      /* Still zero taps, exactly as published — a bedtime automation has
+         nobody there to answer a question. What changes is that the stamp
+         now says where it came from, so a deep-link bed time can be told
+         apart from one a participant tapped when the morning asks about it. */
+      lazy:        () => startLazyNight('deep-link'),
+      bedtime:     () => startLazyNight('deep-link'),
       // Anything else is a view, by its own name.
       open:        () => navigate('today'),
       home:        () => navigate('today')

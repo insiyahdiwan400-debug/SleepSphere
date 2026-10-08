@@ -94,6 +94,15 @@ const clockAt = (y,mo,d,h,mi) => `(()=>{const R=Date;const f=new R(${y},${mo},${
   check('Exactly three choices, nothing to type', await morning.p.evaluate(() =>
     document.querySelectorAll('[data-lazy-rate]').length === 3 &&
     document.querySelectorAll('#lazyMorningVeil input, #lazyMorningVeil select').length === 0));
+  /* The times are answered before the rating now — still taps, still nothing
+     to type, but a rating no longer doubles as agreement to a pair of
+     timestamps the app worked out on its own. */
+  check('And three for the times, asked first', await morning.p.evaluate(() =>
+    document.querySelectorAll('[data-lazy-confirm]').length === 3
+    && !document.getElementById('lazyConfirmRow').hidden
+    && document.getElementById('lazyRateRow').hidden));
+  await morning.p.locator('[data-lazy-confirm="confirmed"]').click();
+  await morning.p.waitForTimeout(300);
   await morning.p.locator('[data-lazy-rate="3"]').click();
   await morning.p.waitForTimeout(700);
   const after = await read(morning.p);
@@ -143,8 +152,12 @@ const clockAt = (y,mo,d,h,mi) => `(()=>{const R=Date;const f=new R(${y},${mo},${
   const staleNight = (await read(stale.p)).lazyNight;
   check('It falls back to the planned wake and says so',
         staleNight.stale === true && staleNight.wakeTime !== '18:00', JSON.stringify(staleNight));
+  /* The admission moved off the times line and onto the line that exists to
+     carry exactly this: what the app is not sure about. Read the whole sheet,
+     which is what this check was always really asserting. */
   check('And the screen admits the estimate',
-        /estimated/i.test(await stale.p.locator('#lazyMorningTimes').innerText()));
+        /estimate/i.test(await stale.p.locator('.lazy-morning').innerText()),
+        await stale.p.locator('#lazyMorningWhy').innerText());
   await stale.ctx.close();
 
   await b.close();

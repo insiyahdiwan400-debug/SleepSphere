@@ -401,8 +401,25 @@ const clockAt = (h, mi, d = 7) => `(()=>{const R=Date;const f=new R(2026,9,${d},
   check('And no night is invented', !np.living);
   await noPlan.p.locator('#lazyStart').click();
   await noPlan.p.waitForTimeout(700);
-  check('Nor is an early-night question asked against a plan that does not exist',
-        !(await noPlan.p.evaluate(() => !document.getElementById('earlyVeil').hidden)));
+  /* CHANGED BEHAVIOUR, and the change is the point.
+
+     This check used to assert that NO early-night question was asked here,
+     on the reasoning that there was no plan to be early for. That reasoning
+     was wrong, and this exact scenario — "Too tired" tapped at 18:17 with
+     nothing planned — is how a bed time of 18:17 reached a participant's
+     diary, became a sixteen-hour night, and was interpreted by the
+     Restoration Twin. The absence of a plan is a reason to ask, not a reason
+     to skip asking: without one the app knows LESS about whether this is a
+     night, not more.
+
+     So the question is now asked, and nothing is stamped until it is
+     answered. The old assertion is kept here in words so nobody restores it
+     by accident. */
+  check('An early-night question IS asked at 18:17, plan or no plan',
+        await noPlan.p.evaluate(() => !document.getElementById('earlyVeil').hidden));
+  check('And no bed time is stamped while it is open',
+        await noPlan.p.evaluate(() =>
+          JSON.parse(localStorage.getItem('sleepsphere_state_v2')).lazyNight) === null);
   await noPlan.ctx.close();
 
   /* No location: no Maghrib, so the evening falls back to the lead before
@@ -451,6 +468,15 @@ const clockAt = (h, mi, d = 7) => `(()=>{const R=Date;const f=new R(2026,9,${d},
   const mg = await look(morning.p);
   check('The morning after a real night offers the one-tap morning',
         mg.morningVeil, `${mg.phase} / ${mg.why}`);
+  /* The card now asks about the times before it asks how the morning felt.
+     A restoration rating is a judgement about waking up, not agreement to a
+     pair of timestamps, and treating it as both is how an unexamined
+     sixteen-hour night reached a diary on one tap. */
+  check('The times are asked about before the rating is offered',
+        await morning.p.evaluate(() => !document.getElementById('lazyRateRow').hidden) === false
+        && await morning.p.evaluate(() => !document.getElementById('lazyConfirmRow').hidden));
+  await morning.p.locator('[data-lazy-confirm="confirmed"]').click();
+  await morning.p.waitForTimeout(300);
   await morning.p.locator('[data-lazy-rate="3"]').click();
   await morning.p.waitForTimeout(900);
   const done = await morning.p.evaluate(k => JSON.parse(localStorage.getItem(k)), KEY);

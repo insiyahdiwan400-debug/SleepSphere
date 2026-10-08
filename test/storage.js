@@ -89,6 +89,16 @@ const DISCARDS = `(()=>{const m={};Object.defineProperty(window,'localStorage',{
      is two taps. Walked in full here rather than seeded around, because the
      point of this check is that the whole path still works when storage is
      refusing to persist anything. */
+  /* Going to bed at an hour that is not bedtime now asks first — which is
+     the whole point of the recording-integrity work: a bed time stamped at
+     seven in the morning, or at a quarter past six in the evening, is far
+     more likely to be a tap than a night. This suite does not pin its clock,
+     so the question may or may not appear; either way the walk continues
+     through it exactly as a participant's would. */
+  if (await blocked.p.locator('#earlyVeil').isVisible()) {
+    await blocked.p.locator('#earlyYes').click();
+    await blocked.p.waitForTimeout(900);
+  }
   if (await blocked.p.locator('#duaVeil').isVisible()) {
     await blocked.p.locator('#duaAmin').click();
     await blocked.p.waitForTimeout(5400);
