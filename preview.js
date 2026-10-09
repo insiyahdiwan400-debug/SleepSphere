@@ -259,7 +259,9 @@
        same night, on the same phone, without retyping a URL. */
     var swap = document.createElement('button');
     swap.type = 'button';
-    swap.textContent = currentUi() === 'calm' ? 'Simple' : 'Classic';
+    /* Label the destination, not the current state: a button reading
+       "Classic" while you are already in Classic reads as a dead end. */
+    swap.textContent = currentUi() === 'calm' ? 'Classic' : 'Simple';
     swap.setAttribute('aria-pressed', 'true');
     swap.setAttribute('aria-label', 'Switch interface');
     swap.addEventListener('click', function () {
