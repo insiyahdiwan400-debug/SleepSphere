@@ -2482,6 +2482,9 @@
       .guide-step span { font-size:10px; }
     }
   </style>
+  <!-- Simplified interface, prototype. Inert unless ?ui=calm or
+       settings.ui === "calm"; Classic remains the default. -->
+  <link rel="stylesheet" href="calm.css" />
 </head>
 <body>
   <canvas id="starfield" aria-hidden="true"></canvas>
@@ -3899,6 +3902,81 @@
       };
     })();
     if (!store.healthy) document.documentElement.dataset.storage = 'unavailable';
+
+    /* ==================================================================
+       MOTHERHOOD — the storage boundary.
+
+       An integral optional module of this app, in this codebase. See
+       MOTHERHOOD.md for the audit it came out of and the reasoning; this
+       is the enforcement.
+
+       It lives under its own key and NEVER inside `state`. That one
+       decision closes three of the four hazards the audit found, because
+       both full-JSON exports — the researcher-facing "full copy" and the
+       private backup — serialise `state`, and `state` does not contain
+       this. It also closes the shapeState pass-through, which carries any
+       unknown key straight into both of those files with no code change
+       and no review.
+
+       The opt-in flag lives in here too, not in state.settings. A flag in
+       settings would ride both exports and tell a researcher that this
+       participant enabled the module — which in a cohort this size is
+       close to disclosing why. The flag is part of the secret, not part
+       of the frame around it.
+
+       COLLECTION IS OFF. Nothing writes a sensitive value yet; see
+       MOTHERHOOD.md section 7 for what has to be true first. What exists
+       here is the boundary, so that the interface can be built and
+       reviewed against something real.
+       ================================================================== */
+    const MOTHERHOOD_KEY = 'sleepsphere_motherhood_v1';
+
+    /* Deny by default. A field added to this module in a year is excluded
+       because it was never named here, rather than included because
+       nobody remembered to exclude it. Asserted by test/motherhood.js,
+       not by review. */
+    const MOTHERHOOD_EXPORTABLE = Object.freeze([]);
+
+    const motherhood = (() => {
+      const read = () => {
+        try {
+          const raw = store.get(MOTHERHOOD_KEY);
+          const parsed = raw ? JSON.parse(raw) : null;
+          return parsed && typeof parsed === 'object' ? parsed : null;
+        } catch { return null; }
+      };
+      return {
+        /* Off is the default, and off is indistinguishable from never
+           having been here: no key, no flag, no residue. */
+        enabled() { return read()?.enabled === true; },
+        get() { return read(); },
+        /* Deliberately not wired to any sensitive field yet. It exists so
+           the gate and the erase path are real and testable now. */
+        set(next) {
+          store.set(MOTHERHOOD_KEY, JSON.stringify({ ...(read() || {}), ...next }));
+        },
+        clear() { store.remove(MOTHERHOOD_KEY); }
+      };
+    })();
+
+    /* The one function every export must pass through. Takes the app
+       state, returns what is allowed to leave the device as a file.
+
+       `state` does not carry Motherhood data today, so this is belt and
+       braces — and that is the point: it is the thing that stays correct
+       if someone later adds a field to the wrong object. */
+    function exportableState(source = state) {
+      const copy = JSON.parse(JSON.stringify(source));
+      for (const key of Object.keys(copy)) {
+        if (/^motherhood/i.test(key) && !MOTHERHOOD_EXPORTABLE.includes(key)) delete copy[key];
+      }
+      if (copy.settings && typeof copy.settings === 'object') {
+        for (const key of Object.keys(copy.settings)) {
+          if (/^motherhood/i.test(key) && !MOTHERHOOD_EXPORTABLE.includes(key)) delete copy.settings[key];
+        }
+      }
+      return copy;
+    }
 
     /** Show the banner when, and only when, saving is genuinely broken. */
     function renderStorageWarning() {
@@ -6440,13 +6518,22 @@
          a morning already recorded. */
       if (tonight.brainDay) setBrainDay(tonight.brainDay);
 
+      commitPlan(plan);
+      closeBuildNight();
+      renderAll();
+      toast('Tonight’s plan is ready');
+    }
+
+    /* The one place a built night becomes tonight's plan. Lifted out of the
+       Build My Night handler unchanged so a second interface can save a
+       night the same way rather than assembling the record itself — the
+       stamped fields are what the research export reads. */
+    function commitPlan(plan) {
       state.plan = { ...plan,
         savedDate: studyToday(), savedAt: new Date().toISOString(),
         source: 'build-my-night' };
       saveState();
-      closeBuildNight();
-      renderAll();
-      toast('Tonight’s plan is ready');
+      return state.plan;
     }
 
     $('#nightClose')?.addEventListener('click', closeBuildNight);
@@ -7578,14 +7665,22 @@
 
     $('#exportStudyJson')?.addEventListener('click', () => {
       if (!state.study?.participantId) { toast('No participant code on this device yet'); return; }
-      download(studyFilename('-full', 'json'), JSON.stringify(state, null, 2), 'application/json');
+      /* exportableState, not state. This button sits beside "Export study
+         data", whose own note tells the participant to send the files to
+         their researcher — so this is the single likeliest route for
+         module data to reach someone it was never meant to. */
+      download(studyFilename('-full', 'json'),
+               JSON.stringify(exportableState(), null, 2), 'application/json');
     });
 
     $('#exportDiary').addEventListener('click', () => {
       if (!realMornings().length) { toast('Add a morning record before exporting the diary'); return; }
       download('SleepSphere_Sleep_Diary.csv',diaryCsv(),'text/csv;charset=utf-8');
     });
-    $('#exportBackup').addEventListener('click', () => download('SleepSphere_Private_Backup.json',JSON.stringify(state,null,2),'application/json'));
+    /* A backup file is the thing most likely to be mailed to oneself or
+       left in a shared Downloads folder, so it goes through the same
+       filter as the researcher copy. */
+    $('#exportBackup').addEventListener('click', () => download('SleepSphere_Private_Backup.json',JSON.stringify(exportableState(),null,2),'application/json'));
     $('#importBackup').addEventListener('click', () => $('#backupFile').click());
     $('#backupFile').addEventListener('change', async event => {
       const file = event.target.files?.[0]; if (!file) return;
@@ -7602,7 +7697,10 @@
     $('#printSummary').addEventListener('click', () => window.print());
     $('#eraseData').addEventListener('click', () => {
       if (!window.confirm('Erase every SleepSphere plan, Bio Harmony check-in, diary entry, thought, experiment and feedback record stored in this browser? This cannot be undone without a backup.')) return;
-      ['ss_plan','ss_thoughts','ss_mornings','ss_feedback',STORAGE_KEY].forEach(key => store.remove(key));
+      /* MOTHERHOOD_KEY included deliberately: a separate store that
+         survives the app's own delete button is a trap, not a
+         protection. */
+      ['ss_plan','ss_thoughts','ss_mornings','ss_feedback',STORAGE_KEY,MOTHERHOOD_KEY].forEach(key => store.remove(key));
       state = clone(defaults); demoMode = false; selectedExperiment = null; resetScan(); clearMorningForm(); saveState(); populateForms(); renderAll();
       // Back to a blank device, which means onboarding again — the only way a
       // second participant can be enrolled on the same phone without
@@ -8986,6 +9084,91 @@
       window.__trustedMornings = () => trustedMornings().map(item => item.date);
       window.__nightIsEarly = (iso, override) =>
         nightIsEarly(iso ? new Date(iso) : new Date(), override || state);
+
+      /* ==============================================================
+         SS.engine — the boundary between what the app KNOWS and what it
+         SHOWS. See UX.md section 6.
+
+         Nothing here is new arithmetic. Every entry either hands out a
+         function that already exists, or performs the exact sequence the
+         classic interface already performs. A second interface may call
+         these; it may not recompute any of them, and it may not write a
+         record by any other route. That is what keeps recording
+         integrity, the Fajr engine and the research export unaffected by
+         anything the interface does.
+         ============================================================== */
+      window.SS = {
+        version: APP_VERSION,
+        schema: SCHEMA_VERSION,
+        get state() { return state; },
+        save: saveState,
+        render: renderAll,
+        engine: {
+          /* What the app knows before it asks anything. `missing` and
+             `asksTonight` are how the interface decides whether it may
+             generate a night silently or must ask one question. */
+          knowledge: (now) => nightKnowledge(state, now || new Date()),
+          phase:     (now) => resolvePhase(now || new Date(), state),
+          /* Returns null when the inputs do not support a night. The
+             caller must ask; it must never invent. */
+          buildNight,
+          fitNight,
+          tonightsPlan,
+          planFinalWake,
+          nightEvents,
+          commitPlan,
+
+          /* Records. Read through the integrity helpers, never raw. */
+          mornings:          () => realMornings(),
+          trustedMornings,
+          sleepMinutesOf,
+          withSleepDuration,
+          recordFlags,
+          recordVerification,
+          recordTrusted,
+          brainDayFor,
+          setBrainDay,
+
+          /* The one write path for a morning record. It drives the very
+             same form and the very same #saveMorning handler the classic
+             flow drives, so supersession, provenance and value_basis all
+             behave identically — see finishMorning. */
+          recordMorning(answers, options) {
+            const opts = options || {};
+            /* flowPicks is the flow's own scratch object and is const, so
+               it is cleared and refilled rather than replaced. */
+            Object.keys(flowPicks).forEach(k => { delete flowPicks[k]; });
+            Object.assign(flowPicks, {
+              times: answers.times || {},
+              awake: answers.awake,
+              nap: answers.nap,
+              rest: answers.rest, energy: answers.energy,
+              focus: answers.focus, calm: answers.calm,
+              fajrStatus: answers.fajrStatus,
+              factors: answers.factors || [],
+              morningNote: answers.morningNote || ''
+            });
+            if (opts.quick) finishWake(); else finishMorning();
+            return realMornings().at(-1) || null;
+          },
+
+          /* Formatting, so the interface never parses a clock itself. */
+          formatTime, formatDuration, toMinutes, clockValue, studyToday
+        }
+      };
+      /* Motherhood. The boundary is testable from outside without any
+         sensitive field existing yet — which is the whole point of
+         building it first. See MOTHERHOOD.md. */
+      window.__motherhood = {
+        key: MOTHERHOOD_KEY,
+        exportable: [...MOTHERHOOD_EXPORTABLE],
+        enabled: () => motherhood.enabled(),
+        get: () => motherhood.get(),
+        set: next => { motherhood.set(next); },
+        clear: () => { motherhood.clear(); },
+        /* What a file would actually contain, without writing one. */
+        exported: (source) => exportableState(source || state)
+      };
       window.__integrity = () => ({
         maxOpportunity: MAX_PLAUSIBLE_OPPORTUNITY,
         daytimeFrom: DAYTIME_BED_FROM, daytimeTo: DAYTIME_BED_TO,
@@ -10829,5 +11012,6 @@
     }
   })();
   </script>
+  <script src="calm.js"></script>
 </body>
 </html>
