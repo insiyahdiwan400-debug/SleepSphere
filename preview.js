@@ -176,6 +176,17 @@
      reviewed is the screen underneath it. It never participates in the
      page's layout, so nothing it does changes what you are judging.
      ------------------------------------------------------------------ */
+  /* Which interface the reviewer is looking at, carried across the reloads
+     the daypart buttons cause. */
+  function currentUi() {
+    try {
+      var q = new URLSearchParams(window.location.search).get('ui');
+      if (q) { localStorage.setItem('ss_ui', q); return q; }
+      return localStorage.getItem('ss_ui') || 'classic';
+    } catch (e) { return 'classic'; }
+  }
+  function uiParam() { return '&ui=' + currentUi(); }
+
   function build() {
     if (document.getElementById('previewBar')) return;
 
@@ -227,8 +238,9 @@
       b.addEventListener('click', function () {
         writeChoice(key);
         /* A full reload, because the clock has to be wrong before the app
-           starts rather than after. */
-        window.location.search = '?daypart=' + key;
+           starts rather than after. The interface choice rides along, so
+           switching daypart does not drop you back into Classic. */
+        window.location.search = '?daypart=' + key + uiParam();
       });
       panel.appendChild(b);
     });
@@ -239,9 +251,24 @@
     live.setAttribute('aria-pressed', String(!choice));
     live.addEventListener('click', function () {
       writeChoice(null);
-      window.location.search = '?daypart=live';
+      window.location.search = '?daypart=live' + uiParam();
     });
     panel.appendChild(live);
+
+    /* The whole point of this round: compare the two interfaces on the
+       same night, on the same phone, without retyping a URL. */
+    var swap = document.createElement('button');
+    swap.type = 'button';
+    swap.textContent = currentUi() === 'calm' ? 'Simple' : 'Classic';
+    swap.setAttribute('aria-pressed', 'true');
+    swap.setAttribute('aria-label', 'Switch interface');
+    swap.addEventListener('click', function () {
+      var next = currentUi() === 'calm' ? 'classic' : 'calm';
+      try { localStorage.setItem('ss_ui', next); } catch (e) {}
+      var d = readChoice();
+      window.location.search = '?ui=' + next + (d ? '&daypart=' + d : '');
+    });
+    panel.appendChild(swap);
 
     var reset = document.createElement('button');
     reset.type = 'button';
