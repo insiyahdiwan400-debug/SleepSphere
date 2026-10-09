@@ -2009,6 +2009,177 @@
     }
     body { font-family:var(--font-body); }
 
+    /* ==================================================================
+       SLEEPSPHERE 2.0 — THE LIVING UNIVERSE
+       Daypart atmosphere, the type scale, and the Living Sphere.
+       Specification and reasoning: DESIGN.md.
+
+       These tokens are PRESENTATION ONLY. Nothing here reads or writes a
+       record, and the daypart is the phase resolvePhase() already decided —
+       there is no second state machine and no new question asked of anybody.
+       ================================================================== */
+    :root {
+      --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px;
+      --r-card:28px; --r-pill:999px;
+      --ease:cubic-bezier(.22,.61,.36,1);
+
+      --text:#f2f0ec;
+      --text-soft:#c6c6d6;
+      --text-quiet:#8e90a8;
+
+      /* Default to the midnight set; each phase overrides below. */
+      --accent:#9fa8d8;
+      --accent-deep:#5b63a8;
+      --accent-lift:#cdd2ee;
+      --atmo:rgba(159,168,216,.16);
+    }
+
+    /* One accent per daypart. The phase attribute is already on <html>.
+
+       --accent-lift exists because the primary action carries dark label
+       text: a gradient running accent -> accent-deep put that label on a
+       mid-tone and measured 3.49:1 at midnight. The action runs between the
+       two light tints instead, and accent-deep is kept for the rim and the
+       shadow, where nothing has to be read against it. */
+    :root[data-phase="WAKE"]    { --accent:#e8b79a; --accent-deep:#b9785f; --accent-lift:#f6d8c4; --atmo:rgba(232,183,154,.17); }
+    :root[data-phase="DAY"]     { --accent:#a6b6e8; --accent-deep:#5e74c2; --accent-lift:#d0d9f5; --atmo:rgba(166,182,232,.16); }
+    :root[data-phase="EVENING"] { --accent:#c9a2cf; --accent-deep:#8d5f9c; --accent-lift:#e6ccea; --atmo:rgba(201,162,207,.17); }
+    :root[data-phase="SLEEP"]   { --accent:#9fa8d8; --accent-deep:#5b63a8; --accent-lift:#cdd2ee; --atmo:rgba(159,168,216,.15); }
+
+    /* ---- The moment, recomposed around the sphere. Every id the render
+       code and the tests already use is kept; this is layout and type. */
+    .moment {
+      display:grid; justify-items:center; text-align:center;
+      gap:var(--s2); padding:var(--s5) var(--s4) var(--s4);
+    }
+    .moment-eyebrow {
+      margin:0; color:var(--accent); font-size:11px; font-weight:700;
+      letter-spacing:.16em; text-transform:uppercase;
+    }
+    .moment-greeting {
+      margin:0; color:var(--text-soft); font-family:var(--font-display);
+      font-size:clamp(19px,5.4vw,23px); font-weight:400; letter-spacing:-.005em;
+      line-height:1.25;
+    }
+    .moment-ask {
+      margin:2px 0 0; max-width:21ch; color:var(--text);
+      font-family:var(--font-display); font-size:clamp(27px,8vw,36px);
+      font-weight:400; letter-spacing:-.015em; line-height:1.14;
+      text-wrap:balance;
+    }
+    .moment-sub {
+      margin:0; max-width:32ch; color:var(--text-quiet);
+      font-size:15px; line-height:1.55; text-wrap:pretty;
+    }
+    .moment-actions { display:grid; gap:var(--s2); width:100%; max-width:22rem; margin-top:var(--s3); }
+    .moment .btn.moment-go {
+      min-height:54px; border-radius:var(--r-pill);
+      font-size:16px; font-weight:650; letter-spacing:.01em;
+      background:linear-gradient(142deg, var(--accent-lift), var(--accent));
+      color:#0b0d1a; border:0;
+      box-shadow:0 10px 26px -16px rgba(0,0,0,.75);
+    }
+    .moment .btn.moment-alt {
+      min-height:48px; border-radius:var(--r-pill);
+      background:transparent; color:var(--text-soft);
+      border:1px solid rgba(255,255,255,.14); box-shadow:none;
+      font-size:14.5px; font-weight:550;
+    }
+    .moment-note { margin:0; max-width:32ch; color:var(--text-quiet); font-size:13px; line-height:1.5; }
+
+    /* ---- THE LIVING SPHERE.
+
+       The app already knows where the sun is: applySky() publishes --sun-at
+       as a real light position and interpolates the sky between nine
+       keyframes. The sphere is lit from that same light, so the time of day
+       moves across it rather than being recoloured on top of it. One
+       luminous object per screen, and this is it.
+
+       It is NOT a measurement. No number, no ring, no percentage, no
+       verdict. It reflects the hour and the chosen context and nothing about
+       anybody's body, which is why it is aria-hidden and the meaning of the
+       screen lives in the text beside it. */
+    .sphere-wrap {
+      position:relative; display:grid; place-items:center;
+      width:min(58vw,200px); aspect-ratio:1; margin-bottom:var(--s3);
+    }
+    /* The halo is lit from the real sun position, so its gradient is
+       off-centre and is still carrying colour where the box ends — which
+       showed as a hard arc (with border-radius) or a hard rectangle
+       (without). The mask fades the layer itself to nothing at the
+       inscribed circle, so the direction survives and the edge cannot. */
+    .sphere-atmo {
+      position:absolute; inset:-26%;
+      background:radial-gradient(circle at var(--sun-at,50% 30%),
+        var(--atmo), transparent 70%);
+      -webkit-mask:radial-gradient(circle closest-side at 50% 50%,
+        #000 40%, transparent 100%);
+      mask:radial-gradient(circle closest-side at 50% 50%,
+        #000 40%, transparent 100%);
+      opacity:.9;
+    }
+    .sphere-svg { position:relative; width:100%; height:100%; display:block;
+      transform-origin:50% 50%; }
+    .sphere-rim { fill:none; stroke:var(--accent); stroke-width:.7; opacity:.42; }
+
+    /* The sphere breathes while the day is still being lived and settles
+       once the evening starts. That is not only a battery rule the app
+       already holds elsewhere ("the sky is one canvas" — test/night.js) —
+       it is the behaviour: motion drains out of the screen as bedtime
+       approaches, so the last thing the participant sees is perfectly
+       still. Overlays and the dua are covered too, for the daytime case
+       where Build My Night is opened early. */
+    @media (prefers-reduced-motion: no-preference) {
+      :root[data-phase="WAKE"] .sphere-svg,
+      :root[data-phase="DAY"]  .sphere-svg   { animation:sphereBreathe 22s var(--ease) infinite; }
+      :root[data-phase="WAKE"] .sphere-bands,
+      :root[data-phase="DAY"]  .sphere-bands { animation:sphereDrift 46s linear infinite; }
+      :root[data-overlay]  .sphere-svg, :root[data-overlay]  .sphere-bands,
+      :root[data-settling] .sphere-svg, :root[data-settling] .sphere-bands { animation:none; }
+    }
+    .sphere-bands { transform-origin:50% 50%; }
+    @keyframes sphereBreathe {
+      0%,100% { transform:scale(1); }
+      50%     { transform:scale(1.015); }
+    }
+    @keyframes sphereDrift {
+      from { transform:rotate(0deg); }
+      to   { transform:rotate(360deg); }
+    }
+
+    /* Once the night itself exists, the Living Night's sky IS the celestial
+       object on the screen, and a full-size sphere above it both competes
+       with it and pushes its three actions below the fold — which the brief
+       forbids outright. So the sphere recedes to a small mark the moment the
+       night is planned: the identity stays, the priority is honest, and
+       tonight's plan is reachable without scrolling past decoration.
+       Measured, not assumed: test/today.js asserts the Living Night's
+       actions stay inside a 390x844 viewport. */
+    /* Scoped to EVENING deliberately: the Living Night section is not
+       re-hidden at bedtime, it fades to nothing in place, so an unscoped
+       :has() would take the sphere away exactly where it should return. */
+    :root[data-phase="EVENING"] #today:has(#livingNight:not([hidden])) .sphere-wrap {
+      display:none;
+    }
+
+    /* SLEEP hides nearly every card, so the moment was sitting in the top
+       two thirds with a third of the screen empty beneath it. Given the
+       space, it takes the middle. */
+    :root[data-phase="SLEEP"] #today > .moment,
+    :root[data-phase="WAKE"]  #today > .moment {
+      min-height:calc(100dvh - 210px);
+      align-content:center;
+    }
+
+    @media (max-height: 760px) {
+      .sphere-wrap { width:min(44vw,152px); margin-bottom:var(--s2); }
+      .moment { padding-top:var(--s4); }
+    }
+    @media (max-height: 640px) {
+      .sphere-wrap { width:124px; }
+      .moment-ask { font-size:clamp(24px,7vw,30px); }
+    }
+
     h1, h2, h3,
     .topbar h1, .console-copy h2, .section-head h2, .card h2, .card h3,
     .hero h2, .flow-q, .reveal h2, .welcome-card h2, .offline-overlay h2,
@@ -2539,7 +2710,55 @@
                competing with it. Everything below is secondary and most of
                it is hidden unless this phase wants it. -->
           <section class="moment" id="moment" aria-live="polite">
+            <!-- The Living Sphere. aria-hidden because it carries no
+                 information a screen reader could use: it reflects the hour,
+                 not the participant. Everything meaningful is in the text
+                 below it. See DESIGN.md section 5. -->
+            <div class="sphere-wrap" id="livingSphere" aria-hidden="true">
+              <div class="sphere-atmo"></div>
+              <svg class="sphere-svg" viewBox="0 0 100 100" role="presentation" focusable="false">
+                <defs>
+                  <radialGradient id="sphereBody" cx="34%" cy="28%" r="78%">
+                    <stop offset="0%"   stop-color="var(--sky-low,#3d558c)" stop-opacity=".95"/>
+                    <stop offset="52%"  stop-color="var(--sky-mid,#243063)" stop-opacity=".97"/>
+                    <stop offset="100%" stop-color="var(--sky-top,#141d3e)"/>
+                  </radialGradient>
+                  <!-- The limb light, placed from the real sun position. -->
+                  <radialGradient id="sphereLimb" cx="30%" cy="24%" r="62%">
+                    <stop offset="0%"   stop-color="var(--orb,#fff8ec)" stop-opacity=".62"/>
+                    <stop offset="46%"  stop-color="var(--orb,#fff8ec)" stop-opacity=".11"/>
+                    <stop offset="100%" stop-color="var(--orb,#fff8ec)" stop-opacity="0"/>
+                  </radialGradient>
+                  <!-- The far limb, opposite the light. Without it the sphere
+                       disappears at midnight, where its body gradient and the
+                       sky behind it are by construction the same colour: the
+                       terminator is what makes it read as an object rather
+                       than as a slightly lighter patch of sky. -->
+                  <radialGradient id="sphereShade" cx="74%" cy="82%" r="74%">
+                    <stop offset="0%"   stop-color="#000005" stop-opacity=".42"/>
+                    <stop offset="52%"  stop-color="#000005" stop-opacity=".17"/>
+                    <stop offset="100%" stop-color="#000005" stop-opacity="0"/>
+                  </radialGradient>
+                  <clipPath id="sphereClip"><circle cx="50" cy="50" r="38"/></clipPath>
+                  <!-- Without this the bands meet the clip as hard diagonal
+                       chords and the sphere reads as a striped ball. -->
+                  <filter id="sphereSoft" x="-30%" y="-30%" width="160%" height="160%">
+                    <feGaussianBlur stdDeviation="4.5"/>
+                  </filter>
+                </defs>
+                <circle cx="50" cy="50" r="38" fill="url(#sphereBody)"/>
+                <g clip-path="url(#sphereClip)" class="sphere-bands"
+                   filter="url(#sphereSoft)" opacity=".55">
+                  <ellipse cx="50" cy="36" rx="44" ry="11" fill="var(--accent)" opacity=".13"/>
+                  <ellipse cx="50" cy="64" rx="40" ry="9"  fill="var(--orb,#fff8ec)" opacity=".09"/>
+                </g>
+                <circle cx="50" cy="50" r="38" fill="url(#sphereShade)"/>
+                <circle cx="50" cy="50" r="38" fill="url(#sphereLimb)"/>
+                <circle class="sphere-rim" cx="50" cy="50" r="38"/>
+              </svg>
+            </div>
             <p class="moment-eyebrow" id="momentEyebrow">Today</p>
+            <p class="moment-greeting" id="momentGreeting"></p>
             <h2 class="moment-ask" id="momentAsk">Ready when you are</h2>
             <p class="moment-sub" id="momentSub"></p>
 
@@ -5607,6 +5826,26 @@
 
     let brainEditing = false;
 
+    /* Time of day, and their name only if they gave one. No "we", no
+       implied relationship, nothing that pretends at intimacy the app has
+       not earned. Pure presentation: it reads the clock and one setting. */
+    function momentGreeting(phase, now = new Date()) {
+      const hour = now.getHours();
+      const part = phase === 'SLEEP' ? 'Good night'
+                 : hour < 5  ? 'Still awake'
+                 : hour < 12 ? 'Good morning'
+                 : hour < 17 ? 'Good afternoon'
+                 : 'Good evening';
+      const name = (state.settings?.name || '').trim();
+      return name ? `${part}, ${name}.` : `${part}.`;
+    }
+
+    /* The daypart label above the greeting. Named for the sky rather than
+       the state machine — a participant reads "Dawn", not "WAKE". */
+    const DAYPART_LABEL = Object.freeze({
+      WAKE:'Dawn', DAY:'Today', EVENING:'This evening', SLEEP:'Tonight'
+    });
+
     function renderMoment() {
       const { phase, recorded } = resolvePhase();
       /* navigate() stamps this, but it does not run on first paint, so a
@@ -5621,9 +5860,15 @@
       const grid = $('#brainGrid');
       grid.hidden = true; go.hidden = false; alt.hidden = true; note.textContent = '';
       go.onclick = null; alt.onclick = null;
+      /* Set once, from the phase the engine already resolved. The eyebrow
+         names the daypart and the greeting carries the salutation, so the
+         branches below no longer each say "Good morning" in the slot above
+         a line that already says it. */
+      eyebrow.textContent = DAYPART_LABEL[phase] || 'Today';
+      const greeting = $('#momentGreeting');
+      if (greeting) greeting.textContent = momentGreeting(phase);
 
       if (phase === 'WAKE') {
-        eyebrow.textContent = 'Good morning';
         ask.textContent = 'How did your night leave you?';
         sub.textContent = 'Three questions. Under half a minute.';
         go.textContent = 'Record this morning';
@@ -5632,7 +5877,6 @@
       }
 
       if (phase === 'SLEEP') {
-        eyebrow.textContent = 'Tonight';
         ask.textContent = state.plan ? 'Your night is ready.' : 'Time to stop.';
         sub.textContent = 'One tap, then put the phone somewhere else.';
         go.textContent = 'Goodnight';
@@ -5644,7 +5888,6 @@
       }
 
       if (phase === 'EVENING') {
-        eyebrow.textContent = 'This evening';
         const planned = state.plan && state.plan.savedDate === studyToday();
         ask.textContent = planned ? 'Here is your night.' : 'Let’s build tonight.';
         sub.textContent = planned
@@ -5675,7 +5918,6 @@
 
       // DAY — the app's job is tomorrow.
       const picked = brainDayFor();
-      eyebrow.textContent = 'Today';
       if (!picked || brainEditing) {
         ask.textContent = 'What does your brain need tomorrow?';
         sub.textContent = 'So tonight can be built around it.';
@@ -8189,16 +8431,26 @@
        two that bracket the hour. Nothing ever snaps.
        ------------------------------------------------------------------ */
     const skyKeys = {
+      /* SleepSphere 2.0 — the four dayparts of DESIGN.md section 2, as
+         keyframes the engine already interpolates, so the transitions stay
+         continuous instead of becoming four flat themes.
+
+         Retuned, not replaced: the structure, hours, halo/glow/stars
+         mechanics and the interpolation are untouched. Midnight moves to
+         ink navy and muted violet, dawn to lavender mist and peach, DAY off
+         the old teal and onto cool lilac and a subtle sky, evening to dusky
+         mauve and warm violet. Nothing here is a measurement and nothing
+         reads a record. */
       dark: [
-        { h:0,    top:'#05070f', mid:'#080d1a', low:'#0f1a2e', halo:[214,224,255,.13], glow:[150,175,225,.09], stars:1,   orb:'#e8e2d6' },
-        { h:4,    top:'#070a1c', mid:'#161230', low:'#2b1c3a', halo:[236,170,150,.10], glow:[190,130,140,.12], stars:.7,  orb:'#dcd3e4' },
-        { h:6,    top:'#0d1030', mid:'#231a3f', low:'#4a2a48', halo:[255,168,116,.26], glow:[226,124,92,.20],  stars:.2,  orb:'#ffcf9a' },
-        { h:8,    top:'#0d2440', mid:'#164059', low:'#256b83', halo:[255,224,164,.20], glow:[255,212,148,.14], stars:.18,   orb:'#ffe8b4' },
-        { h:12,   top:'#12395c', mid:'#1a5578', low:'#2b7a97', halo:[255,247,214,.22], glow:[196,230,250,.13], stars:.15,   orb:'#fff6d6' },
-        { h:16,   top:'#153350', mid:'#274664', low:'#4d5a72', halo:[255,226,170,.20], glow:[236,180,130,.14], stars:.18,   orb:'#ffe6ae' },
-        { h:18.5, top:'#1a1020', mid:'#3a1e2c', low:'#6b3430', halo:[255,158,84,.26],  glow:[240,146,74,.19],  stars:.08, orb:'#ffb46e' },
-        { h:20.5, top:'#090b22', mid:'#141438', low:'#2a2450', halo:[206,132,150,.16], glow:[138,110,196,.15], stars:.6,  orb:'#d6cee9' },
-        { h:22,   top:'#05070f', mid:'#080d1a', low:'#0f1a2e', halo:[214,224,255,.13], glow:[150,175,225,.09], stars:1,   orb:'#e8e2d6' }
+        { h:0,    top:'#05060f', mid:'#0a0e22', low:'#161033', halo:[214,220,255,.13], glow:[150,168,225,.09], stars:1,   orb:'#e6e8f4' },
+        { h:4,    top:'#0b0c24', mid:'#1a1638', low:'#312247', halo:[226,186,196,.11], glow:[176,142,196,.12], stars:.7,  orb:'#ded7ee' },
+        { h:6,    top:'#0f1030', mid:'#241a42', low:'#453056', halo:[255,196,160,.24], glow:[226,150,124,.19], stars:.2,  orb:'#ffe6cc' },
+        { h:8,    top:'#121a3a', mid:'#1f2a56', low:'#35497d', halo:[255,232,206,.19], glow:[220,206,236,.14], stars:.18, orb:'#fff2dd' },
+        { h:12,   top:'#141d3e', mid:'#243063', low:'#3d558c', halo:[244,240,255,.21], glow:[196,210,250,.13], stars:.15, orb:'#fff8ec' },
+        { h:16,   top:'#15193a', mid:'#272a5c', low:'#3f4576', halo:[246,226,236,.20], glow:[206,186,226,.14], stars:.18, orb:'#f6ecf6' },
+        { h:18.5, top:'#140d26', mid:'#2f1c44', low:'#55305c', halo:[255,196,168,.24], glow:[214,140,150,.18], stars:.08, orb:'#f6c9a8' },
+        { h:20.5, top:'#0b0a20', mid:'#1a1240', low:'#33224c', halo:[212,166,206,.16], glow:[146,112,196,.15], stars:.6,  orb:'#ddcdea' },
+        { h:22,   top:'#05060f', mid:'#0a0e22', low:'#161033', halo:[214,220,255,.13], glow:[150,168,225,.09], stars:1,   orb:'#e6e8f4' }
       ],
       light: [
         { h:0,    top:'#d2cfca', mid:'#c9c6c1', low:'#bcb9b5', halo:[214,220,238,.42], glow:[160,168,190,.28], stars:0, orb:'#8d8a86' },
