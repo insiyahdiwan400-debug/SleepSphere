@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Quiet Celestial Luxury</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&family=Inter+Tight:wght@400;500;600&family=Jost:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500&family=EB+Garamond:wght@400;500&display=swap">
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   The board itself. Deliberately a printed sheet, not an app screen:
+   the three directions have to be judged against paper, not against
+   each other's chrome.
+   ══════════════════════════════════════════════════════════════════ */
+:root{
+  --sheet:#f3f0e9; --sheet-2:#e9e5db; --rule:#cdc6b8;
+  --ink:#1c1a17; --ink-2:#55504a; --ink-3:#8a8379;
+  --mark:#8a6a3a;
+  color-scheme: light;
+}
+:root:not([data-theme="light"]), :root[data-theme="dark"]{ color-scheme: light; }
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--sheet); color:var(--ink);
+  font:400 16px/1.6 "Inter Tight",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  padding:0 16px 96px;
+}
+.sheet{max-width:860px;margin:0 auto}
+
+.masthead{padding:56px 0 28px;border-bottom:1px solid var(--ink)}
+.kicker{margin:0 0 18px;font:600 10.5px/1 "Inter Tight",sans-serif;
+  letter-spacing:.22em;text-transform:uppercase;color:var(--ink-3)}
+h1{margin:0;font-family:"Newsreader",Georgia,serif;font-weight:300;
+  font-size:clamp(38px,8.4vw,68px);line-height:1.02;letter-spacing:-.022em}
+h1 em{font-style:italic;font-weight:300}
+.standfirst{margin:20px 0 0;max-width:46ch;font-size:17px;line-height:1.55;color:var(--ink-2)}
+
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:0;border-bottom:1px solid var(--rule);margin-bottom:64px}
+.meta div{padding:14px 0;border-right:1px solid var(--rule)}
+.meta div:last-child{border-right:0}
+.meta dt{margin:0 0 4px;font:600 9.5px/1 "Inter Tight",sans-serif;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3)}
+.meta dd{margin:0;font-size:14px;color:var(--ink-2);padding-right:14px}
+
+/* ── board frame ─────────────────────────────────────────────────── */
+.board{margin:0 0 92px}
+.board-no{display:flex;align-items:baseline;gap:14px;
+  border-bottom:1px solid var(--ink);padding-bottom:10px}
+.board-no b{font:500 11px/1 "IBM Plex Mono",monospace;letter-spacing:.1em;color:var(--mark)}
+.board-no h2{margin:0;font-family:"Newsreader",Georgia,serif;font-weight:400;
+  font-size:clamp(26px,5.4vw,38px);line-height:1.1;letter-spacing:-.015em;flex:1}
+.thesis{margin:18px 0 0;max-width:52ch;font-size:16.5px;line-height:1.6}
+.thesis strong{font-weight:600}
+
+.cols{display:grid;grid-template-columns:1fr;gap:34px;margin-top:34px}
+@media(min-width:760px){ .cols{grid-template-columns:1fr 1fr;gap:44px} }
+
+h3.sec{margin:34px 0 14px;font:600 10px/1 "Inter Tight",sans-serif;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3);
+  padding-bottom:7px;border-bottom:1px solid var(--rule)}
+
+/* ── palette ─────────────────────────────────────────────────────── */
+.pal{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:0;
+  border:1px solid var(--rule)}
+.sw{padding:0;border-right:1px solid var(--rule)}
+.sw:last-child{border-right:0}
+.sw i{display:block;height:62px}
+.sw span{display:block;padding:8px 9px 10px;font-size:11.5px;line-height:1.35;color:var(--ink-2)}
+.sw b{display:block;color:var(--ink);font-weight:600;font-size:12px}
+.sw code{font:400 10.5px/1 "IBM Plex Mono",monospace;color:var(--ink-3);letter-spacing:.02em}
+
+/* ── references ──────────────────────────────────────────────────── */
+.refs{margin:0;padding:0;list-style:none;border-top:1px solid var(--rule)}
+.refs li{display:grid;grid-template-columns:1fr;gap:2px;
+  padding:11px 0;border-bottom:1px solid var(--rule)}
+@media(min-width:560px){ .refs li{grid-template-columns:1fr 1fr;gap:18px} }
+.refs b{font-weight:600;font-size:14.5px}
+.refs i{font-style:normal;font-size:13.5px;color:var(--ink-2)}
+
+/* ── daypart control ─────────────────────────────────────────────── */
+.dp{display:flex;gap:0;border:1px solid var(--rule);margin:0 0 16px;width:fit-content}
+.dp button{appearance:none;-webkit-appearance:none;border:0;cursor:pointer;
+  background:transparent;color:var(--ink-2);
+  font:500 11.5px/1 "Inter Tight",sans-serif;letter-spacing:.06em;
+  padding:0 13px;min-height:38px;border-right:1px solid var(--rule)}
+.dp button:last-child{border-right:0}
+.dp button[aria-pressed="true"]{background:var(--ink);color:var(--sheet)}
+
+/* ── phone composition frame ─────────────────────────────────────── */
+.phone{max-width:390px;border:1px solid var(--rule);overflow:hidden}
+.phone-cap{display:flex;justify-content:space-between;padding:7px 10px;
+  border-bottom:1px solid var(--rule);background:var(--sheet-2);
+  font:400 9.5px/1 "IBM Plex Mono",monospace;color:var(--ink-3);letter-spacing:.04em}
+
+.note{margin:14px 0 0;font-size:13.5px;line-height:1.6;color:var(--ink-2)}
+.note b{color:var(--ink)}
+.risk{margin-top:16px;padding:14px 16px;border-left:2px solid var(--mark);background:var(--sheet-2)}
+.risk p{margin:0;font-size:13.5px;line-height:1.6;color:var(--ink-2)}
+.risk b{color:var(--ink)}
+
+/* ══════════════════════════════════════════════════════════════════
+   BOARD ONE — OBSERVATORY PAPER
+   The substrate itself changes with the hour. At night the sheet
+   inverts: ivory ink on ink paper, the way a negative plate reads.
+   ══════════════════════════════════════════════════════════════════ */
+.b1{--paper:#f4efe4;--pink:#211f1b;--sub:#5d574c;--hair:#c9c0ac;--brass:#9a7638;--accent:#2f4858}
+.b1[data-dp="afternoon"]{--paper:#eeefe9;--pink:#1b2128;--sub:#555d63;--hair:#c3c7c2;--brass:#8e7a4a;--accent:#2f4858}
+.b1[data-dp="evening"]{--paper:#e8e2d6;--pink:#2a211a;--sub:#5e5247;--hair:#c4b8a4;--brass:#8c6a33;--accent:#53402e}
+.b1[data-dp="night"]{--paper:#14161a;--pink:#efe9dc;--sub:#a49c8c;--hair:#333840;--brass:#b08d4e;--accent:#c8cedd}
+.b1 .comp{background:var(--paper);color:var(--pink);padding:26px 22px 24px;
+  font-family:"Inter Tight",sans-serif;transition:none}
+.b1 .rule{height:1px;background:var(--pink);margin:0}
+.b1 .hair{height:1px;background:var(--hair)}
+.b1 .ttl{margin:0;font:600 9.5px/1 "Inter Tight",sans-serif;
+  letter-spacing:.24em;text-transform:uppercase;color:var(--sub)}
+.b1 .date{float:right;font:400 9.5px/1 "IBM Plex Mono",monospace;color:var(--sub);letter-spacing:.04em}
+.b1 h4{margin:16px 0 20px;font-family:"Newsreader",Georgia,serif;font-weight:400;
+  font-size:31px;line-height:1.12;letter-spacing:-.016em}
+.b1 table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.b1 td{padding:9px 0;border-bottom:1px solid var(--hair);font-size:14.5px}
+.b1 td:first-child{color:var(--sub);letter-spacing:.01em}
+.b1 td:last-child{text-align:right;font-weight:600;font-feature-settings:"tnum"}
+.b1 tr:last-child td{border-bottom:0}
+.b1 .arcbox{margin:18px 0 4px}
+.b1 .legend{display:flex;justify-content:space-between;
+  font:400 10px/1 "IBM Plex Mono",monospace;color:var(--sub);margin-top:6px;letter-spacing:.03em}
+.b1 .act{display:block;width:100%;margin-top:20px;min-height:48px;cursor:pointer;
+  background:var(--pink);color:var(--paper);border:0;
+  font:600 14px/1 "Inter Tight",sans-serif;letter-spacing:.04em;text-transform:uppercase}
+.b1 .act2{display:block;width:100%;margin-top:8px;min-height:44px;cursor:pointer;
+  background:transparent;color:var(--sub);border:1px solid var(--hair);
+  font:500 13px/1 "Inter Tight",sans-serif}
+.b1 .foot{margin:16px 0 0;font-size:11.5px;line-height:1.5;color:var(--sub)}
+
+/* ══════════════════════════════════════════════════════════════════
+   BOARD TWO — PORCELAIN & BRASS
+   A flat, matte object. Nothing glows. What changes across the day is
+   the DIRECTION and warmth of one soft shadow, and which metal is lit.
+   ══════════════════════════════════════════════════════════════════ */
+.b2{--porc:#f1efec;--edge:#dcd8d2;--ink2:#23262b;--sub2:#6f7378;--metal:#b08b55;--dial:#e7e4df;--shadow:14px 16px 34px -22px rgba(30,28,25,.55)}
+.b2[data-dp="afternoon"]{--porc:#eef0f1;--edge:#dadee0;--ink2:#1e2328;--sub2:#6b7276;--metal:#8e9aa3;--dial:#e4e8ea;--shadow:0px 20px 34px -24px rgba(25,30,34,.5)}
+.b2[data-dp="evening"]{--porc:#efe9e2;--edge:#ded5c9;--ink2:#2b2520;--sub2:#776d62;--metal:#c0a173;--dial:#e8e0d5;--shadow:-14px 16px 34px -22px rgba(60,45,30,.5)}
+.b2[data-dp="night"]{--porc:#191c21;--edge:#2b2f36;--ink2:#eceef1;--sub2:#8b9199;--metal:#c9a66b;--dial:#20242a;--shadow:0 18px 40px -26px rgba(0,0,0,.9)}
+.b2 .comp{background:var(--porc);color:var(--ink2);padding:28px 22px 26px;
+  font-family:"Jost",-apple-system,sans-serif}
+.b2 .lbl{margin:0;font:400 10px/1 "IBM Plex Mono",monospace;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--sub2)}
+.b2 .dialwrap{display:flex;justify-content:center;margin:22px 0 20px}
+.b2 .dialcard{width:208px;height:208px;border-radius:50%;background:var(--dial);
+  border:1px solid var(--edge);box-shadow:var(--shadow);display:grid;place-items:center;position:relative}
+.b2 .dialcard svg{position:absolute;inset:0;width:100%;height:100%}
+.b2 .dialread{text-align:center;position:relative}
+.b2 .dialread b{display:block;font:300 34px/1 "Jost",sans-serif;letter-spacing:-.01em;
+  font-variant-numeric:tabular-nums}
+.b2 .dialread span{display:block;margin-top:5px;font:400 9.5px/1 "IBM Plex Mono",monospace;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--sub2)}
+.b2 .grid{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--edge);
+  border-bottom:1px solid var(--edge)}
+.b2 .cell{padding:13px 0;border-right:1px solid var(--edge)}
+.b2 .cell:last-child{border-right:0}
+.b2 .cell b{display:block;font:400 17px/1 "Jost",sans-serif;font-variant-numeric:tabular-nums}
+.b2 .cell span{display:block;margin-top:5px;font:400 9px/1 "IBM Plex Mono",monospace;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--sub2)}
+.b2 .act{display:block;width:100%;margin-top:22px;min-height:50px;border-radius:3px;cursor:pointer;
+  background:var(--ink2);color:var(--porc);border:0;
+  font:500 15px/1 "Jost",sans-serif;letter-spacing:.03em}
+.b2 .act2{display:block;width:100%;margin-top:9px;min-height:46px;border-radius:3px;cursor:pointer;
+  background:transparent;color:var(--sub2);border:1px solid var(--edge);
+  font:400 14px/1 "Jost",sans-serif}
+.b2 .foot{margin:18px 0 0;font:400 11.5px/1.55 "Jost",sans-serif;color:var(--sub2)}
+
+/* ══════════════════════════════════════════════════════════════════
+   BOARD THREE — PLASTER & LAPIS
+   A wall, and the shadow falling across it. The hour is told by the
+   ANGLE of the shadow and the colour the plaster takes.
+   ══════════════════════════════════════════════════════════════════ */
+.b3{--plaster:#efe7da;--wash:#e2d7c4;--ink3:#2b2419;--sub3:#6d6253;--lapis:#28446e;--leaf:#9c8043;--cut:#d6c9b2;--ang:122deg;--washstop:38%}
+.b3[data-dp="afternoon"]{--plaster:#f2eee4;--wash:#e8e4d6;--ink3:#262521;--sub3:#6e6c62;--lapis:#2d4f77;--leaf:#9b8d5c;--cut:#dcd7c7;--ang:178deg;--washstop:64%}
+.b3[data-dp="evening"]{--plaster:#ecdfcd;--wash:#d9bfa0;--ink3:#36271a;--sub3:#78654f;--lapis:#2a3f63;--leaf:#a9772f;--cut:#cdb495;--ang:238deg;--washstop:30%}
+.b3[data-dp="night"]{--plaster:#1a2130;--wash:#131927;--ink3:#ece6da;--sub3:#8e94a3;--lapis:#7f9fc9;--leaf:#c3a362;--cut:#2b3345;--ang:200deg;--washstop:52%}
+.b3 .comp{color:var(--ink3);padding:30px 24px 26px;font-family:"EB Garamond",Georgia,serif;
+  background:linear-gradient(var(--ang), var(--wash) 0%, var(--plaster) var(--washstop));}
+.b3 .lbl{margin:0;font:600 9.5px/1 "Inter Tight",sans-serif;
+  letter-spacing:.22em;text-transform:uppercase;color:var(--sub3)}
+.b3 h4{margin:14px 0 0;font-family:"EB Garamond",Georgia,serif;font-weight:400;
+  font-size:34px;line-height:1.14;letter-spacing:-.005em}
+.b3 .medallion{display:flex;justify-content:center;margin:24px 0 22px}
+.b3 .medallion svg{width:186px;height:186px;display:block}
+.b3 .facts{border-top:1px solid var(--cut)}
+.b3 .fact{display:flex;justify-content:space-between;align-items:baseline;
+  padding:10px 0;border-bottom:1px solid var(--cut)}
+.b3 .fact span{font:500 11px/1 "Inter Tight",sans-serif;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--sub3)}
+.b3 .fact b{font-family:"EB Garamond",serif;font-weight:500;font-size:19px;
+  font-variant-numeric:tabular-nums}
+.b3 .act{display:block;width:100%;margin-top:22px;min-height:50px;cursor:pointer;
+  background:var(--lapis);color:#f6f2e9;border:0;
+  font:500 14px/1 "Inter Tight",sans-serif;letter-spacing:.06em;text-transform:uppercase}
+.b3 .act2{display:block;width:100%;margin-top:9px;min-height:44px;cursor:pointer;
+  background:transparent;color:var(--sub3);border:0;border-bottom:1px solid var(--cut);
+  font-family:"EB Garamond",serif;font-size:16px;font-style:italic}
+.b3 .foot{margin:18px 0 0;font:400 12px/1.55 "Inter Tight",sans-serif;color:var(--sub3)}
+
+/* ── closing table ───────────────────────────────────────────────── */
+/* Four columns will not fit a phone; the table scrolls in its own box
+   rather than dragging the whole sheet sideways. */
+.cmp-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:18px}
+table.cmp{width:100%;min-width:560px;border-collapse:collapse;font-size:14px}
+table.cmp th,table.cmp td{text-align:left;padding:11px 12px 11px 0;
+  border-bottom:1px solid var(--rule);vertical-align:top}
+table.cmp th{font:600 9.5px/1.3 "Inter Tight",sans-serif;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-3)}
+table.cmp td:first-child{font-weight:600;white-space:nowrap}
+.ask{margin-top:18px;padding-left:20px}
+.ask li{margin:9px 0;font-size:15.5px;line-height:1.6}
+.sig{margin-top:56px;padding-top:18px;border-top:1px solid var(--ink);
+  font-size:13px;color:var(--ink-3)}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <header class="masthead">
+    <p class="kicker">SleepSphere · Art direction · Three boards for approval</p>
+    <h1>Quiet Celestial<br><em>Luxury</em></h1>
+    <p class="standfirst">
+      The purple-and-stars direction is withdrawn. No star field, no violet gradient,
+      no glowing orb, no translucent cards. What follows is three ways to be celestial
+      without any of them — and four dayparts that differ by <em>mechanism</em>, not by hue.
+    </p>
+  </header>
+
+  <dl class="meta">
+    <div><dt>Kept</dt><dd>Atlas clarity · Orbit's dial, as an instrument · optional typed input</dd></div>
+    <div><dt>Status</dt><dd>Boards only. No implementation, no deployment.</dd></div>
+    <div><dt>Content</dt><dd>Real values: Fajr 4:45, wind-down 9:20pm, 8h opportunity</dd></div>
+    <div><dt>Type</dt><dd>Each direction ships self-hosted woff2 — the app's CSP is <code>font-src 'self'</code></dd></div>
+  </dl>
+
+  <!-- ══════════════════ BOARD ONE ══════════════════ -->
+  <section class="board b1" data-dp="evening" id="b1">
+    <div class="board-no"><b>01</b><h2>Observatory Paper</h2></div>
+    <p class="thesis">
+      <strong>The app is a finely printed almanac.</strong> Not a screen pretending to be paper —
+      a sheet with a masthead, hairline rules, tabular figures and one engraved diagram.
+      Celestial by subject matter, never by decoration. Its luxury is the luxury of a
+      well-set table of numbers.
+    </p>
+
+    <h3 class="sec">Palette — ink on stock</h3>
+    <div class="pal">
+      <div class="sw"><i style="background:#f4efe4"></i><span><b>Ivory stock</b><code>#F4EFE4</code>Morning sheet</span></div>
+      <div class="sw"><i style="background:#e8e2d6"></i><span><b>Oyster stock</b><code>#E8E2D6</code>Evening sheet</span></div>
+      <div class="sw"><i style="background:#14161a"></i><span><b>Plate ink</b><code>#14161A</code>Night sheet</span></div>
+      <div class="sw"><i style="background:#211f1b"></i><span><b>Impression</b><code>#211F1B</code>Body ink</span></div>
+      <div class="sw"><i style="background:#2f4858"></i><span><b>Slate blue</b><code>#2F4858</code>Data ink</span></div>
+      <div class="sw"><i style="background:#9a7638"></i><span><b>Brass rule</b><code>#9A7638</code>One line only</span></div>
+    </div>
+    <p class="note"><b>Discipline:</b> two inks per sheet plus the brass rule. The brass appears
+      exactly once per screen — on the rule under the masthead — and never as a fill.</p>
+
+    <h3 class="sec">Typography</h3>
+    <p class="note" style="font-family:'Newsreader',serif;font-size:27px;line-height:1.2;color:var(--ink)">
+      Newsreader — 300 &amp; 400, optical size on
+    </p>
+    <p class="note" style="margin-top:4px">
+      <b>Newsreader</b> (Production Type) for the one sentence that matters. A genuine
+      reading face with optical sizing, drawn for screens; scholarly rather than fashionable.
+      <b>Inter Tight</b> for labels and <b>tabular figures</b> for every time, so columns of
+      numbers align like a timetable. Arabic stays <b>Amiri Naskh</b>, already shipped.
+    </p>
+
+    <h3 class="sec">References — what is taken from each</h3>
+    <ul class="refs">
+      <li><b>HM Nautical Almanac Office — <i>The Nautical Almanac</i></b><i>Times as a dense, trusted table. Authority with no ornament.</i></li>
+      <li><b>Johann Bayer, <i>Uranometria</i>, 1603</b><i>Engraved celestial plates: line, not glow. Stars as hairline marks.</i></li>
+      <li><b>Josef Müller-Brockmann — SBB timetables</b><i>Grid as the whole design. Rules doing the work of boxes.</i></li>
+      <li><b>Jan Tschichold — Penguin Composition Rules</b><i>Restraint as a house style, written down and obeyed.</i></li>
+      <li><b>Edward Tufte — sparkline pages</b><i>A diagram small enough to sit inside a sentence.</i></li>
+    </ul>
+
+    <h3 class="sec">How the four dayparts differ</h3>
+    <p class="note"><b>Mechanism: the paper stock and the ink change.</b> Not a tinted background —
+      a different sheet. Morning is warm ivory with sepia-black. Afternoon cools to bone with
+      blue-black. Evening warms to oyster. <b>At night the sheet inverts</b>: ivory ink printed
+      on ink, the way a negative plate reads. Same grid, four substrates.</p>
+    <div class="dp" role="group" aria-label="Daypart, board one">
+      <button type="button" data-set="b1" data-dp="morning">Morning</button>
+      <button type="button" data-set="b1" data-dp="afternoon">Afternoon</button>
+      <button type="button" data-set="b1" data-dp="evening" aria-pressed="true">Evening</button>
+      <button type="button" data-set="b1" data-dp="night">Night</button>
+    </div>
+
+    <h3 class="sec">Today — sample composition</h3>
+    <div class="phone">
+      <div class="phone-cap"><span>390 × composition</span><span>Today</span></div>
+      <div class="comp">
+        <p class="ttl">SleepSphere <span class="date">TUE 9 SEP</span></p>
+        <div class="rule" style="margin-top:9px"></div>
+        <div style="height:2px;background:var(--brass);margin-top:2px"></div>
+        <h4>Tonight is set.<br>Begin winding down at 9:20.</h4>
+        <div class="arcbox">
+          <svg viewBox="0 0 330 92" role="img" aria-label="Tonight's opportunity, 10:05pm to 6:30am, with Fajr at 4:45am">
+            <line x1="8" y1="70" x2="322" y2="70" stroke="currentColor" stroke-width="1" opacity=".28"/>
+            <path d="M8 70 Q165 2 322 70" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <line x1="8" y1="64" x2="8" y2="76" stroke="currentColor" stroke-width="1.4"/>
+            <line x1="322" y1="64" x2="322" y2="76" stroke="currentColor" stroke-width="1.4"/>
+            <line x1="258" y1="60" x2="258" y2="80" stroke="var(--brass)" stroke-width="1.6"/>
+            <circle cx="258" cy="26.5" r="2.6" fill="var(--brass)"/>
+            <text x="258" y="18" text-anchor="middle" font-size="9"
+                  font-family="IBM Plex Mono, monospace" fill="var(--brass)" letter-spacing=".05em">FAJR</text>
+          </svg>
+          <div class="legend"><span>10:05 PM</span><span>8h 00m OPPORTUNITY</span><span>6:30 AM</span></div>
+        </div>
+        <table>
+          <tr><td>Wind down</td><td>9:20 PM</td></tr>
+          <tr><td>Asleep by</td><td>10:05 PM</td></tr>
+          <tr><td>Fajr</td><td>4:45 AM</td></tr>
+          <tr><td>Up</td><td>6:30 AM</td></tr>
+        </table>
+        <button class="act" type="button">Use this plan</button>
+        <button class="act2" type="button">Something is different tonight</button>
+        <p class="foot">Built from your usual waking hour and tonight's Fajr. Nothing measured.</p>
+      </div>
+    </div>
+    <p class="note"><b>Orbit's dial, kept:</b> as an engraved arc rather than a ring — the night
+      drawn once, with Fajr marked by the single brass tick. It reads at a glance and prints.</p>
+    <div class="risk"><p><b>Risk:</b> a timetable can read as austere, even clinical, at 6am.
+      It is the least warm of the three, and the one most dependent on the writing being good.</p></div>
+  </section>
+
+  <!-- ══════════════════ BOARD TWO ══════════════════ -->
+  <section class="board b2" data-dp="evening" id="b2">
+    <div class="board-no"><b>02</b><h2>Porcelain &amp; Brass</h2></div>
+    <p class="thesis">
+      <strong>The app is a precision instrument resting on a porcelain surface.</strong>
+      Matte, machined, honest. Nothing glows and nothing is translucent; the only light in the
+      product is the light falling <em>on</em> it. Celestial because a dial is how people have
+      read the sky for six hundred years.
+    </p>
+
+    <h3 class="sec">Palette — body, dial, metal</h3>
+    <div class="pal">
+      <div class="sw"><i style="background:#f1efec"></i><span><b>Porcelain</b><code>#F1EFEC</code>Body, day</span></div>
+      <div class="sw"><i style="background:#e7e4df"></i><span><b>Dial stone</b><code>#E7E4DF</code>Instrument face</span></div>
+      <div class="sw"><i style="background:#191c21"></i><span><b>Midnight ink</b><code>#191C21</code>Body, night</span></div>
+      <div class="sw"><i style="background:#b08b55"></i><span><b>Brass</b><code>#B08B55</code>Morning metal</span></div>
+      <div class="sw"><i style="background:#8e9aa3"></i><span><b>Steel</b><code>#8E9AA3</code>Afternoon metal</span></div>
+      <div class="sw"><i style="background:#c0a173"></i><span><b>Champagne</b><code>#C0A173</code>Evening metal</span></div>
+    </div>
+    <p class="note"><b>Discipline:</b> one metal visible at a time, and it marks only the
+      thing you must act on. Shadow is a single soft drop — never a glow, never a blur panel.</p>
+
+    <h3 class="sec">Typography</h3>
+    <p class="note" style="font-family:'Jost',sans-serif;font-weight:300;font-size:30px;line-height:1.15;color:var(--ink)">
+      Jost 300 · 9:20 PM
+    </p>
+    <p class="note" style="margin-top:4px">
+      <b>Jost</b> (Owen Earl, after Futura) carries the Braun lineage directly — geometric,
+      quiet, excellent at large light weights for a dial reading. <b>IBM Plex Mono</b> for
+      labels and tick marks: designed for machines, and its uppercase at 9–10px is unambiguous
+      at arm's length. Together they look engineered rather than styled.
+    </p>
+
+    <h3 class="sec">References — what is taken from each</h3>
+    <ul class="refs">
+      <li><b>Dieter Rams — Braun AB 20 alarm clock</b><i>One dial, one function, zero ornament. The product is the face.</i></li>
+      <li><b>Nomos Glashütte — Tangente dial</b><i>Bauhaus watchmaking: thin indices, enormous white space inside a small circle.</i></li>
+      <li><b>Naoto Fukasawa — Muji wall CD player</b><i>A domestic object that disappears until used.</i></li>
+      <li><b>Leica M — engraved body typography</b><i>Small type on metal. Confidence at 9px.</i></li>
+      <li><b>Teenage Engineering — OP-1 restraint</b><i>Colour used as coding, never as mood.</i></li>
+    </ul>
+
+    <h3 class="sec">How the four dayparts differ</h3>
+    <p class="note"><b>Mechanism: the direction and warmth of the light, and which metal it catches.</b>
+      The surface stays porcelain. Morning, light rakes from the left and the metal is brass.
+      Afternoon it comes from overhead, neutral, and the metal cools to steel. Evening it falls
+      from the right, long and warm, and the metal is champagne. <b>At night the body itself
+      goes to midnight ink</b> and the brass becomes the only lit thing on the screen.</p>
+    <div class="dp" role="group" aria-label="Daypart, board two">
+      <button type="button" data-set="b2" data-dp="morning">Morning</button>
+      <button type="button" data-set="b2" data-dp="afternoon">Afternoon</button>
+      <button type="button" data-set="b2" data-dp="evening" aria-pressed="true">Evening</button>
+      <button type="button" data-set="b2" data-dp="night">Night</button>
+    </div>
+
+    <h3 class="sec">Today — sample composition</h3>
+    <div class="phone">
+      <div class="phone-cap"><span>390 × composition</span><span>Today</span></div>
+      <div class="comp">
+        <p class="lbl">Tonight</p>
+        <div class="dialwrap">
+          <div class="dialcard">
+            <svg viewBox="0 0 100 100" aria-hidden="true">
+              <circle cx="50" cy="50" r="42" fill="none" stroke="var(--edge)" stroke-width=".8"/>
+              <!-- The planned night as a true sector of a 24-hour face:
+                   22:05 is 331.25 deg clockwise from midnight, 06:30 is 97.5,
+                   a sweep of 126.2 deg. Plotted, not eyeballed. -->
+              <path d="M 29.8 13.18 A 42 42 0 0 1 91.64 55.48" fill="none"
+                    stroke="var(--metal)" stroke-width="2.6" stroke-linecap="butt"/>
+              <g stroke="var(--sub2)" stroke-width=".7" opacity=".55">
+                <line x1="50" y1="8" x2="50" y2="13"/>
+                <line x1="92" y1="50" x2="87" y2="50"/>
+                <line x1="50" y1="92" x2="50" y2="87"/>
+                <line x1="8" y1="50" x2="13" y2="50"/>
+              </g>
+              <!-- Fajr, 04:45, the one marked instant -->
+              <circle cx="89.77" cy="36.5" r="2.4" fill="var(--porc)" stroke="var(--metal)" stroke-width="1.1"/>
+            </svg>
+            <div class="dialread">
+              <b>9:20</b><span>Wind down</span>
+            </div>
+          </div>
+        </div>
+        <div class="grid">
+          <div class="cell"><b>10:05</b><span>Asleep</span></div>
+          <div class="cell"><b>4:45</b><span>Fajr</span></div>
+          <div class="cell"><b>6:30</b><span>Up</span></div>
+        </div>
+        <button class="act" type="button">Use this</button>
+        <button class="act2" type="button">Something is different tonight</button>
+        <p class="foot">Eight hours of opportunity, in two blocks around Fajr.</p>
+      </div>
+    </div>
+    <p class="note"><b>Orbit's dial, kept and improved:</b> a true 24-hour face. The sector is
+      tonight; the single metal dot is Fajr. Because it is a dial and not a glowing ring, it
+      carries information at a glance without asking to be admired. The sector here is
+      plotted from the real times — 22:05 to 06:30 is 126.2&deg; of the face — not drawn by eye.</p>
+    <div class="risk"><p><b>Risk:</b> Braun-adjacent minimalism is well-trodden, and the
+      line between <b>instrument</b> and <b>generic Swiss app</b> is thin. It needs the brass
+      and the dial to be genuinely well drawn, or it becomes anonymous.</p></div>
+  </section>
+
+  <!-- ══════════════════ BOARD THREE ══════════════════ -->
+  <section class="board b3" data-dp="evening" id="b3">
+    <div class="board-no"><b>03</b><h2>Plaster &amp; Lapis</h2></div>
+    <p class="thesis">
+      <strong>The app is a lit wall.</strong> Lime plaster, a hard-edged shadow, one inlaid
+      medallion. The hour is told by where the light falls and what colour the plaster takes —
+      the way you know the time inside a courtyard without looking at a clock. The celestial
+      reference is architectural: a tiled vault, not a sky photograph.
+    </p>
+
+    <h3 class="sec">Palette — plaster, pigment, leaf</h3>
+    <div class="pal">
+      <div class="sw"><i style="background:#efe7da"></i><span><b>Lime plaster</b><code>#EFE7DA</code>Morning wall</span></div>
+      <div class="sw"><i style="background:#d9bfa0"></i><span><b>Ochre light</b><code>#D9BFA0</code>Evening wash</span></div>
+      <div class="sw"><i style="background:#1a2130"></i><span><b>Night court</b><code>#1A2130</code>Night wall</span></div>
+      <div class="sw"><i style="background:#28446e"></i><span><b>Lapis</b><code>#28446E</code>The one action</span></div>
+      <div class="sw"><i style="background:#9c8043"></i><span><b>Leaf</b><code>#9C8043</code>Inlay, hairline</span></div>
+      <div class="sw"><i style="background:#2b2419"></i><span><b>Bistre</b><code>#2B2419</code>Text</span></div>
+    </div>
+    <p class="note"><b>Discipline:</b> the wash is one directional light across plaster — a
+      physical gradient with a reason, not a decorative one. Lapis is reserved exclusively for
+      the primary action, so the eye learns that blue means <em>do this</em>.</p>
+
+    <h3 class="sec">Typography</h3>
+    <p class="note" style="font-family:'EB Garamond',serif;font-size:31px;line-height:1.2;color:var(--ink)">
+      EB Garamond — eight hours, in two blocks
+    </p>
+    <p class="note" style="margin-top:4px">
+      <b>EB Garamond</b> (Octavio Pardo, after Granjon) for everything that is read: a manuscript
+      face with a scholarly register that sits honestly beside <b>Amiri Naskh</b>, the Arabic the
+      app already ships. That pairing is the real argument for this direction —
+      the two faces share a calligraphic ancestry rather than being bolted together.
+      <b>Inter Tight</b> survives only in small caps for labels.
+    </p>
+
+    <h3 class="sec">References — what is taken from each</h3>
+    <ul class="refs">
+      <li><b>Luis Barragán — Casa Gilardi</b><i>Colour as light, not as paint. A wall that changes all day.</i></li>
+      <li><b>Tadao Ando — Church of the Light</b><i>One hard aperture does all the emotional work.</i></li>
+      <li><b>Masjid-e Jāmeh, Isfahan — tile vaults</b><i>Geometry as devotion; blue reserved, gold sparing.</i></li>
+      <li><b>Timurid manuscript illumination</b><i>Gold leaf as a hairline, never as a fill.</i></li>
+      <li><b>Agnes Martin — graphite grids</b><i>Hand-drawn repetition that stays calm at close range.</i></li>
+    </ul>
+
+    <h3 class="sec">How the four dayparts differ</h3>
+    <p class="note"><b>Mechanism: the angle of the cast light and the temperature of the plaster.</b>
+      Morning the wash comes low from the east and the plaster is cool lime. Afternoon it is
+      almost overhead and the wall bleaches. Evening it rakes from the west and the plaster
+      takes ochre. <b>At night the courtyard is unlit</b> — deep blue-black, the medallion
+      visible only by its leaf inlay.</p>
+    <div class="dp" role="group" aria-label="Daypart, board three">
+      <button type="button" data-set="b3" data-dp="morning">Morning</button>
+      <button type="button" data-set="b3" data-dp="afternoon">Afternoon</button>
+      <button type="button" data-set="b3" data-dp="evening" aria-pressed="true">Evening</button>
+      <button type="button" data-set="b3" data-dp="night">Night</button>
+    </div>
+
+    <h3 class="sec">Today — sample composition</h3>
+    <div class="phone">
+      <div class="phone-cap"><span>390 × composition</span><span>Today</span></div>
+      <div class="comp">
+        <p class="lbl">Tonight</p>
+        <h4>Eight hours, in two blocks around Fajr.</h4>
+        <div class="medallion">
+          <svg viewBox="0 0 100 100" role="img" aria-label="Tonight's night, inlaid: asleep 10:05pm, Fajr 4:45am, up 6:30am">
+            <circle cx="50" cy="50" r="46" fill="none" stroke="var(--cut)" stroke-width=".9"/>
+            <circle cx="50" cy="50" r="38" fill="none" stroke="var(--leaf)" stroke-width=".6" opacity=".9"/>
+            <!-- First block: asleep 22:05 to Fajr 04:45, plotted on the
+                 24-hour circle. Second: back down 05:10 to up 06:30. The gap
+                 between them is the prayer, and it is meant to be visible. -->
+            <path d="M 31.72 16.68 A 38 38 0 0 1 85.98 37.79" fill="none"
+                  stroke="var(--lapis)" stroke-width="3.4" stroke-linecap="butt"/>
+            <path d="M 87.1 41.78 A 38 38 0 0 1 87.67 54.96" fill="none"
+                  stroke="var(--lapis)" stroke-width="3.4" stroke-linecap="butt" opacity=".62"/>
+            <!-- the eight-point inlay, Timurid rather than a star field -->
+            <g stroke="var(--leaf)" stroke-width=".55" opacity=".75">
+              <path d="M50 20 L50 80 M20 50 L80 50 M29 29 L71 71 M71 29 L29 71"/>
+            </g>
+            <circle cx="50" cy="50" r="9" fill="none" stroke="var(--leaf)" stroke-width=".7"/>
+            <circle cx="85.98" cy="37.79" r="2.6" fill="var(--leaf)"/>
+          </svg>
+        </div>
+        <div class="facts">
+          <div class="fact"><span>Wind down</span><b>9:20 PM</b></div>
+          <div class="fact"><span>Asleep by</span><b>10:05 PM</b></div>
+          <div class="fact"><span>Fajr</span><b>4:45 AM</b></div>
+          <div class="fact"><span>Up</span><b>6:30 AM</b></div>
+        </div>
+        <button class="act" type="button">Use this</button>
+        <button class="act2" type="button">Something is different tonight</button>
+        <p class="foot">Built from your waking hour and tonight's Fajr.</p>
+      </div>
+    </div>
+    <p class="note"><b>Orbit's dial, kept:</b> as an inlaid medallion. The two lapis arcs are
+      the two blocks of the night; the leaf dot is Fajr. The eight-point division is structural
+      geometry, which is the honest alternative to scattered stars.</p>
+    <div class="risk"><p><b>Risk:</b> the most distinctive and the most dangerous. Done badly
+      it is pastiche, and the cultural reference has to be earned rather than borrowed.
+      It also leans hardest on a serif at small sizes, which needs testing on a real iPhone.</p></div>
+  </section>
+
+  <!-- ══════════════════ CLOSING ══════════════════ -->
+  <section class="board">
+    <div class="board-no"><b>—</b><h2>Comparison</h2></div>
+    <div class="cmp-wrap"><table class="cmp">
+      <tr><th>&nbsp;</th><th>01 Observatory Paper</th><th>02 Porcelain &amp; Brass</th><th>03 Plaster &amp; Lapis</th></tr>
+      <tr><td>Daypart mechanism</td><td>Stock &amp; ink; inverts at night</td><td>Light direction &amp; metal</td><td>Cast-light angle &amp; plaster temperature</td></tr>
+      <tr><td>Distinctive</td><td>Medium</td><td>Medium–low</td><td>High</td></tr>
+      <tr><td>Warmth at 6am</td><td>Low</td><td>Medium</td><td>High</td></tr>
+      <tr><td>Legibility risk</td><td>Low</td><td>Low</td><td>Medium — serif at small sizes</td></tr>
+      <tr><td>Pastiche risk</td><td>Low</td><td>Low</td><td>High</td></tr>
+      <tr><td>Fits the Jamea cohort</td><td>Neutral</td><td>Neutral</td><td>Directly</td></tr>
+      <tr><td>Build cost</td><td>Low</td><td>Low–medium</td><td>Medium</td></tr>
+    </table></div>
+
+    <h3 class="sec">My recommendation</h3>
+    <p class="thesis">
+      <strong>03 Plaster &amp; Lapis as the direction, with 02's dial discipline inside it.</strong>
+      It is the only one of the three that could not have been generated from a keyword, and the
+      EB&nbsp;Garamond / Amiri pairing is a real argument rather than a mood. Take from 02 the rule
+      that one metal is visible at a time and that the dial is an instrument, not an ornament.
+      01 is the safest and the least memorable; I would keep its tabular-figure discipline
+      wherever times are listed, and let the rest go.
+    </p>
+
+    <h3 class="sec">What I need from you</h3>
+    <ol class="ask">
+      <li>Which board, or which <em>pair</em> to combine — and say plainly if none of them land.</li>
+      <li>Is the Isfahan / Timurid reference in 03 welcome, or too close to the cohort to use lightly?</li>
+      <li>Light-first is assumed throughout. Confirm the app is now a <em>light</em> product that
+        goes dark at night, rather than a dark product.</li>
+      <li>Each direction needs one self-hosted woff2 (~25–40&nbsp;KB subset) because the app's CSP
+        is <code>font-src 'self'</code>. Confirm that is acceptable before I cut one.</li>
+    </ol>
+
+    <p class="sig">Boards only. No application code written, nothing deployed, production untouched.
+      Switch the daypart on any board above to check the four states differ by more than a heading.</p>
+  </section>
+
+</div>
+
+<script>
+/* The only script here: a daypart switch per board, so the four states can
+   be compared. No animation, no persistence, nothing clever. */
+document.addEventListener('click', function (e) {
+  var b = e.target.closest('.dp button');
+  if (!b) return;
+  var board = document.getElementById(b.dataset.set);
+  board.dataset.dp = b.dataset.dp;
+  board.querySelectorAll('.dp button').forEach(function (n) {
+    n.setAttribute('aria-pressed', String(n === b));
+  });
+});
+</script>
+</body>
+</html>
