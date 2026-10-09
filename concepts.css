@@ -20,14 +20,14 @@
 }
 #conceptStage {
   flex: 1 1 auto; display: flex; flex-direction: column;
-  padding: calc(env(safe-area-inset-top, 0px) + 56px) 20px
+  padding: calc(env(safe-area-inset-top, 0px) + 56px + var(--cx-offset, 0px)) 20px
            calc(84px + env(safe-area-inset-bottom, 0px));
 }
 
 /* ---- Review chrome. Clearly not part of any concept. ---------------- */
 .cx-bar {
   position: fixed; z-index: 40; left: 8px; right: 8px;
-  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  top: calc(env(safe-area-inset-top, 0px) + 8px + var(--cx-offset, 0px));
   display: flex; gap: 4px; align-items: center;
   padding: 4px; border-radius: 999px;
   background: rgba(8, 10, 20, .78);
@@ -246,3 +246,7 @@
 @media (prefers-reduced-motion: reduce) {
   .a-hold .a-fill { transition: none; }
 }
+
+/* The on-device preview harness pins its own switcher to the top. Drop the
+   concept's bar below it so the two do not sit on top of each other. */
+:root[data-preview="yes"] { --cx-offset: 46px; }

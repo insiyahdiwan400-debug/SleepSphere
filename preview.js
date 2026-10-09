@@ -185,7 +185,12 @@
       return localStorage.getItem('ss_ui') || 'classic';
     } catch (e) { return 'classic'; }
   }
-  function uiParam() { return '&ui=' + currentUi(); }
+  function uiParam() {
+    var c = null;
+    try { c = localStorage.getItem('ss_concept'); } catch (e) {}
+    if (c && c !== 'off') return '&concept=' + c;
+    return '&ui=' + currentUi();
+  }
 
   function build() {
     if (document.getElementById('previewBar')) return;
@@ -255,20 +260,43 @@
     });
     panel.appendChild(live);
 
-    /* The whole point of this round: compare the two interfaces on the
-       same night, on the same phone, without retyping a URL. */
+    /* The whole point of this round: compare the interfaces on the same
+       night, on the same phone, without retyping a URL. Cycles through
+       Classic, the simplified layer, and the three concepts. */
+    var RING = [
+      { label: 'Classic',   q: 'ui=classic' },
+      { label: 'Simple',    q: 'ui=calm' },
+      { label: 'Orbit',     q: 'concept=a' },
+      { label: 'Companion', q: 'concept=b' },
+      { label: 'Atlas',     q: 'concept=c' }
+    ];
+    function currentIndex() {
+      var c = null;
+      try { c = localStorage.getItem('ss_concept'); } catch (e) {}
+      if (c && c !== 'off') {
+        for (var i = 0; i < RING.length; i++) if (RING[i].q === 'concept=' + c) return i;
+      }
+      return currentUi() === 'calm' ? 1 : 0;
+    }
     var swap = document.createElement('button');
     swap.type = 'button';
-    /* Label the destination, not the current state: a button reading
-       "Classic" while you are already in Classic reads as a dead end. */
-    swap.textContent = currentUi() === 'calm' ? 'Classic' : 'Simple';
-    swap.setAttribute('aria-pressed', 'true');
-    swap.setAttribute('aria-label', 'Switch interface');
+    /* Label the destination, not the current state: a button naming where
+       you already are reads as a dead end. */
+    var next = RING[(currentIndex() + 1) % RING.length];
+    swap.textContent = next.label;
+    swap.setAttribute('aria-label', 'Switch to the ' + next.label + ' interface');
     swap.addEventListener('click', function () {
-      var next = currentUi() === 'calm' ? 'classic' : 'calm';
-      try { localStorage.setItem('ss_ui', next); } catch (e) {}
+      try {
+        if (next.q.indexOf('concept=') === 0) {
+          localStorage.setItem('ss_concept', next.q.split('=')[1]);
+          localStorage.setItem('ss_ui', 'classic');
+        } else {
+          localStorage.setItem('ss_concept', 'off');
+          localStorage.setItem('ss_ui', next.q.split('=')[1]);
+        }
+      } catch (e) {}
       var d = readChoice();
-      window.location.search = '?ui=' + next + (d ? '&daypart=' + d : '');
+      window.location.search = '?' + next.q + (d ? '&daypart=' + d : '');
     });
     panel.appendChild(swap);
 
@@ -295,6 +323,9 @@
     bar.appendChild(panel);
     bar.appendChild(dot);
     document.body.appendChild(bar);
+    /* Tell any interface that pins something to the top that this bar is
+       there, so it can move out of the way. */
+    document.documentElement.dataset.preview = 'yes';
   }
 
   if (document.readyState === 'loading') {
