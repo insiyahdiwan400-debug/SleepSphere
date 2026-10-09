@@ -2482,6 +2482,9 @@
       .guide-step span { font-size:10px; }
     }
   </style>
+  <!-- Simplified interface, prototype. Inert unless ?ui=calm or
+       settings.ui === "calm"; Classic remains the default. -->
+  <link rel="stylesheet" href="calm.css" />
 </head>
 <body>
   <canvas id="starfield" aria-hidden="true"></canvas>
@@ -6510,13 +6513,22 @@
          a morning already recorded. */
       if (tonight.brainDay) setBrainDay(tonight.brainDay);
 
+      commitPlan(plan);
+      closeBuildNight();
+      renderAll();
+      toast('Tonight’s plan is ready');
+    }
+
+    /* The one place a built night becomes tonight's plan. Lifted out of the
+       Build My Night handler unchanged so a second interface can save a
+       night the same way rather than assembling the record itself — the
+       stamped fields are what the research export reads. */
+    function commitPlan(plan) {
       state.plan = { ...plan,
         savedDate: studyToday(), savedAt: new Date().toISOString(),
         source: 'build-my-night' };
       saveState();
-      closeBuildNight();
-      renderAll();
-      toast('Tonight’s plan is ready');
+      return state.plan;
     }
 
     $('#nightClose')?.addEventListener('click', closeBuildNight);
@@ -9067,6 +9079,78 @@
       window.__trustedMornings = () => trustedMornings().map(item => item.date);
       window.__nightIsEarly = (iso, override) =>
         nightIsEarly(iso ? new Date(iso) : new Date(), override || state);
+
+      /* ==============================================================
+         SS.engine — the boundary between what the app KNOWS and what it
+         SHOWS. See UX.md section 6.
+
+         Nothing here is new arithmetic. Every entry either hands out a
+         function that already exists, or performs the exact sequence the
+         classic interface already performs. A second interface may call
+         these; it may not recompute any of them, and it may not write a
+         record by any other route. That is what keeps recording
+         integrity, the Fajr engine and the research export unaffected by
+         anything the interface does.
+         ============================================================== */
+      window.SS = {
+        version: APP_VERSION,
+        schema: SCHEMA_VERSION,
+        get state() { return state; },
+        save: saveState,
+        render: renderAll,
+        engine: {
+          /* What the app knows before it asks anything. `missing` and
+             `asksTonight` are how the interface decides whether it may
+             generate a night silently or must ask one question. */
+          knowledge: (now) => nightKnowledge(state, now || new Date()),
+          phase:     (now) => resolvePhase(now || new Date(), state),
+          /* Returns null when the inputs do not support a night. The
+             caller must ask; it must never invent. */
+          buildNight,
+          fitNight,
+          tonightsPlan,
+          planFinalWake,
+          nightEvents,
+          commitPlan,
+
+          /* Records. Read through the integrity helpers, never raw. */
+          mornings:          () => realMornings(),
+          trustedMornings,
+          sleepMinutesOf,
+          withSleepDuration,
+          recordFlags,
+          recordVerification,
+          recordTrusted,
+          brainDayFor,
+          setBrainDay,
+
+          /* The one write path for a morning record. It drives the very
+             same form and the very same #saveMorning handler the classic
+             flow drives, so supersession, provenance and value_basis all
+             behave identically — see finishMorning. */
+          recordMorning(answers, options) {
+            const opts = options || {};
+            /* flowPicks is the flow's own scratch object and is const, so
+               it is cleared and refilled rather than replaced. */
+            Object.keys(flowPicks).forEach(k => { delete flowPicks[k]; });
+            Object.assign(flowPicks, {
+              times: answers.times || {},
+              awake: answers.awake,
+              nap: answers.nap,
+              rest: answers.rest, energy: answers.energy,
+              focus: answers.focus, calm: answers.calm,
+              fajrStatus: answers.fajrStatus,
+              factors: answers.factors || [],
+              morningNote: answers.morningNote || ''
+            });
+            if (opts.quick) finishWake(); else finishMorning();
+            return realMornings().at(-1) || null;
+          },
+
+          /* Formatting, so the interface never parses a clock itself. */
+          formatTime, formatDuration, toMinutes, clockValue, studyToday
+        }
+      };
       /* Motherhood. The boundary is testable from outside without any
          sensitive field existing yet — which is the whole point of
          building it first. See MOTHERHOOD.md. */
@@ -10923,5 +11007,6 @@
     }
   })();
   </script>
+  <script src="calm.js"></script>
 </body>
 </html>
