@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>SleepSphere 2.0 Preview</title>
+<!-- Without this the browser falls back to /favicon.ico and logs a 404
+     against a preview whose console ought to be clean. -->
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<!--
+  Shell only. The artifact host wraps a published page in its own document
+  skeleton, which forces color-scheme:light, a white background and
+  safe-area padding onto :root — all of which would change the thing being
+  reviewed. The app is therefore published beside this file as app.html,
+  which the host serves raw, and this shell neutralises the injected
+  styles and gives it the whole viewport.
+-->
+<style>
+  :root {
+    color-scheme: dark !important;
+    padding: 0 !important;
+    background: #05060f !important;
+  }
+  html, body {
+    margin: 0 !important; padding: 0 !important;
+    height: 100%; width: 100%;
+    background: #05060f !important;
+    overflow: hidden;
+  }
+  #app {
+    display: block; border: 0;
+    width: 100vw; height: 100vh; height: 100dvh;
+  }
+</style>
+</head>
+<body>
+  <iframe
+    id="app"
+    src="app.html"
+    title="SleepSphere 2.0 preview"
+    allow="geolocation *; fullscreen *"
+    referrerpolicy="no-referrer"></iframe>
+</body>
+</html>

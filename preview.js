@@ -59,6 +59,22 @@
   /* ------------------------------------------------------------------
      1. The clock.
      ------------------------------------------------------------------ */
+  /* Framed previews (the artifact host) cannot register a service worker,
+     which leaves a 404 and a console error on every load. Stub it there,
+     and there only — a preview served at the top level is a real PWA and
+     has to keep its real service worker so Add to Home Screen behaves the
+     way it will in production. */
+  var framed = (function () {
+    try { return window.top !== window.self; } catch (e) { return true; }
+  })();
+  if (framed && window.navigator && window.navigator.serviceWorker) {
+    try {
+      window.navigator.serviceWorker.register = function () {
+        return Promise.resolve({ scope: location.href, update: function () {} });
+      };
+    } catch (e) { /* locked down: the 404 is cosmetic either way */ }
+  }
+
   var RealDate = window.Date;
   var offset = 0;
 
