@@ -1,4 +1,4 @@
-const CACHE = 'sleepsphere-v8-build-my-night-20261006';
+const CACHE = 'sleepsphere-preview-20261009';
 /* The Arabic face is shell, not an extra. The dua is read at bedtime, which
    is exactly when a phone is likeliest to be in a basement, on aeroplane
    mode, or out of data — so it is fetched on install with everything else
@@ -15,6 +15,9 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET' || new URL(event.request.url).origin !== self.location.origin) return;
+  /* Preview build: the harness must never be served from cache, or a
+     round of review edits lands on a phone still running the last one. */
+  if (new URL(event.request.url).pathname.endsWith('/preview.js')) return;
   if (event.request.mode === 'navigate') {
     event.respondWith(fetch(event.request, { cache: 'no-store' }).then(response => {
       if (response.ok) caches.open(CACHE).then(cache => cache.put('./', response.clone()));

@@ -3761,6 +3761,11 @@
     <div><div class="offline-orbit"></div><div class="eyebrow">The app can stop now</div><h2 id="offlineTitle">Continue the ritual offline.</h2><p id="offlineText">Place the phone away from the pillow. SleepSphere will still be here in the morning.</p><button class="btn ghost" id="closeOffline" style="margin-top:18px">Return to the app</button></div>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite">Saved</div>
+  <!-- Preview build only. Shifts the clock so each daypart can be
+       reviewed on a real phone without resetting the phone, and seeds a
+       night plan so the evening has something to draw. Not part of the
+       app; see preview.js. Absent from every other branch. -->
+  <script src="preview.js"></script>
   <script>
   (() => {
     'use strict';
