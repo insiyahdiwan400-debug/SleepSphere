@@ -100,6 +100,40 @@
   yours and it leaves the app's control — where it goes next is up to you. Take the same care
   with it that you would with any personal health note.</p>
 
+  <h2>SleepSphere Motherhood</h2>
+  <p>Motherhood is an optional part of SleepSphere for recording rest, energy and wellbeing
+  through pregnancy and the months after birth. <strong>It is off until you turn it on</strong>,
+  and it collects nothing before you do.</p>
+  <ul>
+    <li><strong>Separate from everything else.</strong> Motherhood records are kept under their
+    own storage key, never inside the app state that the study exports and the backup file are
+    built from.</li>
+    <li><strong>Encrypted on your device.</strong> When you turn the module on you choose a
+    passcode. The records are encrypted with AES-GCM under a key derived from that passcode
+    (PBKDF2-SHA256). What is saved on the device is ciphertext — not the dates, not the stage,
+    not a single field name. The passcode itself is never stored, so <em>if you forget it the
+    records cannot be recovered.</em></li>
+    <li><strong>Never in a research export.</strong> The study CSV is still 50 columns and
+    carries nothing from this module — not the records, not a summary, and not a flag saying
+    you use it. A researcher receiving your study files cannot tell whether this module is
+    enabled on your phone.</li>
+    <li><strong>Never transmitted.</strong> The module contains no network code. The only way
+    any of it leaves the device is the export button inside the module, which you press, which
+    saves a file to your downloads.</li>
+    <li><strong>Erased when you erase.</strong> "Erase everything" clears this store too.</li>
+    <li><strong>Yours to inspect.</strong> You can view, correct, export and delete every entry,
+    and delete the whole module and its passcode, from inside it.</li>
+  </ul>
+  <p>What the encryption does not protect against, stated plainly: while the module is open on
+  screen the records are decrypted in memory, because that is the only way to show them to you.
+  Someone holding your unlocked phone at that moment can read what is on screen. Lock the module
+  or close it when you step away.</p>
+  <p>Motherhood does not diagnose anything and makes no medical promises. It keeps what you
+  write down. It contains general information of the kind a midwife or a public-health leaflet
+  gives, and a reference list of symptoms worth contacting someone about — that list is not
+  generated from your entries, and the app does not monitor what you record and form an opinion
+  about your health.</p>
+
   <h2>Children</h2>
   <p>SleepSphere is not directed at children under 13 and collects no data from anyone.</p>
 
