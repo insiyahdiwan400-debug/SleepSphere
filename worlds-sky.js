@@ -2,7 +2,7 @@
  * SleepSphere — the sky engine.
  *
  * A real atmosphere, drawn to canvas: a graded sky, a sun that sets through
- * it, parallax cloud banks lit from the side, stars that emerge as the light
+ * it, a cloud FIELD receding to a horizon, stars that emerge as the light
  * goes, and a film grain that kills the banding which makes gradients look
  * cheap.
  *
@@ -17,9 +17,26 @@
  * a sunrise and a daypart change are all the same operation at different
  * speeds. Nothing here knows about sleep.
  *
+ * What a sky actually looks like, from the photographs this was built
+ * against, and what each observation costs here:
+ *
+ *   · It is a FIELD, not a few objects. Dozens of clouds shrinking and
+ *     crowding towards a horizon. A handful of lumps floating at three
+ *     fixed heights reads as a cartoon however well each lump is drawn.
+ *   · Cloud edges are fractal. Lobes carry lobes carry lobes. One octave
+ *     is a cartoon; three is a cloud.
+ *   · A sky is not one kind of cloud. Towering cumulus, torn stratus
+ *     sheets and high cirrus wisps all share it, and the mix is most of
+ *     what makes one sky differ from another.
+ *   · The tonal range inside a single cloud is enormous — near-white
+ *     crowns over near-black bases — and far more of it comes from the
+ *     sun's direction than from the cloud's own colour.
+ *
  * Performance rules, because this runs on a phone at bedtime:
- *   · each cloud's silhouette is unioned once at build time, and its shaded
- *     sprite is re-lit only when the sky's cloud colours actually change
+ *   · clouds are a small LIBRARY of sprites instanced many times, so the
+ *     number of shading operations is fixed however many clouds are drawn
+ *   · each sprite's silhouette is unioned once at build time, and its
+ *     shaded copy is re-lit only when the sky's cloud colours change
  *   · the backdrop is only re-gradiented when `t` actually moves
  *   · the loop stops itself when nothing is changing and nothing drifts
  *   · prefers-reduced-motion removes drift and twinkle entirely
@@ -27,34 +44,40 @@
 (function () {
   'use strict';
 
-  /* Observed skies rather than invented ones: each is four stops from
+  /* Observed skies rather than invented ones: each is five stops from
      zenith to horizon, plus where the light is coming from. */
   var SKIES = [
     { /* 0 · evening */
       stops: [[0, 22, 50, 92], [0.30, 72, 108, 148], [0.58, 186, 136, 110], [0.82, 226, 160, 104], [1, 244, 198, 138]],
       sun: { x: 0.70, y: 0.615, r: 0.34, core: [255, 236, 198], halo: [255, 172, 92] },
-      cloudLit: [255, 206, 160], cloudBody: [96, 108, 132], cloudBase: [58, 70, 96],
-      star: 0, haze: 0.5
+      cloudLit: [255, 214, 170], cloudBody: [104, 110, 132], cloudBase: [52, 62, 88],
+      star: 0, haze: 0.5, rim: 0.35
     },
     { /* 1 · twilight */
       stops: [[0, 12, 24, 46], [0.32, 40, 60, 92], [0.60, 108, 80, 100], [0.84, 168, 110, 104], [1, 198, 140, 114]],
       sun: { x: 0.74, y: 0.78, r: 0.30, core: [255, 212, 168], halo: [216, 120, 88] },
-      cloudLit: [206, 142, 128], cloudBody: [62, 70, 92], cloudBase: [34, 42, 62],
-      star: 0.38, haze: 0.42
+      cloudLit: [226, 152, 130], cloudBody: [58, 64, 88], cloudBase: [26, 32, 52],
+      star: 0.38, haze: 0.42, rim: 1
     },
-    { /* 2 · night */
-      stops: [[0, 4, 7, 15], [0.38, 6, 11, 23], [0.68, 11, 19, 35], [0.88, 16, 26, 46], [1, 24, 36, 60]],
+    { /* 2 · night — nearly black, as a real one is */
+      stops: [[0, 2, 4, 9], [0.38, 3, 6, 14], [0.68, 6, 11, 23], [0.88, 10, 17, 32], [1, 15, 24, 42]],
       sun: null,
-      cloudLit: [48, 60, 86], cloudBody: [22, 30, 48], cloudBase: [11, 16, 28],
-      star: 1, haze: 0.16, moon: { x: 0.26, y: 0.2, r: 0.075 }
+      cloudLit: [40, 50, 74], cloudBody: [16, 22, 37], cloudBase: [7, 10, 19],
+      star: 1, haze: 0.14, rim: 0.12, moon: { x: 0.26, y: 0.2, r: 0.075 }
     },
     { /* 3 · morning */
       stops: [[0, 20, 50, 100], [0.30, 80, 122, 172], [0.58, 196, 160, 150], [0.82, 238, 190, 142], [1, 248, 216, 170]],
       sun: { x: 0.28, y: 0.665, r: 0.36, core: [255, 246, 220], halo: [255, 196, 124] },
-      cloudLit: [255, 224, 186], cloudBody: [112, 128, 156], cloudBase: [70, 84, 112],
-      star: 0, haze: 0.56
+      cloudLit: [255, 232, 198], cloudBody: [118, 130, 158], cloudBase: [62, 74, 104],
+      star: 0, haze: 0.56, rim: 0.40
     }
   ];
+
+  /* Where the cloud field vanishes, and how high it reaches. The band above
+     TOP stays open sky: it is where a world puts its words, and a headline
+     set over towering cumulus cannot be read. */
+  var HORIZON = 0.885;
+  var TOP = 0.285;
 
   function lerp(a, b, u) { return a + (b - a) * u; }
   function mixRGB(a, b, u) {
@@ -106,7 +129,8 @@
       /* Stars emerge late and fast rather than fading up through
          a bright sky, which looked like dust at golden hour. */
       star: Math.pow(lerp(a.star, b.star, u), 2.4),
-      haze: lerp(a.haze, b.haze, u)
+      haze: lerp(a.haze, b.haze, u),
+      rim: lerp(a.rim, b.rim, u)
     };
   }
 
@@ -138,6 +162,218 @@
     };
   }
 
+  function stamp(g, s, x, y, rx, ry) {
+    g.drawImage(s, x - rx, y - ry, rx * 2, ry * 2);
+  }
+
+  /* The edge light, baked once from the silhouette: the mass minus a copy of
+     itself shifted down, which leaves a band along everything facing up.
+     Half the drama in a real sky is this burning crown, and it is the one
+     thing a body gradient can never produce — but it is pure geometry, so
+     it has no business being recomputed when only the colours moved.
+     It traces the fractal outline, which is what separates it from the
+     per-lobe crescent this engine used to draw: that one followed a circle
+     nothing could see, and turned every cloud into a pastry. */
+  function rimOf(mask) {
+    var mw = mask.width, mh = mask.height;
+    var c = document.createElement('canvas');
+    c.width = mw; c.height = mh;
+    var g = c.getContext('2d');
+    g.drawImage(mask, 0, 0);
+    g.globalCompositeOperation = 'destination-out';
+    g.drawImage(mask, 0, Math.max(2, mh * 0.055));
+    g.globalCompositeOperation = 'source-in';
+    g.fillStyle = '#fff';                 /* a backlit crown is white-hot */
+    g.fillRect(0, 0, mw, mh);
+    return c;
+  }
+
+  /* ---------------------------------------------------------------
+     Cloud sprites. Three families, because a sky is never one shape
+     repeated. Each returns a single merged alpha mass plus the lobes
+     worth lighting individually.
+     --------------------------------------------------------------- */
+
+  /* Cumulus: lobes on a baseline, a billow riding an off-centre tower,
+     then TWO further octaves of smaller lobes around every crown. One
+     octave is a cartoon cloud; three is cauliflower, which is what the
+     eye actually reads as cloud. */
+  function cumulusMask(rand, puff, iw, ih) {
+    /* Geometry lives in an INNER box with a margin all round. Without it the
+       outermost lobes run off the canvas and come back as dead straight
+       edges — a cloud with a ruled side, which is worse than any shading
+       fault because nothing in a sky has a straight edge. */
+    var padX = Math.round(ih * 0.34), padY = Math.round(ih * 0.38);
+    var mw = iw + padX * 2, mh = ih + padY * 2;
+    var c = document.createElement('canvas');
+    c.width = mw; c.height = mh;
+    var g = c.getContext('2d');
+    var base = padY + ih * 0.88;
+    var span = iw;
+    var n = Math.max(4, Math.min(11, Math.round(span / (ih * 0.34))));
+    var step = span / n;
+    var rMax = ih * 0.34;
+    var rMin = Math.min(rMax, Math.max(ih * 0.17, step * 0.60));
+    var peak = 0.28 + rand() * 0.44;
+    var reach = Math.max(peak, 1 - peak);
+    var lobes = [], i, k;
+
+    for (i = 0; i < n; i++) {
+      var u = (i + 0.5) / n;
+      var swell = Math.pow(Math.max(0, 1 - Math.abs(u - peak) / reach), 0.62);
+      var r = Math.max(rMin, Math.min(rMax,
+              ih * (0.19 + 0.16 * swell) * (0.90 + rand() * 0.20)));
+      lobes.push({ x: padX + (i + 0.5) * step + (rand() - 0.5) * step * 0.34,
+                   y: base - r * (0.58 + rand() * 0.16), r: r, top: false });
+    }
+    var m = 2 + Math.round(rand() * 2);
+    for (k = 0; k < m; k++) {
+      var r2 = ih * (0.10 + rand() * 0.07);
+      lobes.push({ x: padX + iw * peak + (k + rand() * 0.8 - m / 2) * step * 0.85,
+                   y: base - ih * (0.26 + rand() * 0.14) - r2 * 0.40,
+                   r: r2, top: true });
+    }
+
+    /* A tall sprite is a TOWER, and a tower is built upwards: lobes stacked
+       over the peak, narrowing as they climb. Without this a tall canvas
+       just gives a wider slab, and every cloud in the sky has the same
+       proportions however many sprites there are. */
+    if (ih > iw * 0.70) {
+      var ty = base - ih * 0.34, tr = ih * 0.26, tx = padX + iw * peak;
+      for (k = 0; k < 5 && ty - tr > padY * 0.5; k++) {
+        lobes.push({ x: tx + (rand() - 0.5) * tr * 0.55, y: ty, r: tr, top: k > 1 });
+        ty -= tr * (0.82 + rand() * 0.22);
+        tr *= 0.80 + rand() * 0.10;
+      }
+    }
+
+    /* two octaves of detail, on the UPPER arc of each lobe only — the
+       underside of a cumulus is smooth, the crown is not */
+    var all = lobes.slice();
+    for (i = 0; i < lobes.length; i++) {
+      var p = lobes[i];
+      var kids = 3 + Math.round(rand() * 3);
+      for (k = 0; k < kids; k++) {
+        var a1 = -Math.PI * (0.06 + rand() * 0.88);
+        var rr = p.r * (0.28 + rand() * 0.20);
+        var px = p.x + Math.cos(a1) * p.r * (0.70 + rand() * 0.22);
+        var py = p.y + Math.sin(a1) * p.r * (0.70 + rand() * 0.22);
+        all.push({ x: px, y: py, r: rr });
+        if (rand() < 0.62) {
+          var a2 = -Math.PI * (0.04 + rand() * 0.92);
+          all.push({ x: px + Math.cos(a2) * rr * 0.78,
+                     y: py + Math.sin(a2) * rr * 0.78,
+                     r: rr * (0.38 + rand() * 0.22) });
+        }
+      }
+    }
+    for (i = 0; i < all.length; i++) stamp(g, puff, all[i].x, all[i].y, all[i].r, all[i].r);
+
+    g.globalCompositeOperation = 'destination-out';
+    /* cut the base flat — the single most cumulus-making move there is */
+    var top = base - ih * 0.06;
+    var er = g.createLinearGradient(0, top, 0, base + ih * 0.10);
+    er.addColorStop(0, 'rgba(0,0,0,0)');
+    er.addColorStop(0.5, 'rgba(0,0,0,0.72)');
+    er.addColorStop(1, 'rgba(0,0,0,1)');
+    g.fillStyle = er;
+    g.fillRect(0, top, mw, mh - top);
+    /* then bite into it, so the base is ragged rather than ruled */
+    for (i = 0; i < 3; i++) {
+      var br = ih * (0.08 + rand() * 0.10);
+      stamp(g, puff, padX + iw * (0.1 + rand() * 0.8), base + br * 0.35, br * 1.5, br);
+    }
+    g.globalCompositeOperation = 'source-over';
+
+    /* Only the lobes with real volume are worth lighting individually, and
+       shading all of them is the engine's hot loop. Keep the biggest few. */
+    lobes.sort(function (a, b) { return b.r - a.r; });
+    return { canvas: c, lobes: lobes.slice(0, 7), base: base, kind: 'cumulus' };
+  }
+
+  /* Stratus sheet: a long torn layer. Flattened lobes along a drifting
+     line, then horizontal streaks erased straight through it — the tearing
+     is the whole character, and it is what the eye reads as "weather"
+     rather than "a cloud". */
+  function sheetMask(rand, puff, iw, ih) {
+    var padX = Math.round(ih * 0.5), padY = Math.round(ih * 0.6);
+    var mw = iw + padX * 2, mh = ih + padY * 2;
+    var c = document.createElement('canvas');
+    c.width = mw; c.height = mh;
+    var g = c.getContext('2d');
+    var mid = padY + ih * 0.50;
+    /* the layer rides a slow bow rather than a ruled line */
+    var bow = (rand() - 0.5) * ih * 0.9;
+    var n = Math.round(14 + rand() * 10);
+    var lobes = [], i;
+    for (i = 0; i < n; i++) {
+      var u = (i + 0.5) / n;
+      var taper = Math.pow(Math.sin(u * Math.PI), 0.32);
+      var rx = ih * (0.40 + rand() * 0.46);
+      var ry = ih * (0.14 + rand() * 0.20) * taper;
+      var x = padX + u * iw;
+      var y = mid + Math.sin(u * Math.PI) * bow + (rand() - 0.5) * ih * 0.46;
+      stamp(g, puff, x, y, rx, ry);
+      if (ry > ih * 0.18) lobes.push({ x: x, y: y, r: ry, top: y < mid });
+    }
+    g.globalCompositeOperation = 'destination-out';
+    /* tear it: the rips are the character of a stratus layer, and they are
+       what stops a sheet reading as one long sausage */
+    for (i = 0; i < 9; i++) {
+      var tw = ih * (0.6 + rand() * 1.8);
+      var th = ih * (0.05 + rand() * 0.09);
+      stamp(g, puff, padX + rand() * iw, mid + (rand() - 0.5) * ih * 0.8, tw, th);
+    }
+    /* feather the ends so a sheet drifts out of frame instead of stopping */
+    var fade = g.createLinearGradient(0, 0, mw, 0);
+    fade.addColorStop(0, 'rgba(0,0,0,1)');
+    fade.addColorStop(0.17, 'rgba(0,0,0,0)');
+    fade.addColorStop(0.83, 'rgba(0,0,0,0)');
+    fade.addColorStop(1, 'rgba(0,0,0,1)');
+    g.fillStyle = fade;
+    g.fillRect(0, 0, mw, mh);
+    g.globalCompositeOperation = 'source-over';
+
+    lobes.sort(function (a, b) { return b.r - a.r; });
+    return { canvas: c, lobes: lobes.slice(0, 6), base: mid, kind: 'sheet' };
+  }
+
+  /* Cirrus wisp: a few long feathered strokes on a shallow rake. These
+     carry almost no tone — they are structure in the upper sky, and
+     without them the top of the frame is a flat wash. */
+  function wispMask(rand, puff, mw, mh) {
+    var c = document.createElement('canvas');
+    c.width = mw; c.height = mh;
+    var g = c.getContext('2d');
+    /* Cirrus is blown ice: every stroke CURVES, thickens where it was torn
+       from and frays to nothing at the trailing end. Straight strokes at an
+       even pitch are contrails, not cirrus — and a sky full of contrails
+       was exactly the first attempt's mistake. */
+    var n = 2 + Math.round(rand() * 2);
+    for (var i = 0; i < n; i++) {
+      var y0 = mh * (0.16 + rand() * 0.66);
+      var len = mw * (0.42 + rand() * 0.46);
+      var x0 = rand() * (mw - len);
+      var bow = (rand() - 0.5) * mh * 0.42;
+      var hook = (rand() - 0.5) * mh * 0.5;
+      var seg = 26;
+      for (var k = 0; k < seg; k++) {
+        var u = (k + 0.5) / seg;
+        /* fat where it starts, frayed where it trails */
+        var body = Math.pow(1 - u, 0.8) * Math.pow(Math.min(1, u * 7), 0.9);
+        var y = y0 + Math.sin(u * Math.PI) * bow + Math.pow(u, 2.4) * hook;
+        g.globalAlpha = (0.10 + rand() * 0.14) * body;
+        stamp(g, puff,
+              x0 + u * len + (rand() - 0.5) * mh * 0.05,
+              y + (rand() - 0.5) * mh * 0.05,
+              mh * (0.09 + rand() * 0.11),
+              mh * (0.012 + rand() * 0.026) * body);
+      }
+    }
+    g.globalAlpha = 1;
+    return { canvas: c, lobes: [], base: mh * 0.5, kind: 'wisp' };
+  }
+
   function SkyScene(canvas, opts) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d', { alpha: false });
@@ -156,124 +392,107 @@
     window.addEventListener('resize', this._onResize);
   }
 
-  /* One cloud's SILHOUETTE, built once as a single merged alpha mass.
-     A row of lobes standing on a common baseline, a second tier billowing
-     over the middle, then the base cut flat — which is what a cumulus
-     actually is. Everything unions in one `source-over` pass, so the result
-     is one shape with one outline, not a string of circles. */
-  function buildCloudMask(rand, stamp, mw, mh, flat) {
-    var c = document.createElement('canvas');
-    c.width = mw; c.height = mh;
-    var g = c.getContext('2d');
-    var base = mh * (flat ? 0.88 : 0.84);
-    var lobes = [];
-    var span = mw * 0.86;
-    /* Lobe COUNT follows from the cloud's proportions, so that the gap
-       between neighbours is always smaller than a lobe: space them further
-       apart than that and they stop unioning, and a cloud becomes a string
-       of beads with a dark ball on each end. */
-    var n = Math.max(4, Math.min(12, Math.round(span / (mh * 0.30))));
-    var step = span / n;
-    var rMax = mh * 0.44;
-    var rMin = Math.min(rMax, Math.max(mh * 0.20, step * 0.62));
-
-    /* A cumulus is not symmetrical: it has one dominant tower somewhere
-       off-centre and falls away unevenly on each side. Everything is
-       measured against the mask's HEIGHT, and the tallest lobe is sized so
-       its crown lands just inside the top edge — a lobe that overflows the
-       canvas gets clipped, and a clipped crown is a flat top. */
-    var peak = 0.30 + rand() * 0.40;
-    var reach = Math.max(peak, 1 - peak);
-    for (var i = 0; i < n; i++) {
-      var u = (i + 0.5) / n;
-      var swell = Math.pow(Math.max(0, 1 - Math.abs(u - peak) / reach), 0.68);
-      var r = Math.max(rMin, Math.min(rMax,
-              mh * (0.22 + 0.19 * swell) * (0.90 + rand() * 0.20)));
-      var lift = 0.58 + rand() * 0.16;
-      lobes.push({
-        x: mw * 0.07 + (i + 0.5) * step + (rand() - 0.5) * step * 0.3,
-        y: base - r * lift,
-        r: r, top: false
-      });
-    }
-    /* the billow riding the tower — what breaks the top line into cauliflower
-       rather than an arc */
-    var m = 2 + Math.round(rand() * 2);
-    for (var k = 0; k < m; k++) {
-      var r2 = mh * (0.13 + rand() * 0.10);
-      var rise = mh * (0.30 + rand() * 0.18);
-      lobes.push({
-        x: mw * peak + (k + rand() * 0.8 - m / 2) * step * 0.9,
-        y: base - rise - r2 * 0.45,
-        r: r2, top: true
-      });
-    }
-
-    for (var j = 0; j < lobes.length; j++) {
-      var p = lobes[j];
-      g.drawImage(stamp, p.x - p.r, p.y - p.r, p.r * 2, p.r * 2);
-    }
-
-    /* cut the base flat — the single most cumulus-making move there is */
-    var top = base - mh * 0.07;
-    var er = g.createLinearGradient(0, top, 0, base + mh * 0.11);
-    er.addColorStop(0, 'rgba(0,0,0,0)');
-    er.addColorStop(0.5, 'rgba(0,0,0,0.70)');
-    er.addColorStop(1, 'rgba(0,0,0,1)');
-    g.globalCompositeOperation = 'destination-out';
-    g.fillStyle = er;
-    g.fillRect(0, top, mw, mh - top);
-    g.globalCompositeOperation = 'source-over';
-
-    return { canvas: c, lobes: lobes, base: base };
-  }
-
-  /* Three parallax banks. The far one barely moves; the near one drifts
-     enough to feel alive without ever asking to be watched. */
   SkyScene.prototype.build = function () {
     var rand = mulberry(20260910);
-    var stamp = this.puff;
-    this.layers = [];
-    /* Banks of discrete clouds, each its own merged mass. Sized as a
-       fraction of the screen width, never a multiple of it. */
-    var spec = [
-      { y: 0.452, n: 5, w: [0.18, 0.30], asp: [0.34, 0.44], speed: 0.0016, alpha: 0.38, flat: false },
-      { y: 0.576, n: 4, w: [0.28, 0.44], asp: [0.40, 0.54], speed: 0.0035, alpha: 0.56, flat: true },
-      { y: 0.712, n: 3, w: [0.42, 0.62], asp: [0.46, 0.62], speed: 0.0068, alpha: 0.74, flat: true }
-    ];
-    spec.forEach(function (s) {
-      var clouds = [];
-      for (var c = 0; c < s.n; c++) {
-        var cw = s.w[0] + rand() * (s.w[1] - s.w[0]);
-        var asp = s.asp[0] + rand() * (s.asp[1] - s.asp[0]);
-        /* Mask resolution follows the cloud's share of the screen, so the
-           near deck — the one actually read — is not a scaled-up thumbnail. */
-        var mw = Math.max(200, Math.min(520, Math.round(cw * 1040)));
-        var mh = Math.round(mw * asp);
-        var built = buildCloudMask(rand, stamp, mw, mh, s.flat);
-        clouds.push({
-          x: (c + rand() * 0.72) / s.n * 1.6 - 0.3,
-          y: s.y + (rand() - 0.5) * 0.030,
-          w: cw,
-          mask: built.canvas,
-          lobes: built.lobes,
-          base: built.base,
-          shaded: null,
-          key: ''
-        });
-      }
-      this.layers.push({ clouds: clouds, speed: s.speed, alpha: s.alpha, off: rand() * 0.4 });
-    }, this);
+    var puff = this.puff;
 
+    /* A small LIBRARY, instanced many times. Shading cost is then fixed by
+       the library's size, not by how full the sky is — which is what makes
+       a field of sixty clouds affordable on a phone. */
+    /* Sprites are deliberately modest: they are blitted scaled, clouds are
+       soft, and every pixel here is paid for again on every re-light. */
+    this.sprites = [];
+    var i;
+    /* Proportion is the main thing that distinguishes one cloud from
+       another at a glance, so the library spans it deliberately: long low
+       banks, ordinary heaps, and a few towers. */
+    var ASPECT = [0.30, 0.38, 0.46, 0.55, 0.62, 0.78, 0.95, 1.15];
+    for (i = 0; i < ASPECT.length; i++) {
+      var cw = 150 + Math.round(rand() * 70);
+      this.sprites.push(cumulusMask(rand, puff, cw,
+        Math.round(cw * ASPECT[i] * (0.92 + rand() * 0.16))));
+    }
+    for (i = 0; i < 4; i++) {
+      var sw = 230 + Math.round(rand() * 90);
+      this.sprites.push(sheetMask(rand, puff, sw, Math.round(sw * (0.16 + rand() * 0.10))));
+    }
+    for (i = 0; i < 3; i++) {
+      this.sprites.push(wispMask(rand, puff, 340, 125));
+    }
+    this.sprites.forEach(function (sp) {
+      if (sp.kind !== 'wisp') sp.rim = rimOf(sp.canvas);
+    });
+    this.cursor = 0;
+    var cumulus = [], sheets = [], wisps = [];
+    this.sprites.forEach(function (s, k) {
+      (s.kind === 'cumulus' ? cumulus : s.kind === 'sheet' ? sheets : wisps).push(k);
+    });
+
+    /* The field. Depth `k` runs 0 at the horizon to 1 nearest; size, height,
+       opacity and parallax speed all follow from it, which is the whole of
+       the perspective. Far clouds are many, small and crowded into the
+       haze; near ones are few, large and move. */
+    this.field = [];
+    var N = 46;
+    /* Weather clumps. Spreading clouds evenly across the width is the
+       giveaway of a generated sky — real ones have crowded stretches and
+       open ones, and the open stretches are what make the crowded ones
+       read as distance. */
+    var groups = [];
+    for (i = 0; i < 6; i++) groups.push(rand() * 1.7 - 0.35);
+    for (i = 0; i < N; i++) {
+      var k = Math.pow((i + rand() * 0.9) / N, 1.45);
+      var near = k > 0.52;
+      var pool = near ? cumulus : (rand() < 0.5 ? sheets : cumulus);
+      var sp = pool[Math.floor(rand() * pool.length) % pool.length];
+      var gx = groups[Math.floor(rand() * groups.length) % groups.length];
+      this.field.push({
+        s: sp,
+        x: gx + (rand() - 0.5) * 0.62,
+        y: HORIZON - (HORIZON - TOP) * Math.pow(k, 1.45) + (rand() - 0.5) * 0.012,
+        /* Distant cloud is not a small sharp cloud, it is a pale one. Fade
+           it hard with depth, or the far field reads as specks of dirt. */
+        w: 0.085 + 0.78 * Math.pow(k, 1.9),
+        a: 0.10 + 0.86 * Math.pow(k, 0.95),
+        speed: 0.0004 + 0.0085 * k * k,
+        flip: rand() < 0.5
+      });
+    }
+
+    /* Cirrus sits above the field, faint enough to read as structure
+       rather than as something in the way of the words. */
+    this.cirrus = [];
+    for (i = 0; i < 4; i++) {
+      this.cirrus.push({
+        s: wisps[i % wisps.length],
+        x: rand() * 1.7 - 0.35,
+        y: 0.03 + rand() * 0.22,
+        w: 0.70 + rand() * 0.70,
+        a: 0.26 + rand() * 0.22,
+        speed: 0.0010 + rand() * 0.0013,
+        flip: rand() < 0.5
+      });
+    }
+
+    /* Stars on a magnitude law: a very few bright ones carry the sky and
+       the rest are faint. Uniform specks read as dust. */
     this.stars = [];
     var r2 = mulberry(77001);
-    for (var i = 0; i < 150; i++) {
-      this.stars.push({ x: r2(), y: r2() * 0.72, m: 0.25 + r2() * 0.75, p: r2() * 6.28 });
+    for (i = 0; i < 260; i++) {
+      var m = Math.pow(r2(), 2.6);
+      this.stars.push({
+        x: r2(), y: r2() * 0.80,
+        m: 0.12 + m * 0.88,
+        p: r2() * 6.28
+      });
     }
   };
 
   SkyScene.prototype.resize = function () {
-    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    /* 1.5x, not 2x. A sky has no hard edge and no text in it, so the extra
+       78% of pixels buys nothing a person can see and costs a fifth of the
+       frame — the one place in this app where dropping resolution is free. */
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     var r = this.canvas.getBoundingClientRect();
     this.w = Math.max(1, Math.round(r.width));
     this.h = Math.max(1, Math.round(r.height));
@@ -284,7 +503,7 @@
     this.dirty = true;
   };
 
-  /* A still grain plate. Without it, a four-stop gradient on an OLED phone
+  /* A still grain plate. Without it, a five-stop gradient on an OLED phone
      bands into visible stripes, which is most of why gradients read as
      cheap. Drawn once, reused every frame. */
   SkyScene.prototype.grainPlate = function () {
@@ -368,17 +587,33 @@
       for (var i = 0; i < this.stars.length; i++) {
         var st2 = this.stars[i];
         var a = s.star * st2.m * (0.72 + 0.28 * Math.sin(this.phase * 1.1 + st2.p) * tw);
-        if (a <= 0.02) continue;
+        if (a <= 0.015) continue;
+        var x = st2.x * w, y = st2.y * h;
+        if (st2.m > 0.86) {                      /* the few that carry it */
+          var gl = g.createRadialGradient(x, y, 0, x, y, 4.5);
+          gl.addColorStop(0, 'rgba(226,236,255,' + (a * 0.5) + ')');
+          gl.addColorStop(1, 'rgba(226,236,255,0)');
+          g.fillStyle = gl;
+          g.beginPath(); g.arc(x, y, 4.5, 0, 6.2832); g.fill();
+        }
         g.globalAlpha = a;
         g.fillStyle = '#fff';
-        var r = st2.m > 0.82 ? 1.5 : 1;
-        g.fillRect(st2.x * w, st2.y * h, r, r);
+        var r = st2.m > 0.86 ? 1.8 : st2.m > 0.6 ? 1.3 : 1;
+        g.fillRect(x, y, r, r);
       }
       g.globalAlpha = 1;
     }
 
     if (s.moon && s.moon.a > 0.01) this.drawMoon(g, w, h, s);
     if (s.sun && s.sun.y < 1.12) this.drawSun(g, w, h, s);
+
+    var lightX = s.sun ? s.sun.x : (s.moon ? s.moon.x : 0.5);
+    /* One light direction for the whole sky, not one per cloud: a per-cloud
+       side flips as it drifts past the sun, and the flip pops. */
+    var side = lightX >= 0.5 ? 1 : -1;
+    this.relight(s, side);
+
+    this.drawCirrus(g, w, h, s);
 
     /* A band of lighter air sitting on the horizon. Cheap, and it is most
        of what separates a painted sky from a CSS gradient. */
@@ -388,7 +623,22 @@
     g.fillStyle = hz;
     g.fillRect(0, h * 0.44, w, h * 0.56);
 
-    this.drawClouds(g, w, h, s);
+    this.drawClouds(g, w, h, s, side);
+    this.drawHorizon(g, w, h, s);
+  };
+
+  /* One frame's allowance for re-lighting, spent by `shade`, handed out
+     round-robin so the same two sprites do not win it every frame and leave
+     the rest permanently stale. A sprite with no shaded copy at all is
+     drawn urgently and ignores the budget, so the first frame is complete
+     rather than half-empty. */
+  SkyScene.prototype.relight = function (s, side) {
+    this.budget = 2;
+    var n = this.sprites.length;
+    for (var i = 0; i < n && this.budget > 0; i++) {
+      this.shade((this.cursor + i) % n, s, side, false);
+    }
+    this.cursor = (this.cursor + 1) % n;
   };
 
   SkyScene.prototype.drawSun = function (g, w, h, s) {
@@ -427,101 +677,146 @@
     g.globalAlpha = 1;
   };
 
-  /* Cloud banks: one merged mass per cloud, shaded ONCE.
-     The earlier version shaded every lobe separately — a lit crescent above
-     each and a dark crescent below — which made each cloud read as a row of
-     layered, curved segments. A pastry, in other words. Light does not work
-     per-lobe; it falls across the whole form. So the silhouette is unioned
-     first and lit afterwards, with one directional gradient over the body
-     and soft internal touches clipped INSIDE the mass, where they can never
-     become an outside edge. */
-  SkyScene.prototype.drawClouds = function (g, w, h, s) {
-    var lightX = s.sun ? s.sun.x : (s.moon ? s.moon.x : 0.5);
-    /* One light direction for the whole sky, not one per cloud: a per-cloud
-       side flips as it drifts past the sun, and the flip pops. */
-    var side = lightX >= 0.5 ? 1 : -1;
-    var deck = this.deck || 0;
+  /* Where the field vanishes. A luminous seam plus a wash below it: the
+     photographs all have one, and without it the bottom of the frame is
+     simply unused. */
+  SkyScene.prototype.drawHorizon = function (g, w, h, s) {
+    var y = HORIZON * h;
+    var seam = g.createLinearGradient(0, y - h * 0.09, 0, y + h * 0.05);
+    seam.addColorStop(0, rgba(s.cloudLit, 0));
+    seam.addColorStop(0.62, rgba(s.cloudLit, s.haze * 0.26));
+    seam.addColorStop(1, rgba(s.cloudLit, 0));
+    g.fillStyle = seam;
+    g.fillRect(0, y - h * 0.09, w, h * 0.14);
+  };
 
-    for (var L = 0; L < this.layers.length; L++) {
-      var layer = this.layers[L];
-      var drift = this.reduced ? 0 : (this.phase * layer.speed);
-
-      for (var i = 0; i < layer.clouds.length; i++) {
-        var cl = layer.clouds[i];
-        var px = ((cl.x + layer.off + drift) % 1.6 + 1.6) % 1.6 - 0.3;
-        var pw = cl.w * w;
-        var ph = pw * cl.mask.height / cl.mask.width;
-        var X = px * w;
-        var Y = (cl.y + deck) * h - ph * (cl.base / cl.mask.height);
-        if (X + pw < -48 || X > w + 48) continue;
-
-        g.globalAlpha = layer.alpha;
-        g.drawImage(this.shadeCloud(cl, s, side), X, Y, pw, ph);
-      }
+  SkyScene.prototype.drawCirrus = function (g, w, h, s) {
+    for (var i = 0; i < this.cirrus.length; i++) {
+      var c = this.cirrus[i];
+      var drift = this.reduced ? 0 : this.phase * c.speed;
+      var px = ((c.x + drift) % 1.7 + 1.7) % 1.7 - 0.35;
+      var pw = c.w * w;
+      var sp = this.sprites[c.s];
+      var ph = pw * sp.canvas.height / sp.canvas.width;
+      if (px * w + pw < -40 || px * w > w + 40) continue;
+      g.globalAlpha = c.a * (0.25 + 0.75 * (1 - Math.min(1, s.star)));
+      this.blit(g, this.shade(c.s, s, 1, !this.sprites[c.s].shaded),
+                px * w, c.y * h, pw, ph, c.flip);
     }
     g.globalAlpha = 1;
   };
 
-  /* Quantised to steps of four so the easing between skies does not force a
-     re-shade on literally every frame; four parts in 255 is invisible on a
-     low-contrast cloud. */
-  function shadeKey(c) { return (c[0] >> 2) + '.' + (c[1] >> 2) + '.' + (c[2] >> 2); }
-
-  SkyScene.prototype.shadeCloud = function (cloud, s, side) {
-    var key = shadeKey(s.cloudLit) + '|' + shadeKey(s.cloudBody) + '|' +
-              shadeKey(s.cloudBase) + '|' + side;
-    if (cloud.key === key) return cloud.shaded;
-
-    var mw = cloud.mask.width, mh = cloud.mask.height;
-    if (!cloud.shaded) {
-      cloud.shaded = document.createElement('canvas');
-      cloud.shaded.width = mw;
-      cloud.shaded.height = mh;
+  /* The cloud field, back to front. Each instance is one draw of a sprite
+     that was lit once this frame — position, scale, opacity and a flip are
+     all an instance owns. */
+  SkyScene.prototype.drawClouds = function (g, w, h, s, side) {
+    for (var i = 0; i < this.field.length; i++) {
+      var c = this.field[i];
+      var drift = this.reduced ? 0 : this.phase * c.speed;
+      var px = ((c.x + drift) % 1.7 + 1.7) % 1.7 - 0.35;
+      var X = px * w;
+      var pw = c.w * w;
+      var sp = this.sprites[c.s];
+      var ph = pw * sp.canvas.height / sp.canvas.width;
+      if (X + pw < -48 || X > w + 48) continue;
+      var Y = c.y * h - ph * (sp.base / sp.canvas.height);
+      g.globalAlpha = c.a;
+      this.blit(g, this.shade(c.s, s, side, !sp.shaded), X, Y, pw, ph, c.flip);
     }
-    var g = cloud.shaded.getContext('2d');
-    g.globalCompositeOperation = 'source-over';
-    g.clearRect(0, 0, mw, mh);
-    g.drawImage(cloud.mask, 0, 0);
+    g.globalAlpha = 1;
+  };
 
-    /* The form light: one gradient tilted from the lit shoulder down to the
-       shadowed base, filled through the mask so it only ever colours the
-       cloud. Its axis is scaled to the cloud's HEIGHT, not its width — tie
-       the lean to the width and on a wide cloud the horizontal component
-       swamps the vertical, which paints the whole crown in body grey. */
-    var lean = mh * 0.5 * side;
+  SkyScene.prototype.blit = function (g, img, x, y, w, h, flip) {
+    if (!flip) { g.drawImage(img, x, y, w, h); return; }
+    g.save();
+    g.translate(x + w, y);
+    g.scale(-1, 1);
+    g.drawImage(img, 0, 0, w, h);
+    g.restore();
+  };
+
+  /* Quantised to steps of eight so the easing between skies re-lights the
+     library every few frames rather than every frame. Eight parts in 255 is
+     invisible on a low-contrast cloud, and re-lighting thirteen sprites is
+     the engine's single largest cost. */
+  function shadeKey(c) { return (c[0] >> 3) + '.' + (c[1] >> 3) + '.' + (c[2] >> 3); }
+
+  /* Light the whole mass ONCE.
+     Shading each lobe separately — a lit copy offset up, a dark copy offset
+     down — leaves a bright crescent on top of every lobe and a dark one
+     beneath it, and a cloud becomes a stack of curved segments. Light does
+     not fall on lobes; it falls on the cloud. So the silhouette is unioned
+     at build time and lit here as one form: a directional gradient across
+     the body, soft touches clipped INSIDE the mass for internal volume, and
+     an edge light that follows the fractal outline rather than any one
+     lobe's circle. */
+  /* Lighting a sprite is four full passes over its pixels, and the library
+     is thirteen sprites. Doing them all on whichever frame happens to cross
+     a quantisation step cost 107ms — a stall, right in the middle of the
+     Descent's easing. So a frame re-lights at most a couple of sprites and
+     the rest keep last frame's colours for a beat, which across a
+     two-second ease nobody can see. */
+  SkyScene.prototype.shade = function (idx, s, side, urgent) {
+    var sp = this.sprites[idx];
+    var key = shadeKey(s.cloudLit) + '|' + shadeKey(s.cloudBody) + '|' +
+              shadeKey(s.cloudBase) + '|' + side + '|' + Math.round(s.rim * 10);
+    if (sp.key === key) return sp.shaded;
+    if (sp.shaded && !urgent && this.budget <= 0) return sp.shaded;
+    this.budget--;
+
+    var mw = sp.canvas.width, mh = sp.canvas.height;
+    if (!sp.shaded) {
+      sp.shaded = document.createElement('canvas');
+      sp.shaded.width = mw;
+      sp.shaded.height = mh;
+    }
+    var g = sp.shaded.getContext('2d');
+    g.globalCompositeOperation = 'source-over';
+    g.globalAlpha = 1;
+    g.clearRect(0, 0, mw, mh);
+    g.drawImage(sp.canvas, 0, 0);
+
+    if (sp.kind === 'wisp') {
+      /* Cirrus is ice catching light from above; it has no underside worth
+         modelling, so one wash and nothing else. */
+      g.globalCompositeOperation = 'source-in';
+      g.fillStyle = rgba(mixRGB(s.cloudLit, [255, 255, 255], 0.35), 1);
+      g.fillRect(0, 0, mw, mh);
+      g.globalCompositeOperation = 'source-over';
+      sp.key = key;
+      return sp.shaded;
+    }
+
+    /* The form light. Its axis is scaled to the sprite's HEIGHT, not its
+       width — tie the lean to the width and on a wide cloud the horizontal
+       component swamps the vertical, which paints the whole crown in body
+       grey. A sheet gets a shallower ramp than a cumulus, because a flat
+       layer has far less depth to shade through. */
+    var flat = sp.kind === 'sheet';
+    var lean = mh * (flat ? 0.9 : 0.55) * side;
     var grad = g.createLinearGradient(mw * 0.5 + lean, -mh * 0.04,
-                                      mw * 0.5 - lean, mh * 0.94);
+                                      mw * 0.5 - lean, mh * (flat ? 1.20 : 0.94));
     grad.addColorStop(0, rgba(s.cloudLit, 1));
-    grad.addColorStop(0.34, rgba(mixRGB(s.cloudLit, s.cloudBody, 0.42), 1));
-    grad.addColorStop(0.66, rgba(s.cloudBody, 1));
+    grad.addColorStop(flat ? 0.42 : 0.30, rgba(mixRGB(s.cloudLit, s.cloudBody, flat ? 0.62 : 0.38), 1));
+    grad.addColorStop(flat ? 0.74 : 0.64, rgba(s.cloudBody, 1));
     grad.addColorStop(1, rgba(s.cloudBase, 1));
     g.globalCompositeOperation = 'source-in';
     g.fillStyle = grad;
     g.fillRect(0, 0, mw, mh);
 
-    /* Internal volume. `source-atop` keeps the mask's alpha, so these touches
-       live strictly inside the silhouette: crowns pick up light, the hollows
-       between lobes fall away, and nothing can escape to form a rim. */
-    g.globalCompositeOperation = 'source-atop';
-    for (var i = 0; i < cloud.lobes.length; i++) {
-      var p = cloud.lobes[i];
-      var lit = p.top || (side > 0 ? p.x > mw * 0.42 : p.x < mw * 0.58);
-      /* A shadow touch on a small end lobe just turns it into a dark ball;
-         only lobes with real volume get one. Highlights are always safe. */
-      if (!lit && p.r < mh * 0.26) continue;
-      var r = p.r * (lit ? 0.92 : 1.08);
-      var cx = p.x + side * r * 0.10;
-      var cy = p.y - (lit ? r * 0.28 : -r * 0.34);
-      var rg = g.createRadialGradient(cx, cy, 0, cx, cy, r);
-      rg.addColorStop(0, rgba(lit ? s.cloudLit : s.cloudBase, lit ? 0.44 : 0.32));
-      rg.addColorStop(1, rgba(lit ? s.cloudLit : s.cloudBase, 0));
-      g.fillStyle = rg;
-      g.beginPath(); g.arc(cx, cy, r, 0, 6.2832); g.fill();
+    /* The baked crown, added rather than painted: `lighter` is zero where
+       the rim is transparent, so it can only brighten what is already
+       cloud and can never leak outside the silhouette. */
+    if (s.rim > 0.02 && sp.rim) {
+      g.globalCompositeOperation = 'lighter';
+      g.globalAlpha = Math.min(1, s.rim) * (flat ? 0.28 : 0.42);
+      g.drawImage(sp.rim, 0, 0);
+      g.globalAlpha = 1;
     }
     g.globalCompositeOperation = 'source-over';
 
-    cloud.key = key;
-    return cloud.shaded;
+    sp.key = key;
+    return sp.shaded;
   };
 
   /* The grain is a still plate, so it has no business being composited
