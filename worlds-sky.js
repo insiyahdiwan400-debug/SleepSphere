@@ -18,7 +18,8 @@
  * speeds. Nothing here knows about sleep.
  *
  * Performance rules, because this runs on a phone at bedtime:
- *   · cloud puffs are pre-rendered once to an offscreen canvas
+ *   · each cloud's silhouette is unioned once at build time, and its shaded
+ *     sprite is re-lit only when the sky's cloud colours actually change
  *   · the backdrop is only re-gradiented when `t` actually moves
  *   · the loop stops itself when nothing is changing and nothing drifts
  *   · prefers-reduced-motion removes drift and twinkle entirely
@@ -109,19 +110,22 @@
     };
   }
 
-  /* A soft cloud puff, drawn once at high quality and reused. */
+  /* A lobe stamp. The core is FULLY opaque out to 56% of the radius, which is
+     what lets overlapping lobes union into one solid mass instead of reading
+     as a row of separate circles; only the outer rim is feathered. */
   function puffSprite(size) {
     var c = document.createElement('canvas');
     c.width = c.height = size;
     var g = c.getContext('2d');
     var r = size / 2;
-    var grad = g.createRadialGradient(r, r * 0.92, r * 0.06, r, r, r);
+    var grad = g.createRadialGradient(r, r, 0, r, r, r);
     grad.addColorStop(0, 'rgba(255,255,255,1)');
-    grad.addColorStop(0.42, 'rgba(255,255,255,0.78)');
-    grad.addColorStop(0.72, 'rgba(255,255,255,0.26)');
+    grad.addColorStop(0.56, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.74, 'rgba(255,255,255,0.72)');
+    grad.addColorStop(0.89, 'rgba(255,255,255,0.22)');
     grad.addColorStop(1, 'rgba(255,255,255,0)');
     g.fillStyle = grad;
-    g.fillRect(0, 0, size, size);
+    g.beginPath(); g.arc(r, r, r, 0, 6.2832); g.fill();
     return c;
   }
 
@@ -152,39 +156,113 @@
     window.addEventListener('resize', this._onResize);
   }
 
+  /* One cloud's SILHOUETTE, built once as a single merged alpha mass.
+     A row of lobes standing on a common baseline, a second tier billowing
+     over the middle, then the base cut flat — which is what a cumulus
+     actually is. Everything unions in one `source-over` pass, so the result
+     is one shape with one outline, not a string of circles. */
+  function buildCloudMask(rand, stamp, mw, mh, flat) {
+    var c = document.createElement('canvas');
+    c.width = mw; c.height = mh;
+    var g = c.getContext('2d');
+    var base = mh * (flat ? 0.88 : 0.84);
+    var lobes = [];
+    var span = mw * 0.86;
+    /* Lobe COUNT follows from the cloud's proportions, so that the gap
+       between neighbours is always smaller than a lobe: space them further
+       apart than that and they stop unioning, and a cloud becomes a string
+       of beads with a dark ball on each end. */
+    var n = Math.max(4, Math.min(12, Math.round(span / (mh * 0.30))));
+    var step = span / n;
+    var rMax = mh * 0.44;
+    var rMin = Math.min(rMax, Math.max(mh * 0.20, step * 0.62));
+
+    /* A cumulus is not symmetrical: it has one dominant tower somewhere
+       off-centre and falls away unevenly on each side. Everything is
+       measured against the mask's HEIGHT, and the tallest lobe is sized so
+       its crown lands just inside the top edge — a lobe that overflows the
+       canvas gets clipped, and a clipped crown is a flat top. */
+    var peak = 0.30 + rand() * 0.40;
+    var reach = Math.max(peak, 1 - peak);
+    for (var i = 0; i < n; i++) {
+      var u = (i + 0.5) / n;
+      var swell = Math.pow(Math.max(0, 1 - Math.abs(u - peak) / reach), 0.68);
+      var r = Math.max(rMin, Math.min(rMax,
+              mh * (0.22 + 0.19 * swell) * (0.90 + rand() * 0.20)));
+      var lift = 0.58 + rand() * 0.16;
+      lobes.push({
+        x: mw * 0.07 + (i + 0.5) * step + (rand() - 0.5) * step * 0.3,
+        y: base - r * lift,
+        r: r, top: false
+      });
+    }
+    /* the billow riding the tower — what breaks the top line into cauliflower
+       rather than an arc */
+    var m = 2 + Math.round(rand() * 2);
+    for (var k = 0; k < m; k++) {
+      var r2 = mh * (0.13 + rand() * 0.10);
+      var rise = mh * (0.30 + rand() * 0.18);
+      lobes.push({
+        x: mw * peak + (k + rand() * 0.8 - m / 2) * step * 0.9,
+        y: base - rise - r2 * 0.45,
+        r: r2, top: true
+      });
+    }
+
+    for (var j = 0; j < lobes.length; j++) {
+      var p = lobes[j];
+      g.drawImage(stamp, p.x - p.r, p.y - p.r, p.r * 2, p.r * 2);
+    }
+
+    /* cut the base flat — the single most cumulus-making move there is */
+    var top = base - mh * 0.07;
+    var er = g.createLinearGradient(0, top, 0, base + mh * 0.11);
+    er.addColorStop(0, 'rgba(0,0,0,0)');
+    er.addColorStop(0.5, 'rgba(0,0,0,0.70)');
+    er.addColorStop(1, 'rgba(0,0,0,1)');
+    g.globalCompositeOperation = 'destination-out';
+    g.fillStyle = er;
+    g.fillRect(0, top, mw, mh - top);
+    g.globalCompositeOperation = 'source-over';
+
+    return { canvas: c, lobes: lobes, base: base };
+  }
+
   /* Three parallax banks. The far one barely moves; the near one drifts
      enough to feel alive without ever asking to be watched. */
   SkyScene.prototype.build = function () {
     var rand = mulberry(20260910);
+    var stamp = this.puff;
     this.layers = [];
-    /* Banks, not blobs. Each layer is a handful of CLUSTERS, and each
-       cluster is several small overlapping puffs spread along a nearly
-       flat base — which is what gives a cumulus deck its silhouette.
-       Puffs sized a fraction of the screen, never a multiple of it. */
+    /* Banks of discrete clouds, each its own merged mass. Sized as a
+       fraction of the screen width, never a multiple of it. */
     var spec = [
-      { y: 0.455, clusters: 5, puffs: [5, 8],  r: [0.030, 0.055], spread: 0.17, speed: 0.0016, alpha: 0.34 },
-      { y: 0.565, clusters: 4, puffs: [6, 9],  r: [0.042, 0.078], spread: 0.23, speed: 0.0035, alpha: 0.52 },
-      { y: 0.700, clusters: 3, puffs: [7, 11], r: [0.058, 0.105], spread: 0.32, speed: 0.0068, alpha: 0.68 }
+      { y: 0.452, n: 5, w: [0.18, 0.30], asp: [0.34, 0.44], speed: 0.0016, alpha: 0.38, flat: false },
+      { y: 0.576, n: 4, w: [0.28, 0.44], asp: [0.40, 0.54], speed: 0.0035, alpha: 0.56, flat: true },
+      { y: 0.712, n: 3, w: [0.42, 0.62], asp: [0.46, 0.62], speed: 0.0068, alpha: 0.74, flat: true }
     ];
     spec.forEach(function (s) {
-      var puffs = [];
-      for (var c = 0; c < s.clusters; c++) {
-        var cx = (c + rand() * 0.7) / s.clusters * 1.6 - 0.3;
-        var cy = s.y + (rand() - 0.5) * 0.035;
-        var n = Math.round(s.puffs[0] + rand() * (s.puffs[1] - s.puffs[0]));
-        for (var i = 0; i < n; i++) {
-          var u = i / (n - 1 || 1);
-          /* Fat in the middle, thin at the ends, and the crown lifts. */
-          var swell = Math.sin(u * Math.PI);
-          puffs.push({
-            x: cx + (u - 0.5) * s.spread,
-            y: cy - swell * 0.022 + (rand() - 0.5) * 0.012,
-            r: (s.r[0] + rand() * (s.r[1] - s.r[0])) * (0.55 + swell * 0.75),
-            a: 0.6 + rand() * 0.4
-          });
-        }
+      var clouds = [];
+      for (var c = 0; c < s.n; c++) {
+        var cw = s.w[0] + rand() * (s.w[1] - s.w[0]);
+        var asp = s.asp[0] + rand() * (s.asp[1] - s.asp[0]);
+        /* Mask resolution follows the cloud's share of the screen, so the
+           near deck — the one actually read — is not a scaled-up thumbnail. */
+        var mw = Math.max(200, Math.min(520, Math.round(cw * 1040)));
+        var mh = Math.round(mw * asp);
+        var built = buildCloudMask(rand, stamp, mw, mh, s.flat);
+        clouds.push({
+          x: (c + rand() * 0.72) / s.n * 1.6 - 0.3,
+          y: s.y + (rand() - 0.5) * 0.030,
+          w: cw,
+          mask: built.canvas,
+          lobes: built.lobes,
+          base: built.base,
+          shaded: null,
+          key: ''
+        });
       }
-      this.layers.push({ puffs: puffs, speed: s.speed, alpha: s.alpha, off: rand() * 0.4 });
+      this.layers.push({ clouds: clouds, speed: s.speed, alpha: s.alpha, off: rand() * 0.4 });
     }, this);
 
     this.stars = [];
@@ -349,74 +427,101 @@
     g.globalAlpha = 1;
   };
 
-  /* Cloud banks. Each puff is drawn three times from one sprite: a dark
-     base, the body, and a lit crown offset towards wherever the light is.
-     That offset is the whole trick — it is what makes a bank read as a
-     solid thing with a sunlit top rather than as grey fog. */
+  /* Cloud banks: one merged mass per cloud, shaded ONCE.
+     The earlier version shaded every lobe separately — a lit crescent above
+     each and a dark crescent below — which made each cloud read as a row of
+     layered, curved segments. A pastry, in other words. Light does not work
+     per-lobe; it falls across the whole form. So the silhouette is unioned
+     first and lit afterwards, with one directional gradient over the body
+     and soft internal touches clipped INSIDE the mass, where they can never
+     become an outside edge. */
   SkyScene.prototype.drawClouds = function (g, w, h, s) {
     var lightX = s.sun ? s.sun.x : (s.moon ? s.moon.x : 0.5);
-
-    /* Only three cloud colours exist in a frame, so the sprite is tinted
-       three times per frame rather than once per puff. Tinting per puff
-       meant ~99 canvas clears a frame, which a phone cannot afford. */
-    var base = this.tinted(0, s.cloudBase);
-    var body = this.tinted(1, s.cloudBody);
-    var crown = this.tinted(2, s.cloudLit);
+    /* One light direction for the whole sky, not one per cloud: a per-cloud
+       side flips as it drifts past the sun, and the flip pops. */
+    var side = lightX >= 0.5 ? 1 : -1;
+    var deck = this.deck || 0;
 
     for (var L = 0; L < this.layers.length; L++) {
       var layer = this.layers[L];
       var drift = this.reduced ? 0 : (this.phase * layer.speed);
-      var deck = this.deck || 0;
 
-      for (var i = 0; i < layer.puffs.length; i++) {
-        var p = layer.puffs[i];
-        var px = ((p.x + layer.off + drift) % 1.6 + 1.6) % 1.6 - 0.3;
-        var cx = px * w;
-        var cy = (p.y + deck) * h;
-        var R = p.r * w;
-        if (cx + R < -40 || cx - R > w + 40) continue;
+      for (var i = 0; i < layer.clouds.length; i++) {
+        var cl = layer.clouds[i];
+        var px = ((cl.x + layer.off + drift) % 1.6 + 1.6) % 1.6 - 0.3;
+        var pw = cl.w * w;
+        var ph = pw * cl.mask.height / cl.mask.width;
+        var X = px * w;
+        var Y = (cl.y + deck) * h - ph * (cl.base / cl.mask.height);
+        if (X + pw < -48 || X > w + 48) continue;
 
-        var side = (px - lightX) >= 0 ? 1 : -1;
-        var a = layer.alpha * p.a;
-
-        /* base — the shadowed underside */
-        g.globalAlpha = a * 0.85;
-        g.drawImage(base, cx - R, cy + R * 0.16 - R, R * 2, R * 2);
-
-        /* body */
-        g.globalAlpha = a;
-        g.drawImage(body, cx - R, cy - R, R * 2, R * 2);
-
-        /* lit crown, pushed towards the light */
-        g.globalAlpha = a * (s.star > 0.9 ? 0.34 : 0.78);
-        var cR = R * 0.86;
-        g.drawImage(crown, cx - side * R * 0.14 - cR, cy - R * 0.17 - cR, cR * 2, cR * 2);
+        g.globalAlpha = layer.alpha;
+        g.drawImage(this.shadeCloud(cl, s, side), X, Y, pw, ph);
       }
     }
     g.globalAlpha = 1;
   };
 
-  /* One scratch canvas per colour role, re-tinted only when that role's
-     colour actually changes. During a still night this does no work at all. */
-  SkyScene.prototype.tinted = function (slot, colour) {
-    if (!this._tc) { this._tc = []; this._tk = []; }
-    var key = colour[0] + ',' + colour[1] + ',' + colour[2];
-    if (this._tk[slot] === key) return this._tc[slot];
-    var c = this._tc[slot];
-    if (!c) {
-      c = document.createElement('canvas');
-      c.width = c.height = 256;
-      this._tc[slot] = c;
+  /* Quantised to steps of four so the easing between skies does not force a
+     re-shade on literally every frame; four parts in 255 is invisible on a
+     low-contrast cloud. */
+  function shadeKey(c) { return (c[0] >> 2) + '.' + (c[1] >> 2) + '.' + (c[2] >> 2); }
+
+  SkyScene.prototype.shadeCloud = function (cloud, s, side) {
+    var key = shadeKey(s.cloudLit) + '|' + shadeKey(s.cloudBody) + '|' +
+              shadeKey(s.cloudBase) + '|' + side;
+    if (cloud.key === key) return cloud.shaded;
+
+    var mw = cloud.mask.width, mh = cloud.mask.height;
+    if (!cloud.shaded) {
+      cloud.shaded = document.createElement('canvas');
+      cloud.shaded.width = mw;
+      cloud.shaded.height = mh;
     }
-    var tg = c.getContext('2d');
-    tg.clearRect(0, 0, 256, 256);
-    tg.globalCompositeOperation = 'source-over';
-    tg.drawImage(this.puff, 0, 0, 256, 256);
-    tg.globalCompositeOperation = 'source-in';
-    tg.fillStyle = 'rgb(' + key + ')';
-    tg.fillRect(0, 0, 256, 256);
-    this._tk[slot] = key;
-    return c;
+    var g = cloud.shaded.getContext('2d');
+    g.globalCompositeOperation = 'source-over';
+    g.clearRect(0, 0, mw, mh);
+    g.drawImage(cloud.mask, 0, 0);
+
+    /* The form light: one gradient tilted from the lit shoulder down to the
+       shadowed base, filled through the mask so it only ever colours the
+       cloud. Its axis is scaled to the cloud's HEIGHT, not its width — tie
+       the lean to the width and on a wide cloud the horizontal component
+       swamps the vertical, which paints the whole crown in body grey. */
+    var lean = mh * 0.5 * side;
+    var grad = g.createLinearGradient(mw * 0.5 + lean, -mh * 0.04,
+                                      mw * 0.5 - lean, mh * 0.94);
+    grad.addColorStop(0, rgba(s.cloudLit, 1));
+    grad.addColorStop(0.34, rgba(mixRGB(s.cloudLit, s.cloudBody, 0.42), 1));
+    grad.addColorStop(0.66, rgba(s.cloudBody, 1));
+    grad.addColorStop(1, rgba(s.cloudBase, 1));
+    g.globalCompositeOperation = 'source-in';
+    g.fillStyle = grad;
+    g.fillRect(0, 0, mw, mh);
+
+    /* Internal volume. `source-atop` keeps the mask's alpha, so these touches
+       live strictly inside the silhouette: crowns pick up light, the hollows
+       between lobes fall away, and nothing can escape to form a rim. */
+    g.globalCompositeOperation = 'source-atop';
+    for (var i = 0; i < cloud.lobes.length; i++) {
+      var p = cloud.lobes[i];
+      var lit = p.top || (side > 0 ? p.x > mw * 0.42 : p.x < mw * 0.58);
+      /* A shadow touch on a small end lobe just turns it into a dark ball;
+         only lobes with real volume get one. Highlights are always safe. */
+      if (!lit && p.r < mh * 0.26) continue;
+      var r = p.r * (lit ? 0.92 : 1.08);
+      var cx = p.x + side * r * 0.10;
+      var cy = p.y - (lit ? r * 0.28 : -r * 0.34);
+      var rg = g.createRadialGradient(cx, cy, 0, cx, cy, r);
+      rg.addColorStop(0, rgba(lit ? s.cloudLit : s.cloudBase, lit ? 0.44 : 0.32));
+      rg.addColorStop(1, rgba(lit ? s.cloudLit : s.cloudBase, 0));
+      g.fillStyle = rg;
+      g.beginPath(); g.arc(cx, cy, r, 0, 6.2832); g.fill();
+    }
+    g.globalCompositeOperation = 'source-over';
+
+    cloud.key = key;
+    return cloud.shaded;
   };
 
   /* The grain is a still plate, so it has no business being composited
