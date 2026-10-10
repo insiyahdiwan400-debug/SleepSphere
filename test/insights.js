@@ -229,6 +229,18 @@ async function open(browser, mornings) {
       vw: window.innerWidth
     }));
     check('No horizontal page scroll on a phone', fit.doc <= 1, String(fit.doc));
+
+    /* 262px is an iPad Split View column, and it is where three nowrap
+       range pills plus the card's padding first exceed the width and drag
+       the whole page sideways. Checked here as well as in screen-shapes so
+       the fault is attributed to this module when it is this module's. */
+    await p.setViewportSize({ width: 262, height: 1135 });
+    await p.waitForTimeout(400);
+    const narrow = await p.evaluate(() =>
+      document.documentElement.scrollWidth - window.innerWidth);
+    check('Nor in an iPad Split View column', narrow <= 1, String(narrow) + 'px at 262');
+    await p.setViewportSize({ width: 390, height: 844 });
+    await p.waitForTimeout(300);
     check('The chart fits its column', fit.chart > 0 && fit.chart <= fit.vw, fit.chart + ' / ' + fit.vw);
 
     const small = await p.evaluate(() =>

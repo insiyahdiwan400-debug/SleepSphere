@@ -11,7 +11,9 @@
 .in-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .in-head h3 { margin: 0; font-size: 1.05rem; font-weight: 600; }
 
-.in-range { display: flex; gap: 6px; }
+/* Wraps, because three nowrap pills plus the card's padding are wider than
+   an iPad Split View column (262px) and dragged the whole page sideways. */
+.in-range { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
 .in-pill {
   appearance: none; -webkit-appearance: none;
   font: inherit; font-size: .78rem;
