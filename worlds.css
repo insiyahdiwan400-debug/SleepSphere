@@ -1,0 +1,244 @@
+/* SleepSphere Worlds — shell chrome + the Flight world.
+ *
+ * The shell owns layout, navigation, touch targets and the settled screen.
+ * A world owns palette, type and imagery, scoped to [data-world="…"], so
+ * two worlds cannot leak into each other.
+ *
+ * No star field, no violet, no glowing orb, no glass. Flight's references
+ * are a split-flap board, a card boarding pass and a pilot's logbook.
+ */
+
+:root[data-ui="world"] .app-shell,
+:root[data-ui="world"] #calm,
+:root[data-ui="world"] #concept,
+:root[data-ui="world"] #toast { display: none !important; }
+
+/* The star field is a sibling of the shell, not a child, so hiding the
+   shell left it drawing specks through every world. It is the single most
+   explicitly rejected element in this product; nothing may inherit it. */
+:root[data-ui="world"] #starfield { display: none !important; }
+:root[data-ui="world"] { background: none !important; }
+
+#world {
+  position: relative; z-index: 4; min-height: 100dvh;
+  display: flex; flex-direction: column;
+}
+.w-stage {
+  flex: 1 1 auto;
+  padding: calc(env(safe-area-inset-top, 0px) + 26px) 20px
+           calc(96px + env(safe-area-inset-bottom, 0px));
+}
+
+/* ── tabs ──────────────────────────────────────────────────────────── */
+.w-tabs {
+  position: fixed; left: 16px; right: 16px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); z-index: 8;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px;
+  padding: 4px; border-radius: 4px;
+  background: var(--w-navbg, #15181d);
+  border: 1px solid var(--w-navline, rgba(255,255,255,.1));
+}
+/* Withdrawn entirely for the night, rather than left as an empty rail. */
+.w-tabs:empty { display: none; }
+.w-tabs button {
+  appearance: none; -webkit-appearance: none; border: 0; cursor: pointer;
+  min-height: 46px; border-radius: 2px; background: transparent;
+  color: var(--w-navink, #9aa1ab);
+  font: 600 10.5px/1 "SF Mono", ui-monospace, Menlo, monospace;
+  letter-spacing: .12em; text-transform: uppercase;
+}
+.w-tabs button[aria-selected="true"] {
+  background: var(--w-navon, #e9e4d8); color: var(--w-navonink, #15181d);
+}
+
+/* ── the settled screen, enforced by the shell for every world ─────── */
+.w-settled {
+  min-height: calc(100dvh - 120px);
+  display: flex; flex-direction: column; justify-content: center;
+  text-align: center;
+}
+.w-settled-k {
+  margin: 0 0 14px; font: 600 10.5px/1 "SF Mono", ui-monospace, monospace;
+  letter-spacing: .22em; text-transform: uppercase; color: var(--w-dim, #6b7280);
+}
+.w-settled-l {
+  margin: 0; font-family: var(--w-display, Georgia, serif); font-weight: 400;
+  font-size: clamp(24px, 6.6vw, 31px); line-height: 1.22;
+  color: var(--w-ink, #e9e4d8); max-width: 20ch; margin-inline: auto;
+}
+.w-settled-b {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  margin: 34px auto 0; min-height: 50px; padding: 0 30px; border-radius: 3px;
+  background: transparent; color: var(--w-dim, #6b7280);
+  border: 1px solid var(--w-line, rgba(255,255,255,.16));
+  font: 500 14px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+.w-settled-n {
+  margin: 18px auto 0; max-width: 28ch; font-size: 12.5px; line-height: 1.5;
+  color: var(--w-dim, #6b7280);
+}
+
+/* ═══════════════════ PLAIN ═══════════════════ */
+:root[data-world="plain"] {
+  --w-ink: #1b1d21; --w-dim: #6b7280; --w-line: rgba(0,0,0,.14);
+  --w-display: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --w-navbg: #f2f1ee; --w-navline: rgba(0,0,0,.12);
+  --w-navink: #6b7280; --w-navon: #1b1d21; --w-navonink: #f2f1ee;
+  background: #f6f5f2; color: #1b1d21;
+}
+:root[data-world="plain"] body { background: #f6f5f2; }
+.w-plain { font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+.w-plain-h { margin: 0 0 18px; font-size: 25px; line-height: 1.22; font-weight: 600; }
+.w-plain-p { color: #6b7280; font-size: 15px; line-height: 1.55; }
+.w-plain-list { display: grid; grid-template-columns: 1fr auto; gap: 0;
+  margin: 0 0 22px; border-top: 1px solid rgba(0,0,0,.12); }
+.w-plain-list dt, .w-plain-list dd {
+  margin: 0; padding: 12px 0; border-bottom: 1px solid rgba(0,0,0,.12); font-size: 15.5px; }
+.w-plain-list dd { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.w-plain-go, .w-plain-btn {
+  appearance: none; -webkit-appearance: none; cursor: pointer; display: block;
+  width: 100%; min-height: 50px; border-radius: 4px; margin-bottom: 9px;
+  border: 1px solid rgba(0,0,0,.18); background: transparent; color: #1b1d21;
+  font: 500 15px/1 inherit; }
+.w-plain-go { background: #1b1d21; color: #f6f5f2; border-color: #1b1d21; font-weight: 600; }
+.w-plain-choices { display: grid; gap: 9px; }
+
+/* ═══════════════════ FLIGHT ═══════════════════
+   Daypart is a real change of material, not a tinted background:
+   morning and afternoon are printed card, evening is dusk card,
+   night is an unlit departure board.                                   */
+:root[data-world="flight"] {
+  --f-card: #f3f0e8; --f-ink: #191c21; --f-dim: #6e7076;
+  --f-line: rgba(25,28,33,.16); --f-rule: rgba(25,28,33,.3);
+  --f-accent: #1d4e6f; --f-amber: #9a6b1f; --f-stub: #e6e1d4;
+  --w-ink: #191c21; --w-dim: #6e7076; --w-line: rgba(25,28,33,.18);
+  --w-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --w-navbg: #e8e4d8; --w-navline: rgba(25,28,33,.16);
+  --w-navink: #6e7076; --w-navon: #191c21; --w-navonink: #f3f0e8;
+}
+:root[data-world="flight"] body { background: #ece8dd; }
+:root[data-world="flight"][data-daypart="afternoon"] { --f-card: #f4f3ef; --f-stub: #e7e7e2; --f-accent: #22556f; }
+:root[data-world="flight"][data-daypart="afternoon"] body { background: #e9e9e4; }
+:root[data-world="flight"][data-daypart="evening"] { --f-card: #efe9df; --f-stub: #e2d9c9; --f-accent: #2a4a63; --f-amber: #8c5e1b; }
+:root[data-world="flight"][data-daypart="evening"] body { background: #e4dccd; }
+:root[data-world="flight"][data-daypart="night"] {
+  --f-card: #16191e; --f-ink: #e8e3d6; --f-dim: #7e848d;
+  --f-line: rgba(232,227,214,.16); --f-rule: rgba(232,227,214,.3);
+  --f-accent: #8fb6cf; --f-amber: #d8a344; --f-stub: #1d2127;
+  --w-ink: #e8e3d6; --w-dim: #7e848d; --w-line: rgba(232,227,214,.18);
+  --w-navbg: #1d2127; --w-navline: rgba(232,227,214,.14);
+  --w-navink: #7e848d; --w-navon: #e8e3d6; --w-navonink: #16191e;
+}
+:root[data-world="flight"][data-daypart="night"] body { background: #101317; }
+
+.f-wrap { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  color: var(--f-ink); }
+.f-head { margin-bottom: 20px; }
+.f-kicker { margin: 0 0 8px; font: 600 10px/1 "SF Mono", ui-monospace, Menlo, monospace;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--f-dim); }
+.f-title { margin: 0; font-family: var(--w-display);
+  font-weight: 400; font-size: clamp(25px, 7vw, 32px); line-height: 1.16;
+  letter-spacing: -.01em; text-wrap: balance; }
+.f-lede { margin: 10px 0 0; font-size: 15.5px; line-height: 1.5; color: var(--f-dim); max-width: 34ch; }
+.f-foot { margin: 16px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--f-dim); }
+
+/* the pass: a card with a torn stub, not a glass panel */
+.f-pass { display: flex; background: var(--f-card); border: 1px solid var(--f-line);
+  border-radius: 3px; overflow: hidden; }
+.f-stub { flex: 0 0 76px; background: var(--f-stub); padding: 16px 10px;
+  display: flex; flex-direction: column; justify-content: center; text-align: center;
+  border-right: 1px dashed var(--f-rule); }
+.f-stub-k { display: block; font: 600 8.5px/1 "SF Mono", ui-monospace, monospace;
+  letter-spacing: .16em; color: var(--f-dim); }
+.f-stub-v { display: block; margin: 7px 0 3px; font-family: var(--w-display);
+  font-size: 21px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.f-stub-s { display: block; font-size: 10.5px; color: var(--f-dim); }
+.f-pass-body { flex: 1 1 auto; padding: 18px 16px 16px; min-width: 0; }
+
+.f-route { width: 100%; height: auto; margin: 16px 0 6px; display: block; }
+.f-route-line { stroke: var(--f-rule); stroke-width: 1; }
+.f-tick { stroke: var(--f-ink); stroke-width: 1.6; }
+.f-tick-fajr { stroke: var(--f-amber); stroke-width: 2; }
+.f-route-lab { fill: var(--f-amber); font: 600 7px "SF Mono", ui-monospace, monospace;
+  letter-spacing: .14em; }
+
+/* split-flap rows */
+.f-board { margin-top: 6px; border-top: 1px solid var(--f-line); }
+.f-row { display: grid; grid-template-columns: 42px 1fr auto; align-items: center;
+  gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--f-line); }
+.f-row[data-state="done"] { opacity: .45; }
+.f-code { font: 600 9.5px/1 "SF Mono", ui-monospace, Menlo, monospace;
+  letter-spacing: .1em; color: var(--f-dim); }
+.f-mid { min-width: 0; }
+.f-label { display: block; font-size: 14.5px; font-weight: 600; }
+.f-sub { display: block; margin-top: 2px; font-size: 11.5px; color: var(--f-dim); }
+.f-time { font-family: "SF Mono", ui-monospace, Menlo, monospace;
+  font-size: 16px; font-weight: 500; font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em; }
+.f-row[data-state="now"] .f-time { color: var(--f-amber); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .f-flap { animation: fFlap .22s cubic-bezier(.3,.7,.3,1) 1; transform-origin: 50% 0; }
+}
+@keyframes fFlap {
+  0%   { transform: rotateX(-82deg); opacity: .35; }
+  100% { transform: rotateX(0); opacity: 1; }
+}
+
+/* actions */
+.f-go, .f-alt {
+  appearance: none; -webkit-appearance: none; cursor: pointer; display: block;
+  width: 100%; min-height: 52px; border-radius: 3px; margin-top: 12px;
+  font: 600 14px/1 "SF Mono", ui-monospace, Menlo, monospace; letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.f-go { background: var(--f-accent); color: var(--f-card); border: 0; }
+.f-alt { background: transparent; color: var(--f-dim); border: 1px solid var(--f-line);
+  font: 500 13px/1 -apple-system, system-ui, sans-serif; letter-spacing: 0;
+  text-transform: none; min-height: 46px; }
+
+.f-opts { display: grid; gap: 9px; margin-top: 18px; }
+.f-opt {
+  appearance: none; -webkit-appearance: none; cursor: pointer; text-align: left;
+  width: 100%; min-height: 54px; padding: 12px 16px; border-radius: 3px;
+  background: var(--f-card); border: 1px solid var(--f-line); color: var(--f-ink);
+  font: 500 15px/1.3 inherit;
+}
+.f-opt-wide { display: block; margin-bottom: 9px; }
+.f-opt-l { display: block; font-size: 15px; font-weight: 600; }
+.f-opt-d { display: block; margin-top: 3px; font-size: 12.5px; color: var(--f-dim); }
+.f-opt[aria-pressed="true"] { border-color: var(--f-accent); border-width: 2px; }
+
+/* arrival report + logbook */
+.f-arrival { margin: 18px 0; padding: 18px 16px; border-radius: 3px;
+  background: var(--f-card); border: 1px solid var(--f-line); }
+.f-arrival.f-stamped { border-color: var(--f-amber); }
+.f-seg { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; margin-top: 14px; }
+.f-seg button {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  min-height: 54px; border-radius: 3px; background: transparent;
+  border: 1px solid var(--f-line); color: var(--f-ink);
+  font: 500 16px/1 "SF Mono", ui-monospace, monospace;
+}
+.f-log { list-style: none; margin: 18px 0 0; padding: 0; border-top: 1px solid var(--f-line); }
+.f-log-row { display: grid; grid-template-columns: 54px 1fr auto; gap: 10px;
+  align-items: baseline; padding: 11px 0; border-bottom: 1px solid var(--f-line); }
+.f-log-date { font: 500 11.5px/1 "SF Mono", ui-monospace, monospace; color: var(--f-dim); }
+.f-log-dur { font-family: var(--w-display); font-size: 17px; font-weight: 400;
+  font-variant-numeric: tabular-nums; }
+.f-log-felt { font-size: 12.5px; color: var(--f-dim); }
+
+/* briefing */
+.f-disc { border: 1px solid var(--f-line); border-radius: 3px; margin-bottom: 9px;
+  background: var(--f-card); }
+.f-disc summary { list-style: none; cursor: pointer; padding: 15px 16px; min-height: 50px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  font-size: 14.5px; font-weight: 500; }
+.f-disc summary::-webkit-details-marker { display: none; }
+.f-disc summary::after { content: "+"; color: var(--f-dim); font-family: "SF Mono", monospace; }
+.f-disc[open] summary::after { content: "\2013"; }
+.f-disc-b { margin: 0; padding: 0 16px 16px; font-size: 14px; line-height: 1.6; color: var(--f-dim); }
+
+.f-revised { margin-top: 16px; padding: 18px 16px; border-radius: 3px;
+  background: var(--f-card); border: 1px solid var(--f-accent); }
+.f-worlds { margin-top: 6px; }
