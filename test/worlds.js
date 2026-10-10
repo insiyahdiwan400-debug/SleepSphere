@@ -128,23 +128,125 @@ const clockAt = (h, mi) => `(()=>{const R=Date;const f=new R(2026,8,9,${h},${mi}
   }
 
   /* ================================================================
-     3. THE SHARED ENGINE — the Flight world shows the real plan
+     3. THE SHARED ENGINE — Flight shows the real plan, compactly
      ================================================================ */
   {
     const { ctx, p } = await open('flight', 20, 40, PLAN, MORNINGS);
-    const v = await p.evaluate(() => {
-      const times = [...document.querySelectorAll('.f-time')].map(n => n.textContent.trim());
-      const codes = [...document.querySelectorAll('.f-code')].map(n => n.textContent.trim());
-      return { times, codes, title: (document.querySelector('.f-title')||{}).textContent };
+    const v = await p.evaluate(() => ({
+      head: (document.querySelector('.fl-head') || {}).textContent || '',
+      bar: (document.querySelector('.fl-times-v') || {}).textContent || '',
+      sky: Boolean(document.querySelector('.fl-canvas'))
+    }));
+    check('Flight shows the engine\'s real wind-down', /9:50/.test(v.head), v.head);
+    check('The whole night fits one compact bar, not the screen', v.bar === '8h', v.bar);
+    check('And the sky is a real canvas, not a CSS gradient', v.sky === true);
+
+    /* The schedule is available on demand and still never dominates. */
+    await p.locator('#flTimes').click();
+    await p.waitForTimeout(450);
+    const open2 = await p.evaluate(() => {
+      const rows = [...document.querySelectorAll('.fl-times-row b')].map(n => n.textContent.trim());
+      const h = document.querySelector('.fl-times').getBoundingClientRect().height;
+      return { rows: rows, share: +(h / window.innerHeight).toFixed(2) };
     });
-    check('Flight shows the engine\'s real wind-down',
-          /9:50/.test(v.title || ''), v.title);
-    check('And the whole night as stages, in order',
-          v.codes.join(',') === 'GATE,DEP,WPT,CONT,ARR', v.codes.join(','));
-    check('With the real Fajr among them',
-          v.times.includes('4:45 AM'), v.times.join(' · '));
+    check('Opening it reveals every stage', open2.rows.length === 5, open2.rows.join(' / '));
+    check('With the real Fajr among them', open2.rows.indexOf('4:45 AM') >= 0, open2.rows.join(' / '));
+    check('And even open it takes under a third of the screen',
+          open2.share <= 0.34, open2.share + ' of the viewport');
     await ctx.close();
   }
+
+  /* ================================================================
+     3b. THE DESCENT — three phases, and the sky really moves
+     ================================================================ */
+  {
+    const { ctx, p, errs } = await open('flight', 20, 40, PLAN, MORNINGS);
+    const skyAt = () => p.evaluate(() => window.__flight.state());
+
+    const before = await skyAt();
+    await p.locator('#flDescend').click();
+    await p.waitForTimeout(900);
+    const arrive = await p.evaluate(() => ({
+      phase: (document.querySelector('.fl-phase') || {}).textContent,
+      line: (document.querySelector('.fl-line') || {}).textContent,
+      tabs: document.querySelectorAll('.w-tabs button').length,
+      dots: document.querySelectorAll('.fl-dot').length
+    }));
+    check('The Descent opens on Arrive', arrive.phase === 'Arrive', arrive.phase);
+    check('It has three phases', arrive.dots === 3, String(arrive.dots));
+    check('Navigation withdraws for it', arrive.tabs === 0, String(arrive.tabs));
+    check('And it carries one line, not a form',
+          /Nothing left to decide/.test(arrive.line || ''), arrive.line);
+
+    await p.locator('#flContinue').click();
+    await p.waitForTimeout(2300);
+    const settle = await skyAt();
+    const settleUI = await p.evaluate(() => ({
+      phase: (document.querySelector('.fl-phase') || {}).textContent,
+      line: (document.querySelector('.fl-line') || {}).textContent
+    }));
+    check('Continue moves it to Settle', settleUI.phase === 'Settle', settleUI.phase);
+    check('The line changes with the phase',
+          /Let the day go/.test(settleUI.line || ''), settleUI.line);
+    check('And the SKY actually moved, evening towards twilight',
+          settle.sky > before.sky + 0.4,
+          before.sky.toFixed(2) + ' -> ' + settle.sky.toFixed(2));
+
+    await p.locator('#flContinue').click();
+    await p.waitForTimeout(2300);
+    const release = await skyAt();
+    const releaseUI = await p.evaluate(() =>
+      (document.querySelector('.fl-phase') || {}).textContent);
+    check('And again to Release', releaseUI === 'Release', releaseUI);
+    check('With the sky carried on into the night',
+          release.sky > settle.sky + 0.5,
+          settle.sky.toFixed(2) + ' -> ' + release.sky.toFixed(2));
+    check('No console errors through the Descent', errs.length === 0, errs.join(' | '));
+    await ctx.close();
+  }
+
+  /* The gesture IS the metaphor: dragging down pulls the light under. */
+  {
+    const { ctx, p } = await open('flight', 20, 40, PLAN, MORNINGS);
+    await p.locator('#flDescend').click();
+    await p.waitForTimeout(700);
+    const start = await p.evaluate(() => window.__flight.state());
+    const box = await p.locator('.fl-wrap').boundingBox();
+    await p.mouse.move(box.x + box.width / 2, box.y + box.height * 0.4);
+    await p.mouse.down();
+    for (let i = 1; i <= 10; i++) {
+      await p.mouse.move(box.x + box.width / 2, box.y + box.height * 0.4 + i * 28);
+      await p.waitForTimeout(45);
+    }
+    await p.mouse.up();
+    await p.waitForTimeout(700);
+    const end = await p.evaluate(() => window.__flight.state());
+    check('Dragging the sky down advances the Descent',
+          end.progress > start.progress + 0.2,
+          start.progress.toFixed(2) + ' -> ' + end.progress.toFixed(2));
+    await ctx.close();
+  }
+
+  /* Finishing hands straight to the night guard. */
+  {
+    const { ctx, p } = await open('flight', 20, 40, PLAN, MORNINGS);
+    await p.locator('#flDescend').click();
+    await p.waitForTimeout(700);
+    await p.locator('#flSkip').click();
+    await p.waitForTimeout(3700);
+    const after = await p.evaluate(() => ({
+      guard: Boolean(document.querySelector('.w-settled')),
+      tabs: document.querySelectorAll('.w-tabs button').length,
+      sky: Boolean(document.querySelector('.fl-canvas')),
+      words: (document.getElementById('world').innerText || '').trim().split(/\s+/).length
+    }));
+    check('The Descent ends in the night guard', after.guard === true);
+    check('The sky stays; the interface does not',
+          after.sky === true && after.tabs === 0, JSON.stringify(after));
+    check('And it is quiet', after.words <= 30, after.words + ' words');
+    await ctx.close();
+  }
+
 
   /* ================================================================
      4. PLANNING AND ADJUSTING GO THROUGH THE ENGINE
@@ -168,7 +270,7 @@ const clockAt = (h, mi) => `(()=>{const R=Date;const f=new R(2026,8,9,${h},${mi}
     const { ctx, p } = await open('flight', 20, 40, PLAN, MORNINGS, 'adjust');
     const before = await p.evaluate(() => JSON.parse(
       localStorage.getItem('sleepsphere_state_v2')).plan.windStart);
-    await p.locator('.f-opt[data-sit="later"]').click();
+    await p.locator('.fl-opt[data-sit="later"]').click();
     await p.waitForTimeout(500);
     await p.locator('#wRefile').click();
     await p.waitForTimeout(700);
@@ -184,7 +286,7 @@ const clockAt = (h, mi) => `(()=>{const R=Date;const f=new R(2026,8,9,${h},${mi}
      ================================================================ */
   {
     const { ctx, p } = await open('flight', 6, 50, PLAN, MORNINGS, 'logbook');
-    const seg = await p.locator('.f-seg button[data-v="4"]');
+    const seg = await p.locator('.fl-seg button[data-v="4"]');
     check('The arrival report is offered in the morning', await seg.count() === 1);
     await seg.click();
     await p.waitForTimeout(800);
@@ -241,16 +343,16 @@ const clockAt = (h, mi) => `(()=>{const R=Date;const f=new R(2026,8,9,${h},${mi}
     await p.evaluate(() => window.__world.settle());
     await p.waitForTimeout(400);
     const leaked = await p.evaluate(() =>
-      document.querySelectorAll('.f-pass, .f-board, .f-route').length);
+      document.querySelectorAll('.fl-times, .fl-head, .fl-log').length);
     check('A world cannot draw its own night screen past the guard',
           leaked === 0, String(leaked));
     await p.locator('#wMorning').click();
     await p.waitForTimeout(600);
     const back = await p.evaluate(() => ({
       tabs: document.querySelectorAll('.w-tabs button').length,
-      pass: document.querySelectorAll('.f-pass').length
+      times: document.querySelectorAll('.fl-times').length
     }));
-    check('And the morning gives the product back', back.tabs === 4 && back.pass === 1,
+    check('And the morning gives the product back', back.tabs === 4 && back.times === 1,
           JSON.stringify(back));
     await ctx.close();
   }

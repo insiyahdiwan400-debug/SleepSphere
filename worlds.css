@@ -104,141 +104,207 @@
 .w-plain-choices { display: grid; gap: 9px; }
 
 /* ═══════════════════ FLIGHT ═══════════════════
-   Daypart is a real change of material, not a tinted background:
-   morning and afternoon are printed card, evening is dusk card,
-   night is an unlit departure board.                                   */
+   The sky is the page. Everything else is a light layer over it: small
+   type, generous targets, and contrast that comes from a local scrim
+   rather than from a panel. No cards, no boarding passes, no dashboards. */
+
 :root[data-world="flight"] {
-  --f-card: #f3f0e8; --f-ink: #191c21; --f-dim: #6e7076;
-  --f-line: rgba(25,28,33,.16); --f-rule: rgba(25,28,33,.3);
-  --f-accent: #1d4e6f; --f-amber: #9a6b1f; --f-stub: #e6e1d4;
-  --w-ink: #191c21; --w-dim: #6e7076; --w-line: rgba(25,28,33,.18);
-  --w-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
-  --w-navbg: #e8e4d8; --w-navline: rgba(25,28,33,.16);
-  --w-navink: #6e7076; --w-navon: #191c21; --w-navonink: #f3f0e8;
+  --w-navbg: rgba(10,14,22,.46); --w-navline: rgba(255,255,255,.14);
+  --w-navink: rgba(255,255,255,.62); --w-navon: rgba(255,255,255,.92);
+  --w-navonink: #10141c;
+  --w-ink: #fff; --w-dim: rgba(255,255,255,.66);
+  --w-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
+  --w-line: rgba(255,255,255,.18);
+  background: #0a0e16;
 }
-:root[data-world="flight"] body { background: #ece8dd; }
-:root[data-world="flight"][data-daypart="afternoon"] { --f-card: #f4f3ef; --f-stub: #e7e7e2; --f-accent: #22556f; }
-:root[data-world="flight"][data-daypart="afternoon"] body { background: #e9e9e4; }
-:root[data-world="flight"][data-daypart="evening"] { --f-card: #efe9df; --f-stub: #e2d9c9; --f-accent: #2a4a63; --f-amber: #8c5e1b; }
-:root[data-world="flight"][data-daypart="evening"] body { background: #e4dccd; }
-:root[data-world="flight"][data-daypart="night"] {
-  --f-card: #16191e; --f-ink: #e8e3d6; --f-dim: #7e848d;
-  --f-line: rgba(232,227,214,.16); --f-rule: rgba(232,227,214,.3);
-  --f-accent: #8fb6cf; --f-amber: #d8a344; --f-stub: #1d2127;
-  --w-ink: #e8e3d6; --w-dim: #7e848d; --w-line: rgba(232,227,214,.18);
-  --w-navbg: #1d2127; --w-navline: rgba(232,227,214,.14);
-  --w-navink: #7e848d; --w-navon: #e8e3d6; --w-navonink: #16191e;
+:root[data-world="flight"] body { background: #0a0e16; }
+:root[data-world="flight"] #world { color: #fff; }
+/* full bleed: the stage holds no padding of its own */
+:root[data-world="flight"] .w-stage { padding: 0; display: flex; }
+
+/* Decorative and aria-hidden, so it must never take a tap. Without this it
+   sat over the tab bar and swallowed clicks on the journeys. */
+.fl-sky { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.fl-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+.fl-wrap {
+  position: relative; z-index: 1; flex: 1; min-height: 100dvh;
+  display: flex; flex-direction: column;
+  padding: calc(env(safe-area-inset-top,0px) + 14px) 18px
+           calc(104px + env(safe-area-inset-bottom,0px));
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  opacity: var(--fl-fade, 1);
+  transition: opacity .5s ease;
+  -webkit-user-select: none; user-select: none;
 }
-:root[data-world="flight"][data-daypart="night"] body { background: #101317; }
 
-.f-wrap { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-  color: var(--f-ink); }
-.f-head { margin-bottom: 20px; }
-.f-kicker { margin: 0 0 8px; font: 600 10px/1 "SF Mono", ui-monospace, Menlo, monospace;
-  letter-spacing: .2em; text-transform: uppercase; color: var(--f-dim); }
-.f-title { margin: 0; font-family: var(--w-display);
-  font-weight: 400; font-size: clamp(25px, 7vw, 32px); line-height: 1.16;
-  letter-spacing: -.01em; text-wrap: balance; }
-.f-lede { margin: 10px 0 0; font-size: 15.5px; line-height: 1.5; color: var(--f-dim); max-width: 34ch; }
-.f-foot { margin: 16px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--f-dim); }
-
-/* the pass: a card with a torn stub, not a glass panel */
-.f-pass { display: flex; background: var(--f-card); border: 1px solid var(--f-line);
-  border-radius: 3px; overflow: hidden; }
-.f-stub { flex: 0 0 76px; background: var(--f-stub); padding: 16px 10px;
-  display: flex; flex-direction: column; justify-content: center; text-align: center;
-  border-right: 1px dashed var(--f-rule); }
-.f-stub-k { display: block; font: 600 8.5px/1 "SF Mono", ui-monospace, monospace;
-  letter-spacing: .16em; color: var(--f-dim); }
-.f-stub-v { display: block; margin: 7px 0 3px; font-family: var(--w-display);
-  font-size: 21px; font-weight: 400; font-variant-numeric: tabular-nums; }
-.f-stub-s { display: block; font-size: 10.5px; color: var(--f-dim); }
-.f-pass-body { flex: 1 1 auto; padding: 18px 16px 16px; min-width: 0; }
-
-.f-route { width: 100%; height: auto; margin: 16px 0 6px; display: block; }
-.f-route-line { stroke: var(--f-rule); stroke-width: 1; }
-.f-tick { stroke: var(--f-ink); stroke-width: 1.6; }
-.f-tick-fajr { stroke: var(--f-amber); stroke-width: 2; }
-.f-route-lab { fill: var(--f-amber); font: 600 7px "SF Mono", ui-monospace, monospace;
-  letter-spacing: .14em; }
-
-/* split-flap rows */
-.f-board { margin-top: 6px; border-top: 1px solid var(--f-line); }
-.f-row { display: grid; grid-template-columns: 42px 1fr auto; align-items: center;
-  gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--f-line); }
-.f-row[data-state="done"] { opacity: .45; }
-.f-code { font: 600 9.5px/1 "SF Mono", ui-monospace, Menlo, monospace;
-  letter-spacing: .1em; color: var(--f-dim); }
-.f-mid { min-width: 0; }
-.f-label { display: block; font-size: 14.5px; font-weight: 600; }
-.f-sub { display: block; margin-top: 2px; font-size: 11.5px; color: var(--f-dim); }
-.f-time { font-family: "SF Mono", ui-monospace, Menlo, monospace;
-  font-size: 16px; font-weight: 500; font-variant-numeric: tabular-nums;
-  letter-spacing: -.01em; }
-.f-row[data-state="now"] .f-time { color: var(--f-amber); }
-
-@media (prefers-reduced-motion: no-preference) {
-  .f-flap { animation: fFlap .22s cubic-bezier(.3,.7,.3,1) 1; transform-origin: 50% 0; }
+/* text legibility without a card: a soft local darkening behind copy */
+.fl-kick {
+  margin: 0 0 6px; font-size: 11px; font-weight: 600;
+  letter-spacing: .16em; text-transform: uppercase;
+  color: rgba(255,255,255,.62); text-shadow: 0 1px 16px rgba(5,8,14,.55);
 }
-@keyframes fFlap {
-  0%   { transform: rotateX(-82deg); opacity: .35; }
-  100% { transform: rotateX(0); opacity: 1; }
+.fl-head {
+  margin: 0; font-family: var(--w-display); font-weight: 500;
+  font-size: clamp(24px,6.6vw,30px); line-height: 1.2; letter-spacing: -.015em;
+  color: #fff; text-shadow: 0 2px 24px rgba(5,8,14,.6); max-width: 15ch;
 }
+.fl-head2 {
+  margin: 0 0 14px; font-family: var(--w-display); font-weight: 500;
+  font-size: 21px; line-height: 1.3; color: #fff;
+  text-shadow: 0 2px 20px rgba(5,8,14,.6); max-width: 24ch;
+}
+.fl-ask { margin: 0 0 4px; font-family: var(--w-display); font-weight: 500;
+  font-size: 24px; line-height: 1.25; text-shadow: 0 2px 20px rgba(5,8,14,.6); }
+
+.fl-mid { margin-top: auto; }
+.fl-foot { margin-top: 20px; }
+
+/* the compact schedule */
+.fl-times {
+  border-radius: 16px; overflow: hidden;
+  background: rgba(10,14,22,.34);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1); backdrop-filter: blur(18px) saturate(1.1);
+  border: 1px solid rgba(255,255,255,.14);
+}
+.fl-times-head {
+  appearance: none; -webkit-appearance: none; border: 0; cursor: pointer;
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  min-height: 48px; padding: 0 14px; background: transparent; color: #fff;
+  font: 500 14px/1 inherit; text-align: left;
+}
+.fl-times-k { flex: 1; font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+  color: rgba(255,255,255,.62); }
+.fl-times-v { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.fl-times-c { color: rgba(255,255,255,.5); font-size: 13px; }
+.fl-times-grid { padding: 2px 14px 12px; }
+.fl-times-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 8px 0; border-top: 1px solid rgba(255,255,255,.1);
+  font-size: 14px; color: rgba(255,255,255,.76);
+}
+.fl-times-row b { color: #fff; font-weight: 600; font-variant-numeric: tabular-nums; }
 
 /* actions */
-.f-go, .f-alt {
-  appearance: none; -webkit-appearance: none; cursor: pointer; display: block;
-  width: 100%; min-height: 52px; border-radius: 3px; margin-top: 12px;
-  font: 600 14px/1 "SF Mono", ui-monospace, Menlo, monospace; letter-spacing: .1em;
-  text-transform: uppercase;
+.fl-go {
+  appearance: none; -webkit-appearance: none; border: 0; cursor: pointer;
+  display: block; width: 100%; min-height: 54px; border-radius: 16px;
+  background: rgba(255,255,255,.94); color: #10141c;
+  font: 600 16px/1 inherit; letter-spacing: -.01em;
+  box-shadow: 0 10px 30px -18px rgba(0,0,0,.9);
 }
-.f-go { background: var(--f-accent); color: var(--f-card); border: 0; }
-.f-alt { background: transparent; color: var(--f-dim); border: 1px solid var(--f-line);
-  font: 500 13px/1 -apple-system, system-ui, sans-serif; letter-spacing: 0;
-  text-transform: none; min-height: 46px; }
-
-.f-opts { display: grid; gap: 9px; margin-top: 18px; }
-.f-opt {
+.fl-go-quiet {
+  background: rgba(255,255,255,.14); color: #fff;
+  border: 1px solid rgba(255,255,255,.26);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+.fl-quiet {
+  appearance: none; -webkit-appearance: none; background: none; border: 0; cursor: pointer;
+  display: block; width: 100%; min-height: 46px; margin-top: 6px;
+  color: rgba(255,255,255,.62); font: 500 13.5px/1 inherit;
+  text-shadow: 0 1px 14px rgba(5,8,14,.6);
+}
+.fl-opts { display: grid; gap: 9px; margin-top: 16px; }
+.fl-opt {
   appearance: none; -webkit-appearance: none; cursor: pointer; text-align: left;
-  width: 100%; min-height: 54px; padding: 12px 16px; border-radius: 3px;
-  background: var(--f-card); border: 1px solid var(--f-line); color: var(--f-ink);
-  font: 500 15px/1.3 inherit;
+  width: 100%; min-height: 52px; padding: 0 16px; border-radius: 14px;
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
+  color: #fff; font: 500 15px/1.3 inherit;
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
 }
-.f-opt-wide { display: block; margin-bottom: 9px; }
-.f-opt-l { display: block; font-size: 15px; font-weight: 600; }
-.f-opt-d { display: block; margin-top: 3px; font-size: 12.5px; color: var(--f-dim); }
-.f-opt[aria-pressed="true"] { border-color: var(--f-accent); border-width: 2px; }
+.fl-opt-wide { display: block; margin-bottom: 9px; padding: 14px 16px; }
+.fl-opt-d { margin: 2px 0 18px; font-size: 12.5px; line-height: 1.5;
+  color: rgba(255,255,255,.58); }
+.fl-revised { margin-top: 10px; }
 
-/* arrival report + logbook */
-.f-arrival { margin: 18px 0; padding: 18px 16px; border-radius: 3px;
-  background: var(--f-card); border: 1px solid var(--f-line); }
-.f-arrival.f-stamped { border-color: var(--f-amber); }
-.f-seg { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; margin-top: 14px; }
-.f-seg button {
-  appearance: none; -webkit-appearance: none; cursor: pointer;
-  min-height: 54px; border-radius: 3px; background: transparent;
-  border: 1px solid var(--f-line); color: var(--f-ink);
-  font: 500 16px/1 "SF Mono", ui-monospace, monospace;
+/* scrollable panels still let the sky through */
+/* Weighted to where the words are, not spread flat over the whole frame.
+   A uniform scrim turned the sunrise to mud and took the arrival out of
+   the morning. */
+.fl-scrim {
+  position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(180deg,
+    rgba(6,9,16,.74) 0%, rgba(6,9,16,.66) 30%,
+    rgba(6,9,16,.40) 56%, rgba(6,9,16,.10) 80%, rgba(6,9,16,0) 100%);
 }
-.f-log { list-style: none; margin: 18px 0 0; padding: 0; border-top: 1px solid var(--f-line); }
-.f-log-row { display: grid; grid-template-columns: 54px 1fr auto; gap: 10px;
-  align-items: baseline; padding: 11px 0; border-bottom: 1px solid var(--f-line); }
-.f-log-date { font: 500 11.5px/1 "SF Mono", ui-monospace, monospace; color: var(--f-dim); }
-.f-log-dur { font-family: var(--w-display); font-size: 17px; font-weight: 400;
+.fl-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-top: 6px; }
+
+/* the logbook, as light rows rather than a table */
+.fl-log { list-style: none; margin: 16px 0 0; padding: 0; }
+.fl-log-row { display: grid; grid-template-columns: 46px 1fr 56px; gap: 10px;
+  align-items: center; padding: 9px 0; }
+.fl-log-d { font-size: 11.5px; color: rgba(255,255,255,.52);
   font-variant-numeric: tabular-nums; }
-.f-log-felt { font-size: 12.5px; color: var(--f-dim); }
+.fl-log-v { font-size: 13px; text-align: right; color: rgba(255,255,255,.86);
+  font-variant-numeric: tabular-nums; }
+.fl-bar { height: 6px; border-radius: 99px; background: rgba(255,255,255,.14); overflow: hidden; }
+.fl-bar i { display: block; height: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, rgba(255,255,255,.55), rgba(255,255,255,.88)); }
+.fl-bar-unknown { background: repeating-linear-gradient(90deg,
+  rgba(255,255,255,.2) 0 4px, transparent 4px 8px); }
 
-/* briefing */
-.f-disc { border: 1px solid var(--f-line); border-radius: 3px; margin-bottom: 9px;
-  background: var(--f-card); }
-.f-disc summary { list-style: none; cursor: pointer; padding: 15px 16px; min-height: 50px;
+.fl-arrive { margin-bottom: 8px; }
+.fl-seg { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; margin-top: 12px; }
+.fl-seg button {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  min-height: 56px; border-radius: 14px;
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.22);
+  color: #fff; font: 600 17px/1 inherit;
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+.fl-disc { border-radius: 14px; margin-bottom: 8px;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); }
+.fl-disc summary { list-style: none; cursor: pointer; padding: 14px 16px; min-height: 50px;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   font-size: 14.5px; font-weight: 500; }
-.f-disc summary::-webkit-details-marker { display: none; }
-.f-disc summary::after { content: "+"; color: var(--f-dim); font-family: "SF Mono", monospace; }
-.f-disc[open] summary::after { content: "\2013"; }
-.f-disc-b { margin: 0; padding: 0 16px 16px; font-size: 14px; line-height: 1.6; color: var(--f-dim); }
+.fl-disc summary::-webkit-details-marker { display: none; }
+.fl-disc summary::after { content: "+"; color: rgba(255,255,255,.5); }
+.fl-disc[open] summary::after { content: "\2013"; }
+.fl-disc-b { margin: 0; padding: 0 16px 15px; font-size: 14px; line-height: 1.6;
+  color: rgba(255,255,255,.72); }
 
-.f-revised { margin-top: 16px; padding: 18px 16px; border-radius: 3px;
-  background: var(--f-card); border: 1px solid var(--f-accent); }
-.f-worlds { margin-top: 6px; }
+/* ── THE DESCENT ─────────────────────────────────────────────────── */
+.fl-descending { justify-content: space-between; text-align: center; }
+.fl-desc-top { padding-top: 10px; }
+.fl-phase {
+  margin: 0 0 12px; font-size: 11px; font-weight: 600; letter-spacing: .24em;
+  text-transform: uppercase; color: rgba(255,255,255,.72);
+  text-shadow: 0 1px 16px rgba(5,8,14,.6);
+}
+.fl-dots { display: flex; justify-content: center; gap: 7px; }
+.fl-dot { width: 5px; height: 5px; border-radius: 50%;
+  background: rgba(255,255,255,.26); transition: background .5s ease, transform .5s ease; }
+.fl-dot[data-on="true"] { background: rgba(255,255,255,.9); transform: scale(1.18); }
+
+.fl-desc-mid { display: flex; flex-direction: column; align-items: center;
+  justify-content: center; flex: 1; gap: 30px; }
+.fl-line {
+  margin: 0; max-width: 17ch;
+  font-family: var(--w-display); font-weight: 400;
+  font-size: clamp(21px,5.6vw,26px); line-height: 1.38; letter-spacing: -.01em;
+  color: rgba(255,255,255,.96); text-shadow: 0 2px 26px rgba(5,8,14,.7);
+  transition: opacity .26s ease, transform .26s ease;
+}
+.fl-line.fl-swap { opacity: 0; transform: translateY(7px); }
+
+/* one breath: four seconds out, which is the only pacing cue offered */
+.fl-breath { width: 46px; height: 46px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.3); }
+@media (prefers-reduced-motion: no-preference) {
+  .fl-breath { animation: flBreath 8s ease-in-out infinite; }
+}
+@keyframes flBreath {
+  0%, 100% { transform: scale(.74); opacity: .4; }
+  50%      { transform: scale(1.1); opacity: .82; }
+}
+
+.fl-desc-foot { padding-bottom: 4px; }
+.fl-hint { margin: 0 0 12px; font-size: 12.5px; color: rgba(255,255,255,.54);
+  text-shadow: 0 1px 14px rgba(5,8,14,.6); }
+
+/* the last beat: everything but the sky goes */
+.fl-wrap.fl-ending { opacity: 0 !important; transition: opacity 1.9s ease; pointer-events: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fl-wrap, .fl-line, .fl-dot { transition: none; }
+}
