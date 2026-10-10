@@ -62,6 +62,9 @@
   function buildModel() {
     var resolved = E.phase();
     var phase = resolved && resolved.phase ? resolved.phase : String(resolved);
+    /* Morning ends the night on its own, so nobody wakes to a screen still
+       telling them to put the phone down. */
+    if (phase === 'WAKE' && sessionGet('ss_settled')) sessionDel('ss_settled');
     var plan = E.tonightsPlan();
     var knowledge = E.knowledge();
     var proposed = null, need = null;
@@ -129,8 +132,11 @@
       history: history,
       lastNight: history.length ? history[history.length - 1] : null,
       needsRecord: !history.some(function (m) { return m.date === today; }),
-      /* After Goodnight the shell stops being interesting. See nightGuard. */
-      settled: phase === 'SLEEP' && Boolean(sessionGet('ss_settled'))
+      /* After Goodnight the shell stops being interesting. See nightGuard.
+         Not gated on the SLEEP phase: finishing the Descent IS the act of
+         going to bed, and someone who does it at nine o'clock has gone to
+         bed at nine o'clock. The morning clears it either way. */
+      settled: phase !== 'WAKE' && Boolean(sessionGet('ss_settled'))
     });
   }
 
@@ -278,6 +284,12 @@
     var world = WORLDS[active] || WORLDS.plain;
     var model = buildModel();
 
+    /* A world may own a persistent layer — a canvas sky, say — that must
+       survive the stage being cleared on every render. It is mounted once,
+       under #world and behind the stage, and the world keeps the handle. */
+    if (world.mount && !world._mounted) { world.mount(root, SSWorlds); world._mounted = true; }
+    if (world.sync) world.sync(model, current, SSWorlds);
+
     document.documentElement.dataset.world = world.id;
     document.documentElement.dataset.daypart =
       model.phase === 'WAKE' ? 'morning' : model.phase === 'DAY' ? 'afternoon'
@@ -288,7 +300,11 @@
     stage.appendChild(guarded || world.scene(model, current, SSWorlds));
 
     tabs.innerHTML = '';
-    if (!guarded) {
+    /* A world may declare itself in an immersive moment — the Descent —
+       and navigation is withdrawn for it, not merely hidden. Hiding would
+       have left four reachable controls behind a CSS rule. */
+    var immersive = document.documentElement.dataset.descending === 'yes';
+    if (!guarded && !immersive) {
       [['tonight', world.lexicon.tonight], ['logbook', world.lexicon.logbook],
        ['learn', world.lexicon.learn], ['you', world.lexicon.you]].forEach(function (pair) {
         tabs.appendChild(el('button', { type: 'button', role: 'tab', 'data-journey': pair[0],
@@ -299,6 +315,8 @@
     window.scrollTo(0, 0);
   }
 
+  SSWorlds.refresh = render;
+  SSWorlds.model = buildModel;
   window.__world = {
     render: render,
     model: buildModel,
