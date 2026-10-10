@@ -134,19 +134,43 @@
     };
   }
 
-  /* A lobe stamp. The core is FULLY opaque out to 56% of the radius, which is
-     what lets overlapping lobes union into one solid mass instead of reading
-     as a row of separate circles; only the outer rim is feathered. */
+  /* Two stamps, because the sky wants two different things from them.
+     The VEIL stamp has no opaque core at all — it falls away from its
+     centre immediately, so stacking a hundred of them builds depth by
+     accumulation rather than by union. That accumulation is what makes
+     cloud you can see through, which is the whole of a wispy sky: the
+     colour behind never stops showing. A stamp with a hard core would
+     union into a solid shape instead, and a solid shape is weather. */
+  function veilStamp(size) {
+    var c = document.createElement('canvas');
+    c.width = c.height = size;
+    var g = c.getContext('2d');
+    var r = size / 2;
+    var grad = g.createRadialGradient(r, r, 0, r, r, r);
+    grad.addColorStop(0, 'rgba(255,255,255,0.52)');
+    grad.addColorStop(0.30, 'rgba(255,255,255,0.33)');
+    grad.addColorStop(0.58, 'rgba(255,255,255,0.14)');
+    grad.addColorStop(0.80, 'rgba(255,255,255,0.04)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad;
+    g.beginPath(); g.arc(r, r, r, 0, 6.2832); g.fill();
+    return c;
+  }
+
+  /* The heap stamp keeps a core, but a soft one: enough that a drift of
+     them reads as a body with some substance, not so much that it acquires
+     an outline. */
   function puffSprite(size) {
     var c = document.createElement('canvas');
     c.width = c.height = size;
     var g = c.getContext('2d');
     var r = size / 2;
     var grad = g.createRadialGradient(r, r, 0, r, r, r);
-    grad.addColorStop(0, 'rgba(255,255,255,1)');
-    grad.addColorStop(0.56, 'rgba(255,255,255,1)');
-    grad.addColorStop(0.74, 'rgba(255,255,255,0.72)');
-    grad.addColorStop(0.89, 'rgba(255,255,255,0.22)');
+    grad.addColorStop(0, 'rgba(255,255,255,0.95)');
+    grad.addColorStop(0.18, 'rgba(255,255,255,0.86)');
+    grad.addColorStop(0.44, 'rgba(255,255,255,0.56)');
+    grad.addColorStop(0.68, 'rgba(255,255,255,0.24)');
+    grad.addColorStop(0.86, 'rgba(255,255,255,0.06)');
     grad.addColorStop(1, 'rgba(255,255,255,0)');
     g.fillStyle = grad;
     g.beginPath(); g.arc(r, r, r, 0, 6.2832); g.fill();
@@ -194,11 +218,69 @@
      worth lighting individually.
      --------------------------------------------------------------- */
 
-  /* Cumulus: lobes on a baseline, a billow riding an off-centre tower,
-     then TWO further octaves of smaller lobes around every crown. One
-     octave is a cartoon cloud; three is cauliflower, which is what the
-     eye actually reads as cloud. */
-  function cumulusMask(rand, puff, iw, ih) {
+  /* A VEIL: the long, soft, drifting kind of cloud. Several strata laid
+     over one another, each a train of flattened stamps following its own
+     slow curve, each thinning to nothing at both ends.
+
+     Nothing here has a base, an outline or a silhouette, which is the
+     point — a wispy cloud is not a shape with soft edges, it is an
+     accumulation with no edge at all. Its form comes from where the
+     strata happen to overlap, so it reads as depth rather than as an
+     object, and the sky behind is never fully hidden. */
+  function veilMask(rand, veil, iw, ih) {
+    var padX = Math.round(ih * 0.22), padY = Math.round(ih * 0.30);
+    var mw = iw + padX * 2, mh = ih + padY * 2;
+    var c = document.createElement('canvas');
+    c.width = mw; c.height = mh;
+    var g = c.getContext('2d');
+    var strata = 5 + Math.round(rand() * 4);
+
+    for (var L = 0; L < strata; L++) {
+      /* each stratum has its own height, drift and bow */
+      var y0 = padY + ih * (0.12 + rand() * 0.76);
+      var len = iw * (0.52 + rand() * 0.48);
+      var x0 = padX + rand() * (iw - len);
+      var bow = (rand() - 0.5) * ih * 0.34;
+      var thick = ih * (0.10 + rand() * 0.20);
+      var n = 34 + Math.round(rand() * 26);
+      for (var i = 0; i < n; i++) {
+        var u = (i + 0.5) / n;
+        /* fat somewhere along its length, frayed at both ends — never a
+           band of even thickness, which reads as a painted stripe */
+        var swell = Math.pow(Math.sin(Math.pow(u, 0.8) * Math.PI), 0.7);
+        var rx = ih * (0.14 + rand() * 0.16);
+        var ry = thick * swell * (0.45 + rand() * 0.75);
+        if (ry < 0.6) continue;
+        g.globalAlpha = 0.30 + rand() * 0.36;
+        stamp(g, veil,
+              x0 + u * len + (rand() - 0.5) * ih * 0.07,
+              y0 + Math.sin(u * Math.PI) * bow + (rand() - 0.5) * thick * 0.65,
+              rx, ry);
+      }
+    }
+    g.globalAlpha = 1;
+
+    /* Thin it where it leaves the sprite, so a veil drifts out of frame
+       rather than stopping at an edge. */
+    g.globalCompositeOperation = 'destination-out';
+    var fade = g.createLinearGradient(0, 0, mw, 0);
+    fade.addColorStop(0, 'rgba(0,0,0,1)');
+    fade.addColorStop(0.13, 'rgba(0,0,0,0)');
+    fade.addColorStop(0.87, 'rgba(0,0,0,0)');
+    fade.addColorStop(1, 'rgba(0,0,0,1)');
+    g.fillStyle = fade;
+    g.fillRect(0, 0, mw, mh);
+    g.globalCompositeOperation = 'source-over';
+
+    return { canvas: c, lobes: [], base: padY + ih * 0.5, kind: 'veil' };
+  }
+
+  /* A soft HEAP. Still built from lobes, so it keeps some body and some
+     cauliflower, but with the cumulus removed from it: no ruled base, no
+     hard crown, and a gauze of veil stamps drifting off it. A sky of
+     nothing but veils has no weight anywhere; a few of these give the eye
+     something to settle on. */
+  function cumulusMask(rand, puff, veilS, iw, ih) {
     /* Geometry lives in an INNER box with a margin all round. Without it the
        outermost lobes run off the canvas and come back as dead straight
        edges — a cloud with a ruled side, which is worse than any shading
@@ -249,41 +331,60 @@
 
     /* two octaves of detail, on the UPPER arc of each lobe only — the
        underside of a cumulus is smooth, the crown is not */
-    var all = lobes.slice();
+    for (i = 0; i < lobes.length; i++) {
+      stamp(g, puff, lobes[i].x, lobes[i].y, lobes[i].r, lobes[i].r);
+    }
+    /* ONE octave of detail, and drawn with the veil stamp at low opacity so
+       it softens the crown rather than studding it. Stacking hard little
+       stamps around the top is what gave the first attempt a crown of
+       bright beads — soap foam, not cloud. */
     for (i = 0; i < lobes.length; i++) {
       var p = lobes[i];
       var kids = 3 + Math.round(rand() * 3);
       for (k = 0; k < kids; k++) {
         var a1 = -Math.PI * (0.06 + rand() * 0.88);
-        var rr = p.r * (0.28 + rand() * 0.20);
-        var px = p.x + Math.cos(a1) * p.r * (0.70 + rand() * 0.22);
-        var py = p.y + Math.sin(a1) * p.r * (0.70 + rand() * 0.22);
-        all.push({ x: px, y: py, r: rr });
-        if (rand() < 0.62) {
-          var a2 = -Math.PI * (0.04 + rand() * 0.92);
-          all.push({ x: px + Math.cos(a2) * rr * 0.78,
-                     y: py + Math.sin(a2) * rr * 0.78,
-                     r: rr * (0.38 + rand() * 0.22) });
-        }
+        var rr = p.r * (0.34 + rand() * 0.26);
+        g.globalAlpha = 0.40 + rand() * 0.30;
+        stamp(g, veilS,
+              p.x + Math.cos(a1) * p.r * (0.62 + rand() * 0.26),
+              p.y + Math.sin(a1) * p.r * (0.62 + rand() * 0.26),
+              rr, rr * (0.78 + rand() * 0.3));
       }
     }
-    for (i = 0; i < all.length; i++) stamp(g, puff, all[i].x, all[i].y, all[i].r, all[i].r);
+    g.globalAlpha = 1;
 
+    /* A long, soft fade under the mass instead of a flat cut. A ruled base
+       is what makes a heap read as cumulus — as weather, as daylight — and
+       that is exactly the character being taken out of it here. */
     g.globalCompositeOperation = 'destination-out';
-    /* cut the base flat — the single most cumulus-making move there is */
-    var top = base - ih * 0.06;
-    var er = g.createLinearGradient(0, top, 0, base + ih * 0.10);
+    var top = base - ih * 0.30;
+    var er = g.createLinearGradient(0, top, 0, base + ih * 0.16);
     er.addColorStop(0, 'rgba(0,0,0,0)');
-    er.addColorStop(0.5, 'rgba(0,0,0,0.72)');
+    er.addColorStop(0.45, 'rgba(0,0,0,0.26)');
+    er.addColorStop(0.78, 'rgba(0,0,0,0.74)');
     er.addColorStop(1, 'rgba(0,0,0,1)');
     g.fillStyle = er;
     g.fillRect(0, top, mw, mh - top);
-    /* then bite into it, so the base is ragged rather than ruled */
-    for (i = 0; i < 3; i++) {
-      var br = ih * (0.08 + rand() * 0.10);
-      stamp(g, puff, padX + iw * (0.1 + rand() * 0.8), base + br * 0.35, br * 1.5, br);
+    /* and break the outline in a few places, so it has no continuous edge */
+    for (i = 0; i < 5; i++) {
+      var br = ih * (0.10 + rand() * 0.16);
+      stamp(g, puff, padX + iw * (0.05 + rand() * 0.9),
+            base - ih * rand() * 0.5, br * 1.7, br);
     }
     g.globalCompositeOperation = 'source-over';
+
+    /* gauze drifting off the mass — the thing that stops a heap looking
+       cut out of the sky */
+    for (i = 0; i < 26; i++) {
+      var a = rand() * 6.2832;
+      var d = 0.5 + rand() * 0.6;
+      g.globalAlpha = 0.16 + rand() * 0.22;
+      stamp(g, puff,
+            padX + iw * (0.1 + rand() * 0.8) + Math.cos(a) * iw * 0.18 * d,
+            base - ih * (0.12 + rand() * 0.55) + Math.sin(a) * ih * 0.2 * d,
+            ih * (0.14 + rand() * 0.22), ih * (0.05 + rand() * 0.10));
+    }
+    g.globalAlpha = 1;
 
     /* Only the lobes with real volume are worth lighting individually, and
        shading all of them is the engine's hot loop. Keep the biggest few. */
@@ -383,6 +484,7 @@
     this.ease = this.o.ease || 0.055;
     this.reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.puff = puffSprite(256);
+    this.veil = veilStamp(256);
     this.running = false;
     this.phase = 0;
     this.build();
@@ -394,7 +496,7 @@
 
   SkyScene.prototype.build = function () {
     var rand = mulberry(20260910);
-    var puff = this.puff;
+    var puff = this.puff, veil = this.veil;
 
     /* A small LIBRARY, instanced many times. Shading cost is then fixed by
        the library's size, not by how full the sky is — which is what makes
@@ -403,29 +505,38 @@
        soft, and every pixel here is paid for again on every re-light. */
     this.sprites = [];
     var i;
-    /* Proportion is the main thing that distinguishes one cloud from
-       another at a glance, so the library spans it deliberately: long low
-       banks, ordinary heaps, and a few towers. */
-    var ASPECT = [0.30, 0.38, 0.46, 0.55, 0.62, 0.78, 0.95, 1.15];
+    /* The library leans hard towards veils. Heaps are the seasoning, not
+       the dish: a few, and soft, so the eye has somewhere to rest without
+       the sky acquiring weather. */
+    for (i = 0; i < 7; i++) {
+      var vw = 260 + Math.round(rand() * 120);
+      this.sprites.push(veilMask(rand, veil, vw,
+        Math.round(vw * (0.26 + rand() * 0.26))));
+    }
+    var ASPECT = [0.34, 0.44, 0.58, 0.80];
     for (i = 0; i < ASPECT.length; i++) {
-      var cw = 150 + Math.round(rand() * 70);
-      this.sprites.push(cumulusMask(rand, puff, cw,
+      var cw = 150 + Math.round(rand() * 60);
+      this.sprites.push(cumulusMask(rand, puff, veil, cw,
         Math.round(cw * ASPECT[i] * (0.92 + rand() * 0.16))));
     }
-    for (i = 0; i < 4; i++) {
-      var sw = 230 + Math.round(rand() * 90);
-      this.sprites.push(sheetMask(rand, puff, sw, Math.round(sw * (0.16 + rand() * 0.10))));
+    for (i = 0; i < 3; i++) {
+      var sw = 240 + Math.round(rand() * 90);
+      this.sprites.push(sheetMask(rand, veil, sw, Math.round(sw * (0.15 + rand() * 0.10))));
     }
     for (i = 0; i < 3; i++) {
-      this.sprites.push(wispMask(rand, puff, 340, 125));
+      this.sprites.push(wispMask(rand, veil, 340, 125));
     }
+    /* Only a heap has enough of an edge for an edge light to mean anything.
+       A veil has no outline to catch the sun, so giving it one would draw
+       the very hard rim this is meant to be free of. */
     this.sprites.forEach(function (sp) {
-      if (sp.kind !== 'wisp') sp.rim = rimOf(sp.canvas);
+      if (sp.kind === 'cumulus') sp.rim = rimOf(sp.canvas);
     });
     this.cursor = 0;
-    var cumulus = [], sheets = [], wisps = [];
+    var cumulus = [], sheets = [], wisps = [], veils = [];
     this.sprites.forEach(function (s, k) {
-      (s.kind === 'cumulus' ? cumulus : s.kind === 'sheet' ? sheets : wisps).push(k);
+      (s.kind === 'cumulus' ? cumulus : s.kind === 'sheet' ? sheets
+        : s.kind === 'veil' ? veils : wisps).push(k);
     });
 
     /* The field. Depth `k` runs 0 at the horizon to 1 nearest; size, height,
@@ -433,7 +544,10 @@
        the perspective. Far clouds are many, small and crowded into the
        haze; near ones are few, large and move. */
     this.field = [];
-    var N = 46;
+    /* Veils are large and translucent, so each one costs real fill: this
+       scene pays for OVERDRAW, not for cloud count. Fifty denser veils
+       cover the sky as well as sixty faint ones for less of it. */
+    var N = 50;
     /* Weather clumps. Spreading clouds evenly across the width is the
        giveaway of a generated sky — real ones have crowded stretches and
        open ones, and the open stretches are what make the crowded ones
@@ -441,9 +555,12 @@
     var groups = [];
     for (i = 0; i < 6; i++) groups.push(rand() * 1.7 - 0.35);
     for (i = 0; i < N; i++) {
-      var k = Math.pow((i + rand() * 0.9) / N, 1.45);
-      var near = k > 0.52;
-      var pool = near ? cumulus : (rand() < 0.5 ? sheets : cumulus);
+      var k = Math.pow((i + rand() * 0.9) / N, 1.5);
+      /* Roughly three in four are veils at every depth. A heap turns up
+         now and then, and only where it is near enough to be worth it. */
+      var r0 = rand();
+      var pool = r0 < 0.70 ? veils
+               : (r0 < 0.86 ? sheets : (k > 0.45 ? cumulus : veils));
       var sp = pool[Math.floor(rand() * pool.length) % pool.length];
       var gx = groups[Math.floor(rand() * groups.length) % groups.length];
       this.field.push({
@@ -452,8 +569,11 @@
         y: HORIZON - (HORIZON - TOP) * Math.pow(k, 1.45) + (rand() - 0.5) * 0.012,
         /* Distant cloud is not a small sharp cloud, it is a pale one. Fade
            it hard with depth, or the far field reads as specks of dirt. */
-        w: 0.085 + 0.78 * Math.pow(k, 1.9),
-        a: 0.10 + 0.86 * Math.pow(k, 0.95),
+        /* Veils run wider and much fainter than a heap would. They are
+           meant to overlap each other, several deep, and build their
+           weight by stacking rather than by any one of them being solid. */
+        w: (0.10 + 0.92 * Math.pow(k, 1.85)) * (this.sprites[sp].kind === 'veil' ? 1.2 : 1),
+        a: (0.18 + 0.82 * Math.pow(k, 0.78)) * (this.sprites[sp].kind === 'veil' ? 1 : 0.9),
         speed: 0.0004 + 0.0085 * k * k,
         flip: rand() < 0.5
       });
@@ -790,16 +910,29 @@
     /* The form light. Its axis is scaled to the sprite's HEIGHT, not its
        width — tie the lean to the width and on a wide cloud the horizontal
        component swamps the vertical, which paints the whole crown in body
-       grey. A sheet gets a shallower ramp than a cumulus, because a flat
-       layer has far less depth to shade through. */
+       grey.
+
+       How far the ramp is allowed to travel is what sets the cloud's
+       character. A cumulus earns its full range, white crown to near-black
+       base, because it is thick enough to stop the light. A veil is not:
+       light goes through it, so it has no shadowed underside, and running
+       the same ramp over one turns a wisp into a slab. Veils therefore
+       live in the top half of the range and never reach the base colour at
+       all. */
     var flat = sp.kind === 'sheet';
-    var lean = mh * (flat ? 0.9 : 0.55) * side;
+    var thin = sp.kind === 'veil';
+    var dark = thin ? mixRGB(s.cloudLit, s.cloudBody, 0.72)
+             : flat ? mixRGB(s.cloudBody, s.cloudBase, 0.55)
+             : s.cloudBase;
+    var mid = thin ? mixRGB(s.cloudLit, s.cloudBody, 0.34)
+            : mixRGB(s.cloudLit, s.cloudBody, flat ? 0.62 : 0.38);
+    var lean = mh * (thin ? 1.1 : flat ? 0.9 : 0.55) * side;
     var grad = g.createLinearGradient(mw * 0.5 + lean, -mh * 0.04,
-                                      mw * 0.5 - lean, mh * (flat ? 1.20 : 0.94));
+                                      mw * 0.5 - lean, mh * (thin ? 1.35 : flat ? 1.20 : 0.94));
     grad.addColorStop(0, rgba(s.cloudLit, 1));
-    grad.addColorStop(flat ? 0.42 : 0.30, rgba(mixRGB(s.cloudLit, s.cloudBody, flat ? 0.62 : 0.38), 1));
-    grad.addColorStop(flat ? 0.74 : 0.64, rgba(s.cloudBody, 1));
-    grad.addColorStop(1, rgba(s.cloudBase, 1));
+    grad.addColorStop(thin ? 0.46 : flat ? 0.42 : 0.30, rgba(mid, 1));
+    grad.addColorStop(thin ? 0.80 : flat ? 0.74 : 0.64, rgba(s.cloudBody, 1));
+    grad.addColorStop(1, rgba(dark, 1));
     g.globalCompositeOperation = 'source-in';
     g.fillStyle = grad;
     g.fillRect(0, 0, mw, mh);
