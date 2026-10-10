@@ -1,0 +1,160 @@
+/* SleepSphere Explore.
+ *
+ * Same grammar as Motherhood: a full-screen layer, one thing at a time,
+ * built on the app's own tokens. A practice screen is mostly empty on
+ * purpose — the words and the one control are the whole interface, and
+ * anything else on screen is something to think about at bedtime.
+ */
+
+.ex-index .ex-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 12px; }
+.ex-tile {
+  appearance: none; -webkit-appearance: none; text-align: left;
+  display: grid; gap: 4px; font: inherit; cursor: pointer;
+  color: var(--ink); background: var(--card);
+  border: 1px solid var(--line); border-radius: 16px;
+  padding: 14px; min-height: 76px;
+}
+.ex-tile strong { font-size: .95rem; font-weight: 600; }
+.ex-tile span { font-size: .78rem; line-height: 1.45; color: var(--muted); }
+.ex-tile:hover { border-color: var(--accent); }
+.ex-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---- The layer. */
+html.ex-open, html.ex-open body { overflow: hidden; }
+
+.ex-layer {
+  position: fixed; inset: 0; z-index: 92;
+  display: flex; flex-direction: column;
+  background: var(--paper); color: var(--ink);
+  font-family: var(--font-body, inherit);
+}
+.ex-layer *, .ex-layer *::before, .ex-layer *::after { box-sizing: border-box; }
+
+.ex-bar {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 12px;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.ex-bar-title { flex: 1 1 auto; text-align: center; font-weight: 600; font-size: .95rem; }
+.ex-bar-pad { width: 62px; flex: 0 0 auto; }
+.ex-close {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  border: 1px solid var(--line); background: transparent; color: var(--muted);
+  font: inherit; font-size: .85rem; padding: 7px 12px; border-radius: var(--r-pill, 999px);
+  min-height: 36px;
+}
+.ex-close:hover { color: var(--ink); border-color: var(--accent); }
+
+.ex-body {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 40px);
+  display: flex; flex-direction: column; gap: 14px;
+}
+
+.ex-card {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--r-card, 16px); padding: 18px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.ex-card h2 { margin: 0; font-family: var(--font-display, inherit); font-size: 1.3rem; line-height: 1.25; }
+.ex-card h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+.ex-note { margin: 0; font-size: .82rem; line-height: 1.6; color: var(--muted); }
+.ex-empty { font-style: italic; color: var(--muted); }
+.ex-eyebrow { margin: 0; font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+
+/* A practice stage: generous, centred, and quiet. It sits in the middle of
+   the screen rather than pinned under the bar, because a body scan with a
+   third of the page empty beneath it reads as something unfinished. */
+.ex-body:has(.ex-stage) { justify-content: center; }
+.ex-stage { align-items: center; text-align: center; padding: 26px 18px; gap: 14px; }
+.ex-stage h2 { font-size: 1.6rem; }
+.ex-words {
+  margin: 0; max-width: 34ch; font-size: 1rem; line-height: 1.75; color: var(--ink);
+  min-height: 7.5em;                   /* steps vary in length; the page must not jump */
+}
+.ex-clock { margin: 0; font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; min-height: 1.4em; }
+
+.ex-bar-track { width: 100%; max-width: 420px; height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.ex-bar-fill { height: 100%; width: 0; background: var(--accent); }
+@media (prefers-reduced-motion: no-preference) {
+  .ex-bar-fill { transition: width .9s linear; }
+}
+
+/* Breathing. The ring is the decoration; the words are the practice, which
+   is why the cue and the count are rendered whether or not it animates. */
+.ex-circle { display: grid; place-items: center; width: 190px; height: 190px; }
+.ex-ring {
+  width: 150px; height: 150px; border-radius: 50%;
+  border: 1px solid var(--accent);
+  background: radial-gradient(circle at 50% 50%, var(--atmo, transparent), transparent 70%);
+  transform: scale(.55);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ex-ring { transition: transform .08s linear; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ex-ring { transform: scale(.8); }
+}
+.ex-cue { margin: 0; font-family: var(--font-display, inherit); font-size: 1.5rem; }
+
+.ex-controls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.ex-primary, .ex-quiet {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  font: inherit; font-weight: 600; font-size: .92rem;
+  padding: 12px 20px; border-radius: var(--r-pill, 999px);
+  border: 1px solid transparent; min-height: 44px;
+}
+.ex-primary { background: var(--accent); color: var(--paper); }
+.ex-quiet { background: transparent; color: var(--ink); border-color: var(--line); }
+.ex-quiet:disabled { opacity: .4; cursor: default; }
+.ex-quiet:hover:not(:disabled) { border-color: var(--accent); }
+
+.ex-pills { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.ex-pill {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  font: inherit; font-size: .8rem; color: var(--muted);
+  background: transparent; border: 1px solid var(--line);
+  border-radius: var(--r-pill, 999px); padding: 7px 13px; min-height: 36px;
+}
+.ex-pill.on { background: var(--accent); color: var(--paper); border-color: var(--accent); }
+
+/* Sound. One row per layer: a switch and its own level, which is what
+   "individual sound layers" has to mean to be worth anything. */
+.ex-layer-row { display: grid; grid-template-columns: minmax(0, 7.5rem) minmax(0, 1fr); gap: 10px; align-items: center; }
+.ex-toggle {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  font: inherit; font-size: .88rem; font-weight: 600;
+  color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line); border-radius: var(--r-pill, 999px);
+  padding: 10px 12px; min-height: 42px; min-width: 0;
+}
+.ex-toggle.on { background: var(--accent); color: var(--paper); border-color: var(--accent); }
+.ex-layer-row input[type="range"] { width: 100%; min-width: 0; accent-color: var(--accent); min-height: 36px; }
+.ex-layer-row input[type="range"]:disabled { opacity: .35; }
+.ex-master { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 2px; }
+
+/* Writing. */
+.ex-layer textarea, .ex-layer input[type="text"] {
+  font: inherit; font-size: 1rem;            /* 16px, or iOS zooms the page */
+  color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line); border-radius: 12px;
+  padding: 12px; width: 100%; line-height: 1.6; resize: vertical;
+}
+.ex-layer :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.ex-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ex-list li { display: grid; gap: 3px; font-size: .9rem; line-height: 1.55;
+  padding-bottom: 10px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.ex-list li:last-child { border-bottom: 0; padding-bottom: 0; }
+.ex-when { font-size: .74rem; color: var(--muted); }
+.ex-next { font-size: .8rem; color: var(--muted); }
+
+.ex-lesson summary { cursor: pointer; font-weight: 600; padding: 7px 0; line-height: 1.45; }
+.ex-lesson p { margin: 6px 0 0; font-size: .9rem; line-height: 1.7; color: var(--muted); }
+.ex-source { font-size: .76rem !important; font-style: italic; opacity: .8; }
+.ex-lesson + .ex-lesson { border-top: 1px solid var(--line); }
+
+@media (min-width: 620px) {
+  .ex-index .ex-grid { grid-template-columns: repeat(3, 1fr); }
+  .ex-body { padding-left: max(16px, calc(50% - 330px)); padding-right: max(16px, calc(50% - 330px)); }
+}

@@ -1,4 +1,4 @@
-const CACHE = 'sleepsphere-v9-motherhood-20261010';
+const CACHE = 'sleepsphere-v10-explore-20261010';
 /* The Arabic face is shell, not an extra. The dua is read at bedtime, which
    is exactly when a phone is likeliest to be in a basement, on aeroplane
    mode, or out of data — so it is fetched on install with everything else
@@ -9,7 +9,7 @@ const CACHE = 'sleepsphere-v9-motherhood-20261010';
    is not there when it is wanted. Both files are loaded on every device
    regardless of whether anyone enabled it, so caching them discloses
    nothing. */
-const SHELL = ['./', './manifest.webmanifest', './favicon.svg', './apple-touch-icon.png', './sleepsphere-icon-192.png', './sleepsphere-icon-512.png', './fonts/amiri-naskh-v2.woff2', './motherhood.js', './motherhood-ui.js', './motherhood.css'];
+const SHELL = ['./', './manifest.webmanifest', './favicon.svg', './apple-touch-icon.png', './sleepsphere-icon-192.png', './sleepsphere-icon-512.png', './fonts/amiri-naskh-v2.woff2', './motherhood.js', './motherhood-ui.js', './motherhood.css', './insights.js', './insights.css', './explore.js', './explore.css'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));

@@ -2517,6 +2517,7 @@
   <link rel="stylesheet" href="worlds.css" />
   <link rel="stylesheet" href="motherhood.css" />
   <link rel="stylesheet" href="insights.css" />
+  <link rel="stylesheet" href="explore.css" />
 </head>
 <body>
   <canvas id="starfield" aria-hidden="true"></canvas>
@@ -9192,6 +9193,27 @@
             return realMornings().at(-1) || null;
           },
 
+          /* The journal, as the one write path a second interface may use.
+             Reflection and Gratitude in the Explore module keep their
+             entries here rather than in a store of their own, so there is
+             still one list, one thirty-entry cap, one erase path and one
+             export. `type` is all that distinguishes them; the shape and
+             the cap are exactly what the classic Unload screen writes,
+             because it is the same list. */
+          addThought(text, type, next) {
+            const body = String(text || '').trim();
+            if (!body) return null;
+            const entry = { id: uid(), text: body, type: type || 'thought',
+                            next: String(next || '').trim(),
+                            createdAt: new Date().toISOString() };
+            state.thoughts.unshift(entry);
+            state.thoughts = state.thoughts.slice(0, 30);
+            saveState();
+            renderThoughts();
+            return { ...entry };
+          },
+          thoughts: () => state.thoughts.map(item => ({ ...item })),
+
           /* Formatting, so the interface never parses a clock itself. */
           formatTime, formatDuration, toMinutes, clockValue, studyToday
         }
@@ -11070,5 +11092,8 @@
   <!-- Insights. Reads records only through the integrity helpers on
        SS.engine, so a night without a knowable sleep total stays a gap. -->
   <script src="insights.js"></script>
+  <!-- Explore. Six practices that each do something; audio is opt-in,
+       synthesised rather than sampled, and stops when you leave. -->
+  <script src="explore.js"></script>
 </body>
 </html>
