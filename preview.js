@@ -186,8 +186,9 @@
     } catch (e) { return 'classic'; }
   }
   function uiParam() {
-    var c = null;
-    try { c = localStorage.getItem('ss_concept'); } catch (e) {}
+    var w = null, c = null;
+    try { w = localStorage.getItem('ss_world'); c = localStorage.getItem('ss_concept'); } catch (e) {}
+    if (w && w !== 'off') return '&world=' + w;
     if (c && c !== 'off') return '&concept=' + c;
     return '&ui=' + currentUi();
   }
@@ -264,19 +265,19 @@
        night, on the same phone, without retyping a URL. Cycles through
        Classic, the simplified layer, and the three concepts. */
     var RING = [
-      { label: 'Classic',   q: 'ui=classic' },
-      { label: 'Simple',    q: 'ui=calm' },
-      { label: 'Orbit',     q: 'concept=a' },
-      { label: 'Companion', q: 'concept=b' },
-      { label: 'Atlas',     q: 'concept=c' }
+      { label: 'Flight',  q: 'world=flight' },
+      { label: 'Plain',   q: 'world=plain' },
+      { label: 'Classic', q: 'ui=classic' },
+      { label: 'Simple',  q: 'ui=calm' }
     ];
     function currentIndex() {
-      var c = null;
-      try { c = localStorage.getItem('ss_concept'); } catch (e) {}
-      if (c && c !== 'off') {
-        for (var i = 0; i < RING.length; i++) if (RING[i].q === 'concept=' + c) return i;
+      var w = null, c = null;
+      try { w = localStorage.getItem('ss_world'); c = localStorage.getItem('ss_concept'); } catch (e) {}
+      if (w && w !== 'off') {
+        for (var i = 0; i < RING.length; i++) if (RING[i].q === 'world=' + w) return i;
       }
-      return currentUi() === 'calm' ? 1 : 0;
+      if (c && c !== 'off') return 2;
+      return currentUi() === 'calm' ? 3 : 2;
     }
     var swap = document.createElement('button');
     swap.type = 'button';
@@ -286,14 +287,16 @@
     swap.textContent = next.label;
     swap.setAttribute('aria-label', 'Switch to the ' + next.label + ' interface');
     swap.addEventListener('click', function () {
+      /* Only one interface layer may be on at a time; the others are
+         switched off explicitly rather than left to selector precedence. */
       try {
-        if (next.q.indexOf('concept=') === 0) {
-          localStorage.setItem('ss_concept', next.q.split('=')[1]);
-          localStorage.setItem('ss_ui', 'classic');
-        } else {
-          localStorage.setItem('ss_concept', 'off');
-          localStorage.setItem('ss_ui', next.q.split('=')[1]);
-        }
+        localStorage.setItem('ss_world', 'off');
+        localStorage.setItem('ss_concept', 'off');
+        localStorage.setItem('ss_ui', 'classic');
+        var v = next.q.split('=');
+        if (v[0] === 'world') localStorage.setItem('ss_world', v[1]);
+        else if (v[0] === 'concept') localStorage.setItem('ss_concept', v[1]);
+        else localStorage.setItem('ss_ui', v[1]);
       } catch (e) {}
       var d = readChoice();
       window.location.search = '?' + next.q + (d ? '&daypart=' + d : '');
