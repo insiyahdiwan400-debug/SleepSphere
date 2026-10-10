@@ -1,0 +1,90 @@
+/* SleepSphere Insights.
+ *
+ * Built on the app's own tokens so this reads as part of SleepSphere.
+ * The restraint is the brief: no score, no red, no streak, nothing that
+ * reads as a verdict. A chart that is calm to look at, and a missing
+ * figure that is visibly missing rather than dressed as a zero.
+ */
+
+.in-card { display: flex; flex-direction: column; gap: 14px; }
+
+.in-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.in-head h3 { margin: 0; font-size: 1.05rem; font-weight: 600; }
+
+.in-range { display: flex; gap: 6px; }
+.in-pill {
+  appearance: none; -webkit-appearance: none;
+  font: inherit; font-size: .78rem;
+  color: var(--muted); background: transparent;
+  border: 1px solid var(--line); border-radius: var(--r-pill, 999px);
+  padding: 6px 11px; min-height: 32px; cursor: pointer; white-space: nowrap;
+}
+.in-pill.on { color: var(--paper); background: var(--accent); border-color: var(--accent); }
+.in-pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.in-figure { margin: 0; }
+.in-chart {
+  display: block; width: 100%; height: 190px;
+  overflow: visible; touch-action: manipulation;
+}
+
+/* Marks. The bar carries the data; everything else is quieter than it. */
+.in-bar { fill: var(--accent); opacity: .78; cursor: pointer; }
+.in-bar:hover { opacity: 1; }
+.in-bar.on { opacity: 1; fill: var(--accent-lift, var(--accent)); }
+
+/* A night with no usable total. Deliberately NOT a short bar: a reader
+   scanning the chart would take a short bar for a short night, and this is
+   not a short night — it is an absence of evidence. */
+.in-gap { fill: var(--muted); opacity: .28; cursor: pointer; }
+.in-gap.on { opacity: .6; }
+
+.in-grid { stroke: var(--line); stroke-width: 1; }
+.in-base { stroke: var(--line); stroke-width: 1; }
+.in-target { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 3 4; opacity: .55; }
+.in-axis { fill: var(--muted); font-size: 9px; font-family: var(--font-body, inherit); }
+
+/* Three lines are reserved because a night with times, waking and a rating
+   wraps to three on a phone. Reading nights is a repeated action — you tap
+   along the chart comparing them — and a box that resizes under each tap
+   shuffles everything below it on every comparison. */
+.in-readout {
+  margin: 0; font-size: .88rem; line-height: 1.5;
+  min-height: 4.5em;
+}
+.in-quiet { color: var(--muted); font-style: italic; }
+
+.in-note { margin: 0; font-size: .8rem; line-height: 1.55; color: var(--muted); }
+.in-empty { margin: 0; font-size: .88rem; line-height: 1.6; color: var(--muted); font-style: italic; }
+.in-line { margin: 0; font-size: .95rem; line-height: 1.55; }
+.in-line strong { font-weight: 600; }
+
+.in-stats {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px;
+  background: var(--line); border: 1px solid var(--line);
+  border-radius: 12px; overflow: hidden;
+}
+.in-stat { background: var(--card); padding: 12px 13px; display: grid; gap: 2px; }
+.in-stat-k { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.in-stat-v { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+/* Missing reads as missing. Smaller, lighter, italic — never styled like a
+   figure, because it is not one. */
+.in-stat-v.in-none { font-size: .85rem; font-weight: 400; font-style: italic; color: var(--muted); }
+.in-stat-n { font-size: .74rem; color: var(--muted); line-height: 1.4; }
+
+.in-block { display: flex; flex-direction: column; gap: 8px; }
+.in-block h3 { margin: 0; font-size: 1.05rem; font-weight: 600; }
+
+/* The table behind the chart: the same numbers, for anyone reading with a
+   screen reader. Clipped rather than display:none, which would take it out
+   of the accessibility tree along with the picture. */
+.in-sr {
+  position: absolute; width: 1px; height: 1px;
+  margin: -1px; padding: 0; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
+@media (min-width: 600px) {
+  .in-stats { grid-template-columns: repeat(4, 1fr); }
+  .in-chart { height: 220px; }
+}
