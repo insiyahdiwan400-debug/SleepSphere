@@ -6,7 +6,14 @@
  * anything else on screen is something to think about at bedtime.
  */
 
-.ex-index .ex-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 12px; }
+/* minmax(0, 1fr), not 1fr. A bare `1fr` is minmax(auto, 1fr) and `auto`
+   floors at the content's minimum width, so in an iPad Split View column
+   the tiles refuse to shrink below their longest word plus padding and
+   push the page sideways. Third time this exact fault has appeared in a
+   grid or flex row in this app; it is always the same fix. */
+.ex-index .ex-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.ex-tile { min-width: 0; }
+.ex-tile strong, .ex-tile span { overflow-wrap: anywhere; }
 .ex-tile {
   appearance: none; -webkit-appearance: none; text-align: left;
   display: grid; gap: 4px; font: inherit; cursor: pointer;
@@ -155,6 +162,6 @@ html.ex-open, html.ex-open body { overflow: hidden; }
 .ex-lesson + .ex-lesson { border-top: 1px solid var(--line); }
 
 @media (min-width: 620px) {
-  .ex-index .ex-grid { grid-template-columns: repeat(3, 1fr); }
+  .ex-index .ex-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .ex-body { padding-left: max(16px, calc(50% - 330px)); padding-right: max(16px, calc(50% - 330px)); }
 }

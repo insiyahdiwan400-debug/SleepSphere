@@ -315,6 +315,19 @@ const text = p => p.evaluate(() => document.querySelector('.ex-body').innerText)
      ================================================================ */
   {
     const { ctx, p } = await open(browser);
+
+    /* The INDEX, not only the practice layers. A bare `1fr` is
+       minmax(auto, 1fr), and `auto` floors at the content's minimum width,
+       so the six tiles refused to shrink in a Split View column and pushed
+       the page sideways. screen-shapes caught it, but it reports a page,
+       not a module; this reports the module. */
+    await p.setViewportSize({ width: 262, height: 1135 });
+    await p.waitForTimeout(400);
+    const index = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    check('The practice index fits a Split View column', index <= 1, index + 'px at 262');
+    await p.setViewportSize({ width: 390, height: 844 });
+    await p.waitForTimeout(250);
+
     for (const id of ['Body scan', 'Sounds', 'Reflection']) {
       await p.evaluate(x => window.SSExplore.open(x), id);
       await p.waitForTimeout(250);
