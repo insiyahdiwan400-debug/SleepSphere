@@ -39,15 +39,21 @@ const clockAt = h => `(()=>{const R=Date;const f=new R(2026,9,13,${h},30,0);
   static now(){return f.getTime();}} window.Date=D;})()`;
 
 async function open(browser, hour, opts) {
+  /* `sky` is this helper's own flag and is not a Playwright context
+     option, so it is taken out before the rest is handed over. */
+  const { sky, ...ctxOpts } = opts || {};
   const ctx = await browser.newContext(Object.assign({
     viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true
-  }, opts || {}));
+  }, ctxOpts));
   const errs = [];
   if (typeof hour === 'number') await ctx.addInitScript(clockAt(hour));
   const p = await ctx.newPage();
   p.on('pageerror', e => errs.push(String(e)));
   p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
-  await p.goto(BASE, { waitUntil: 'networkidle' });
+  /* The footage layer is opt-in since the submission build; everything
+     below tests the footage path, so it asks for it explicitly. That the
+     DEFAULT is off is tested separately, in section 0. */
+  await p.goto(BASE + (sky === false ? '' : '?sky=real'), { waitUntil: 'networkidle' });
   await p.evaluate(() => { const e = document.getElementById('previewBar'); if (e) e.remove(); });
   await p.waitForTimeout(600);
   return { ctx, p, errs };
@@ -58,6 +64,68 @@ async function open(browser, hour, opts) {
     executablePath: '/opt/pw-browsers/chromium',
     args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required']
   });
+
+  /* ================================================================
+     0. THE DEFAULT. Submission build: footage is opt-in.
+
+     The app must open on the drawn sky, with no video element, no
+     megabytes of media, and no dependence on an H.264 decode that has
+     never been verified on the target device. This section tests the
+     default specifically; every other section asks for footage.
+     ================================================================ */
+  {
+    const { ctx, p, errs } = await open(browser, 23, { sky: false });   /* night: footage exists */
+    const off = await p.evaluate(() => ({
+      enabled: window.SSLivingSky.enabled(),
+      status: window.SSLivingSky.status(),
+      videos: document.querySelectorAll('video').length,
+      host: document.getElementById('livingSky') !== null,
+      credit: document.getElementById('skyCredit') !== null,
+      scrim: getComputedStyle(document.documentElement).getPropertyValue('--sky-scrim').trim(),
+      starfield: Boolean(document.getElementById('starfield')),
+      starsVisible: getComputedStyle(document.getElementById('starfield')).opacity !== '0',
+      tabs: document.querySelectorAll('.nav button[data-view]').length,
+      engine: typeof window.SS.engine.mornings === 'function'
+    }));
+    check('0 · Footage is OFF by default, on a daypart that HAS footage',
+      off.enabled === false, 'enabled=' + off.enabled);
+    check('0 · Status reads "off", not "unavailable" — the two are different',
+      off.status === 'off', off.status);
+    check('0 · No video element is created at all', off.videos === 0, String(off.videos));
+    check('0 · No footage layer in the DOM', off.host === false);
+    check('0 · No credit line, because nothing is being shown', off.credit === false);
+    check('0 · No scrim over the drawn sky', off.scrim === '0' || off.scrim === '');
+    check('0 · The drawn sky is present and visible', off.starfield && off.starsVisible);
+    check('0 · All four destinations present', off.tabs === 4, String(off.tabs));
+    check('0 · The sleep engine is untouched', off.engine);
+    check('0 · No console errors with footage off', errs.length === 0, errs.join(' | '));
+
+    /* And it can be turned on at runtime without a reload, because the
+       submission needs to be able to demonstrate it on request. */
+    const on = await p.evaluate(async () => {
+      window.SSLivingSky.setEnabled(true);
+      await new Promise(r => setTimeout(r, 400));
+      return {
+        enabled: window.SSLivingSky.enabled(),
+        host: document.getElementById('livingSky') !== null,
+        videos: document.querySelectorAll('video').length
+      };
+    });
+    check('0 · setEnabled(true) mounts the footage layer on demand',
+      on.enabled === true && on.host && on.videos === 1,
+      JSON.stringify(on));
+
+    const back = await p.evaluate(async () => {
+      window.SSLivingSky.setEnabled(false);
+      await new Promise(r => setTimeout(r, 300));
+      return { status: window.SSLivingSky.status(), videos: document.querySelectorAll('video').length,
+               host: document.getElementById('livingSky') !== null };
+    });
+    check('0 · setEnabled(false) takes it all back down again',
+      back.status === 'off' && back.videos === 0 && back.host === false,
+      JSON.stringify(back));
+    await ctx.close();
+  }
 
   /* ================================================================
      1. The shipped files. Read the bytes, not the filename.

@@ -15,6 +15,13 @@
  *     data-sky-media="paused"       real footage, held for reduced motion
  *     data-sky-media="blocked"      real footage, waiting for a tap
  *     data-sky-media="unavailable"  NO footage; the drawn sky is showing
+ *     data-sky-media="off"          footage not asked for; drawn sky showing
+ *
+ * OFF IS THE DEFAULT. The app opens on the drawn sky and loads no video
+ * at all unless footage is asked for with `?sky=real`, or by calling
+ * SSLivingSky.setEnabled(true). The reasoning is in the OPT-IN note
+ * further down. "off" and "unavailable" are deliberately distinct: off
+ * means nobody asked, unavailable means this daypart has no recording.
  *
  * A daypart with no clip is `unavailable`, not a still image dressed up.
  * There are no placeholder URLs: a daypart either has a real file in the
@@ -294,7 +301,63 @@
     });
   }
 
+  /* ------------------------------------------------------------------
+     OPT-IN.
+
+     The footage layer does not start on its own. Two reasons, and both
+     are about the submission rather than about taste:
+
+     1. H.264 playback on iPhone Safari is UNVERIFIED (see the header).
+        A default that depends on an unverified decode is a default that
+        can fail in front of an examiner. The drawn sky has been running
+        and tested since the beginning, so it is what the app opens with.
+
+     2. Footage costs 5–11.5 MB on the first paint of a page that
+        otherwise weighs under a megabyte. On a phone on mobile data
+        that is the difference between an app that opens and an app that
+        appears to hang.
+
+     Turning it on is one URL parameter or one call, the choice sticks,
+     and everything below this line is unchanged when it is on. Nothing
+     is deleted: this is a default, not a removal. */
+  var SKY_PREF = 'ss_living_sky';
+
+  function remember(value) {
+    try { localStorage.setItem(SKY_PREF, value); } catch (e) {}
+  }
+
+  function wanted() {
+    try {
+      var q = new URLSearchParams(location.search).get('sky');
+      if (q === 'real' || q === 'on')  { remember('on');  return true; }
+      if (q === 'drawn' || q === 'off') { remember('off'); return false; }
+    } catch (e) {}
+    try { return localStorage.getItem(SKY_PREF) === 'on'; } catch (e) { return false; }
+  }
+
+  function standDown() {
+    /* "off" is distinct from "unavailable". Unavailable means this
+       daypart has no recording; off means the viewer has not asked for
+       recordings at all. Conflating them would hide which one is true. */
+    if (handle) { handle.destroy(); handle = null; }
+    currentKey = null;
+    var node = document.getElementById('livingSky');
+    if (node) node.remove();
+    var credit = document.getElementById('skyCredit');
+    if (credit) credit.remove();
+    document.documentElement.style.setProperty('--sky-scrim', 0);
+    document.documentElement.dataset.skyMedia = 'off';
+  }
+
+  function setEnabled(on) {
+    remember(on ? 'on' : 'off');
+    if (on) { try { apply(dayKey()); } catch (e) {} }
+    else standDown();
+    return on;
+  }
+
   function boot() {
+    if (!wanted()) { standDown(); return; }
     /* A sky must never be able to break the app. If anything in here
        throws, the drawn sky is already on screen and stays there. */
     try { apply(dayKey()); } catch (e) { /* drawn sky remains */ }
@@ -317,6 +380,10 @@
     dayKey: dayKey,
     apply: apply,
     status: function () { return document.documentElement.dataset.skyMedia || 'unavailable'; },
+    /* Whether recorded footage has been asked for at all, and the switch
+       for it. Off is the default — see the OPT-IN note above. */
+    enabled: wanted,
+    setEnabled: setEnabled,
     /* Which dayparts actually have a recording behind them. Used by the
        test suite, and by anyone wondering what is real. */
     covered: function () { return Object.keys(FOOTAGE); },

@@ -8,6 +8,13 @@ the source's own metadata, not inferred from a filename or a page title.
 
 ## Living Sky footage
 
+> **The footage layer is off by default.** The app opens on the drawn
+> sky and downloads no video unless it is asked for, with `?sky=real` or
+> `SSLivingSky.setEnabled(true)`. Two reasons: playback of these clips on
+> iPhone Safari is **unverified** (see below), and the footage weighs
+> 5–11.5 MB against a page that is otherwise under a megabyte. The clips
+> below ship with the app and are used the moment footage is switched on.
+
 Both clips are **CC BY 2.0**, which permits use and redistribution,
 including commercially, with attribution. Attribution is shown in the app
 itself — a credit line appears on screen whenever a clip is actually
