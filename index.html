@@ -3994,15 +3994,36 @@
        braces — and that is the point: it is the thing that stays correct
        if someone later adds a field to the wrong object. */
     function exportableState(source = state) {
+      /* Deep clone first, so nothing below can reach the live state. The
+         caller gets a file; the participant keeps their records. */
       const copy = JSON.parse(JSON.stringify(source));
-      for (const key of Object.keys(copy)) {
-        if (/^motherhood/i.test(key) && !MOTHERHOOD_EXPORTABLE.includes(key)) delete copy[key];
-      }
-      if (copy.settings && typeof copy.settings === 'object') {
-        for (const key of Object.keys(copy.settings)) {
-          if (/^motherhood/i.test(key) && !MOTHERHOOD_EXPORTABLE.includes(key)) delete copy.settings[key];
+
+      /* RECURSIVE, not two levels. The old version swept the top level and
+         `settings`, which was true to the architecture as it stood — nothing
+         Motherhood-shaped lived anywhere else. But the allowlist exists
+         precisely because that will not stay true: the day somebody records
+         a motherhoodNote on a morning, or a stage on a bio check-in, a
+         two-level sweep hands it to a researcher and no test fails. Walking
+         the whole structure makes the boundary hold wherever a field is
+         later added, which is the only way a deny-by-default rule is worth
+         anything.
+
+         Arrays are walked as well as objects, because `mornings` and
+         `bioCheckins` are arrays and are exactly where a per-record field
+         would go. The clone has already removed any cycles, so the walk
+         terminates. */
+      const scrub = node => {
+        if (Array.isArray(node)) { node.forEach(scrub); return; }
+        if (!node || typeof node !== 'object') return;
+        for (const key of Object.keys(node)) {
+          if (/^motherhood/i.test(key) && !MOTHERHOOD_EXPORTABLE.includes(key)) {
+            delete node[key];
+            continue;
+          }
+          scrub(node[key]);
         }
-      }
+      };
+      scrub(copy);
       return copy;
     }
 

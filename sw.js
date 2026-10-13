@@ -1,4 +1,4 @@
-const CACHE = 'sleepsphere-v10-explore-20261010';
+const CACHE = 'sleepsphere-v11-integration-20261013';
 /* The Arabic face is shell, not an extra. The dua is read at bedtime, which
    is exactly when a phone is likeliest to be in a basement, on aeroplane
    mode, or out of data — so it is fetched on install with everything else
@@ -31,5 +31,9 @@ self.addEventListener('fetch', event => {
   event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {
     if (response.ok) caches.open(CACHE).then(cache => cache.put(event.request, response.clone()));
     return response;
-  }).catch(() => caches.match('./'))));
+  }).catch(() => {
+    // Never send cached index.html as JavaScript, CSS, JSON, or MP4.
+    // A network error lets the caller show an honest offline fallback.
+    return Response.error();
+  })));
 });
