@@ -123,7 +123,137 @@ async function open(browser, query) {
     check('2 · ' + label + ' does not disturb the records',
       r.records === 1 && r.kept, r.records + ' record(s), kept=' + r.kept);
     check('2 · ' + label + ' raises no console errors', errs.length === 0, errs.join(' | '));
+
+    /* The check that was missing, and that let a broken feature ship.
+       Asserting the flag was stored and the URL changed proves nothing
+       about what a tester can see: in Simple, Flight and Plain the
+       classic markup renders at zero size, so the switcher and the
+       feedback form were both present and both invisible. A tester who
+       switched away could neither switch back nor send feedback. */
+    const seen = await p.evaluate(() => {
+      const vis = el => {
+        if (!el) return 'absent';
+        const box = el.getBoundingClientRect();
+        const style = getComputedStyle(el);
+        if (style.display === 'none' || style.visibility === 'hidden' ||
+            Number(style.opacity) < 0.05) return 'hidden';
+        return (box.width > 0 && box.height > 0) ? 'visible' : 'zero-size';
+      };
+      const escape = document.getElementById('variantEscape');
+      return {
+        escape: vis(escape),
+        escapeTap: escape ? Math.round(escape.getBoundingClientRect().height) : 0,
+        rendered: (document.body.innerText || '').trim().length
+      };
+    });
+    check('2 · ' + label + ' renders something',
+      seen.rendered > 40, seen.rendered + ' chars');
+    check('2 · ' + label + ' leaves a visible way back to feedback',
+      seen.escape === 'visible', seen.escape);
+    check('2 · ' + label + ' way back is tappable',
+      seen.escapeTap >= 44, seen.escapeTap + 'px');
     await ctx.close();
+  }
+
+  /* ================================================================
+     2b. The way back actually goes back.
+     ================================================================ */
+  {
+    const { ctx, p, errs } = await open(browser, '?go=test');
+    await p.evaluate(() => {
+      [...document.querySelectorAll('.variant-btn')]
+        .find(b => b.querySelector('strong').textContent === 'Plain').click();
+    });
+    await p.waitForTimeout(2200);
+    await p.evaluate(() => document.getElementById('variantEscape').click());
+    await p.waitForTimeout(2200);
+    const back = await p.evaluate(() => {
+      const row = document.getElementById('variantRow');
+      const form = document.getElementById('feedbackForm');
+      const box = row ? row.getBoundingClientRect() : null;
+      const fbox = form ? form.getBoundingClientRect() : null;
+      return {
+        ui: localStorage.getItem('ss_ui'), world: localStorage.getItem('ss_world'),
+        switcherVisible: Boolean(box && box.width > 0 && box.height > 0),
+        formVisible: Boolean(fbox && fbox.width > 0 && fbox.height > 0),
+        escapeGone: document.getElementById('variantEscape') === null
+      };
+    });
+    check('2b · The way back restores Classic',
+      back.ui === 'classic' && back.world === 'off', JSON.stringify(back));
+    check('2b · The switcher is visible again', back.switcherVisible);
+    check('2b · The feedback form is reachable again', back.formVisible);
+    check('2b · And the way back removes itself once home', back.escapeGone);
+    check('2b · No console errors', errs.length === 0, errs.join(' | '));
+    await ctx.close();
+  }
+
+  /* ================================================================
+     2c. Classic does not carry the escape it does not need.
+     ================================================================ */
+  {
+    const { ctx, p } = await open(browser, '?go=test');
+    const classic = await p.evaluate(() => ({
+      escape: document.getElementById('variantEscape') === null,
+      switcher: (() => { const r = document.getElementById('variantRow');
+        const b = r && r.getBoundingClientRect();
+        return Boolean(b && b.width > 0 && b.height > 0); })()
+    }));
+    check('2c · Classic shows no escape control', classic.escape);
+    check('2c · Classic shows the switcher inline', classic.switcher);
+    await ctx.close();
+  }
+
+  /* ================================================================
+     2d. A variant that paints its own ground must set its own ink.
+
+     Plain draws light paper. Text inside it inherited the app's
+     dark-theme near-white, so the heading rendered at 1.16:1 against a
+     3:1 requirement — not low contrast, invisible. Measured rather than
+     eyeballed, because "looks fine to me" is how it shipped.
+     ================================================================ */
+  {
+    const ctx = await browser.newContext({
+      viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true
+    });
+    await ctx.addInitScript(SEED);
+    await ctx.addInitScript(`(()=>{try{localStorage.setItem('ss_world','plain');
+      localStorage.setItem('ss_ui','classic');localStorage.setItem('ss_concept','off');}catch(e){}})()`);
+    const p = await ctx.newPage();
+    await p.goto(BASE, { waitUntil: 'networkidle' });
+    await p.waitForTimeout(2500);
+    const worst = await p.evaluate(() => {
+      const channel = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+      const lum = c => 0.2126 * channel(c[0]) + 0.7152 * channel(c[1]) + 0.0722 * channel(c[2]);
+      const rgb = s => (s.match(/\d+/g) || [0, 0, 0]).slice(0, 3).map(Number);
+      let low = null;
+      document.querySelectorAll('.w-plain, .w-plain *').forEach(el => {
+        const box = el.getBoundingClientRect();
+        if (box.width < 1 || box.height < 1) return;
+        const text = (el.textContent || '').trim();
+        if (!text || el.children.length > 0) return;      /* leaf nodes only */
+        const style = getComputedStyle(el);
+        let node = el, bg = null;
+        while (node && !bg) {
+          const c = getComputedStyle(node).backgroundColor;
+          if (c && !/rgba\(0, 0, 0, 0\)|transparent/.test(c)) bg = c;
+          node = node.parentElement;
+        }
+        if (!bg) return;
+        const a = lum(rgb(style.color)), b = lum(rgb(bg));
+        const ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+        const need = parseFloat(style.fontSize) >= 24 ? 3 : 4.5;
+        if (!low || ratio - need < low.margin) {
+          low = { ratio: +ratio.toFixed(2), need, margin: ratio - need,
+                  text: text.slice(0, 40), color: style.color, bg };
+        }
+      });
+      return low;
+    });
+    await ctx.close();
+    check('2d · Plain meets WCAG AA contrast throughout',
+      worst !== null && worst.margin >= 0,
+      worst ? worst.ratio + ':1 (needs ' + worst.need + ') "' + worst.text + '"' : 'nothing measured');
   }
 
   /* ================================================================

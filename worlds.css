@@ -87,7 +87,15 @@
   background: #f6f5f2; color: #1b1d21;
 }
 :root[data-world="plain"] body { background: #f6f5f2; }
-.w-plain { font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+/* Plain paints its own light ground, so it must also set its own ink.
+   Without this, text inherits the app's dark-theme near-white and lands
+   on near-white paper: the heading measured 1.16:1 against a 3:1
+   requirement, which is not "low contrast", it is invisible. The buttons
+   were readable only because they happened to set a colour of their own.
+   Declared on the container so every descendant that does not override
+   it is covered, rather than fixing the one element that was noticed. */
+.w-plain { font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  color: #1b1d21; }
 .w-plain-h { margin: 0 0 18px; font-size: 25px; line-height: 1.22; font-weight: 600; }
 .w-plain-p { color: #6b7280; font-size: 15px; line-height: 1.55; }
 .w-plain-list { display: grid; grid-template-columns: 1fr auto; gap: 0;

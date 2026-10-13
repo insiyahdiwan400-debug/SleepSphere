@@ -322,7 +322,24 @@ const clockAt = (h, mi) => `(()=>{const R=Date;const f=new R(2026,8,9,${h},${mi}
         tabs: document.querySelectorAll('.w-tabs button').length,
         words: (r.innerText || '').trim().split(/\s+/).length,
         stages: r.querySelectorAll('.f-row, .w-plain-list dt').length,
-        animations: document.getAnimations().filter(a => a.playState === 'running').length,
+        /* Only animations a participant could actually see. The classic
+           chrome carries 2.4s and 3s opacity fades driven by --dusk, and
+           it is display:none inside a world — but it is still in the
+           document, so a document-wide count caught those fades roughly
+           one run in six and failed on something invisible. The check
+           means "the night is boring to look at", so it asks about what
+           can be looked at. Verified to fail the same way on the shipped
+           code before this was narrowed. */
+        animations: document.getAnimations().filter(a => {
+          if (a.playState !== 'running') return false;
+          const node = a.effect && a.effect.target;
+          if (!node || !node.getBoundingClientRect) return true;
+          if (!node.isConnected) return false;
+          const box = node.getBoundingClientRect();
+          const style = getComputedStyle(node);
+          return box.width > 0 && box.height > 0 &&
+                 style.visibility !== 'hidden' && Number(style.opacity) > 0.01;
+        }).length,
         screens: +(document.documentElement.scrollHeight / 844).toFixed(2)
       };
     });
