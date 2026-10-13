@@ -44,11 +44,19 @@
 
   /* Where the sky sits when nobody is descending — driven by the clock, so
      opening the app in the afternoon and at dusk are different skies. */
+  /* Positions on the sky cycle in worlds-sky.js:
+       0 evening · 1 twilight · 2 night · 3 morning · 4 day · (round to 0)
+
+     DAY used to return 0.08, which is the EVENING sky — so the app showed
+     a sunset at noon, and getting there from morning slewed backwards
+     through night. Both are fixed: daytime is the day sky, and the scale
+     now wraps, so morning runs forward into day and day forward into
+     evening. */
   function restingSky(model) {
-    if (model.phase === 'WAKE') return 2.72;
-    if (model.phase === 'DAY') return 0.08;
-    if (model.phase === 'EVENING') return 0.30;
-    return 2.0;
+    if (model.phase === 'WAKE') return 3.15;      /* just past sunrise */
+    if (model.phase === 'DAY') return 4.0;        /* actual daylight */
+    if (model.phase === 'EVENING') return 0.30;   /* evening into twilight */
+    return 2.0;                                   /* night */
   }
 
   var sky = null, host = null, state = {

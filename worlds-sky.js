@@ -70,8 +70,24 @@
       sun: { x: 0.28, y: 0.665, r: 0.36, core: [255, 246, 220], halo: [255, 196, 124] },
       cloudLit: [255, 232, 198], cloudBody: [118, 130, 158], cloudBase: [62, 74, 104],
       star: 0, haze: 0.56, rim: 0.40
+    },
+    { /* 4 · day — the one that was missing.
+
+         There was no daytime sky here at all. Daytime resolved to t=0.08,
+         which is this list's EVENING, so opening the app at noon showed a
+         sunset. The sun is high and small rather than low and swollen,
+         the blue is the only one in the set that is genuinely blue, and
+         the clouds are lit from above instead of from the side. */
+      stops: [[0, 54, 118, 192], [0.30, 94, 156, 214], [0.58, 144, 188, 228], [0.82, 190, 214, 237], [1, 224, 233, 242]],
+      sun: { x: 0.50, y: 0.165, r: 0.22, core: [255, 255, 250], halo: [255, 246, 216] },
+      cloudLit: [255, 255, 255], cloudBody: [204, 215, 230], cloudBase: [148, 164, 189],
+      star: 0, haze: 0.30, rim: 0.22
     }
   ];
+
+  /* The list is a CYCLE: evening, twilight, night, morning, day, and then
+     round to evening again. Treating it as a line was the second half of
+     the bug — see wrapped() and SkyScene.step(). */
 
   /* Where the cloud field vanishes, and how high it reaches. The band above
      TOP stays open sky: it is where a world puts its words, and a headline
@@ -87,11 +103,20 @@
   function rgba(c, a) { return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')'; }
 
   /* The sky at any point on the walk. */
+  /* t modulo the number of skies, always positive. */
+  function wrapT(t) {
+    var n = SKIES.length;
+    return ((t % n) + n) % n;
+  }
+
   function skyAt(t) {
     var n = SKIES.length;
-    var i = Math.max(0, Math.min(n - 1, Math.floor(t)));
-    var j = Math.min(n - 1, i + 1);
-    var u = Math.max(0, Math.min(1, t - i));
+    var w = wrapT(t);
+    var i = Math.floor(w);
+    /* Wraps to the first sky rather than clamping on the last, so day
+       blends round into evening the way a day actually does. */
+    var j = (i + 1) % n;
+    var u = Math.max(0, Math.min(1, w - i));
     u = u * u * (3 - 2 * u);                      /* smoothstep, so nothing snaps */
     var a = SKIES[i], b = SKIES[j];
 
@@ -676,11 +701,24 @@
   };
 
   SkyScene.prototype.step = function (dt, now) {
-    var moved = Math.abs(this.target - this.t) > 0.0004;
+    /* Take the SHORT way round the cycle.
+
+       This is the bug that was reported as "it was morning and then the
+       sun dropped and it became night". Morning sits at 2.72 and daytime
+       at 4.0; easing along a straight line from a later sky to an earlier
+       one walks backwards through every sky in between, so the screen
+       really did show night on its way from morning to midday.
+
+       The distance is measured both ways round and the shorter is taken,
+       so the sky only ever moves the way the sky moves. */
+    var n = SKIES.length;
+    var delta = wrapT(this.target - this.t);
+    if (delta > n / 2) delta -= n;
+    var moved = Math.abs(delta) > 0.0004;
     if (moved) {
-      this.t += (this.target - this.t) * (this.reduced ? 1 : this.ease);
+      this.t = wrapT(this.t + delta * (this.reduced ? 1 : this.ease));
     } else {
-      this.t = this.target;
+      this.t = wrapT(this.target);
     }
     if (!this.reduced) this.phase += dt * 0.001;
     this.draw(now);
