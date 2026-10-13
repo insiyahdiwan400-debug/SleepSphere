@@ -286,6 +286,90 @@ async function open(browser, query) {
   }
 
   /* ================================================================
+     3b. The audio context is woken, not merely built.
+
+     iOS hands back a suspended context and keeps it suspended until
+     resume() is called inside a tap. Nothing resumed it, so the graph
+     was built, the toggles lit, and nothing was ever audible. This
+     container's Chromium does not enforce that policy, so the state
+     cannot be reproduced here — what IS asserted is that the code calls
+     resume on the start path and on returning to the app, which is the
+     thing that was missing.
+     ================================================================ */
+  {
+    const source = fs.readFileSync(path.join(ROOT, 'explore.js'), 'utf8');
+    check('3b · There is a wake() that resumes a suspended context',
+      /function wake\s*\(\)\s*\{[\s\S]{0,400}?ctx\.resume\(\)/.test(source));
+    check('3b · ensureContext wakes on creation and on reuse',
+      (source.match(/function ensureContext[\s\S]*?\n  \}/) || [''])[0].split('wake()').length - 1 >= 2,
+      'wake() calls inside ensureContext');
+    check('3b · Returning to the app resumes a live soundscape',
+      /visibilitychange[\s\S]{0,420}?nodes\.length\s*\)\s*wake\(\)/.test(source));
+    check('3b · A refused resume cannot throw out of the toggle',
+      /r\.catch\(\(\) => \{\}\)/.test(source) || /catch\s*\(\)\s*=>\s*\{\}/.test(source));
+
+    /* And it does still start, here, where the policy is lenient. */
+    const ctx2 = await browser.newContext({
+      viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true
+    });
+    await ctx2.addInitScript(SEED);
+    await ctx2.addInitScript(`(()=>{window.__ctxs=[];const A=window.AudioContext||window.webkitAudioContext;
+      if(!A)return;function W(...a){const c=new A(...a);window.__ctxs.push(c);return c;}
+      W.prototype=A.prototype;window.AudioContext=W;window.webkitAudioContext=W;})()`);
+    const p2 = await ctx2.newPage();
+    await p2.goto(BASE + '?go=learn', { waitUntil: 'networkidle' });
+    await p2.waitForTimeout(1500);
+    await p2.evaluate(() => {
+      const tile = [...document.querySelectorAll('.ex-tile')].find(t => /Sounds/.test(t.textContent));
+      if (tile) tile.click();
+    });
+    await p2.waitForTimeout(700);
+    await p2.evaluate(() => {
+      const b = [...document.querySelectorAll('.ex-toggle')].find(x => /Rain/.test(x.textContent));
+      if (b) b.click();
+    });
+    await p2.waitForTimeout(1600);
+    const audio = await p2.evaluate(() => ({
+      contexts: (window.__ctxs || []).length,
+      states: (window.__ctxs || []).map(c => c.state),
+      advanced: (window.__ctxs || []).some(c => c.currentTime > 0.2)
+    }));
+    await ctx2.close();
+    check('3b · Tapping a layer creates exactly one context',
+      audio.contexts === 1, String(audio.contexts));
+    check('3b · It is running, not suspended',
+      audio.states.every(s => s === 'running'), audio.states.join(','));
+    check('3b · And its clock is advancing', audio.advanced);
+  }
+
+  /* ================================================================
+     3c. The switcher is findable without being told where it is.
+     ================================================================ */
+  {
+    const { ctx, p } = await open(browser, '?go=data');
+    const found = await p.evaluate(async () => {
+      const b = document.getElementById('goVariants');
+      if (!b) return { button: false };
+      const label = b.textContent.trim();
+      b.click();
+      await new Promise(r => setTimeout(r, 600));
+      const card = document.getElementById('variantCard');
+      const box = card ? card.getBoundingClientRect() : null;
+      return {
+        button: true, label,
+        cardVisible: Boolean(box && box.width > 0 && box.height > 0),
+        onScreen: Boolean(box && box.top < innerHeight && box.bottom > 0)
+      };
+    });
+    check('3c · "Me" offers a way to the interfaces', found.button);
+    check('3c · Labelled for what it does, not "Give feedback"',
+      found.label === 'Try another look', String(found.label));
+    check('3c · It lands on the switcher', found.cardVisible && found.onScreen,
+      JSON.stringify(found));
+    await ctx.close();
+  }
+
+  /* ================================================================
      4. The blurb does not lie about what is inside.
 
      The tile said "Rain, wind, water, night air" for a build that had

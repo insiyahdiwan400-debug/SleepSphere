@@ -205,6 +205,11 @@
      battery complaint and a surprise in a quiet room. */
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { suspendAudio(); if (active && active.pause) active.pause(); }
+    /* Coming back has to undo it. Suspending on hide with nothing to
+       resume on show meant one glance at another app silenced the
+       soundscape for good, with the toggles still lit as though it were
+       playing. Only resumes if a layer is actually still chosen. */
+    else if (nodes.length) wake();
   });
 
   /* ==================================================================
@@ -213,14 +218,31 @@
   let ctx = null, master = null, nodes = [];
   let muted = false, masterLevel = 0.6;
 
+  /* iOS hands back a context in the `suspended` state and keeps it there
+     until resume() is called from inside a real tap. Without that the
+     graph is built, the gains ramp, every toggle lights up — and not one
+     sample is ever heard. Nothing in here was ever resumed, which is why
+     the sounds did not work on a phone. It is called on the creation
+     path AND on every start, because the context can be suspended again
+     later: by backgrounding the app, by a call, by the OS. */
+  function wake() {
+    if (ctx && ctx.state === 'suspended' && typeof ctx.resume === 'function') {
+      /* Returns a promise on some engines and nothing on others, and may
+         reject if this was not called inside a gesture. Either way the
+         caller carries on: a refused resume must not break the toggle. */
+      try { const r = ctx.resume(); if (r && r.catch) r.catch(() => {}); } catch {}
+    }
+  }
+
   function ensureContext() {
-    if (ctx) return ctx;
+    if (ctx) { wake(); return ctx; }
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return null;
     ctx = new AC();
     master = ctx.createGain();
     master.gain.value = muted ? 0 : masterLevel;
     master.connect(ctx.destination);
+    wake();
     return ctx;
   }
 
@@ -297,6 +319,9 @@
   }
   function setMuted(on) {
     muted = on;
+    /* Unmuting is a tap and is meant to produce sound, so it is also a
+       chance to wake a context the OS suspended behind our back. */
+    if (!on) wake();
     if (master && ctx) master.gain.linearRampToValueAtTime(on ? 0 : masterLevel, ctx.currentTime + 0.15);
   }
 

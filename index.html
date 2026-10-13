@@ -3542,6 +3542,11 @@
                 <button class="btn ghost" data-go="unload">Clear my mind</button>
                 <button class="btn ghost" data-go="travel">Travel</button>
                 <button class="btn ghost" data-go="test">Give feedback</button>
+                <!-- The interface switcher lives on the tester screen, which
+                     was reachable only through a button labelled "Give
+                     feedback". Nobody guesses that Flight is behind that, and
+                     nobody did. This says what it is. -->
+                <button class="btn ghost" id="goVariants" data-go="test">Try another look</button>
               </div>
             </article>
             <!-- Fieldwork. Deliberately quiet: a status line for troubleshooting
@@ -8061,6 +8066,19 @@
       document.body.appendChild(back);
     }
     buildVariantEscape();
+
+    /* data-go="test" already navigates; this only puts the switcher in
+       front of the reader rather than wherever the tester screen happens
+       to start. Runs after the router, hence the tick. */
+    const goVariants = $('#goVariants');
+    if (goVariants) {
+      goVariants.addEventListener('click', () => {
+        window.setTimeout(() => {
+          const card = document.getElementById('variantCard');
+          if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 120);
+      });
+    }
 
     $('#feedbackForm').addEventListener('submit', async event => {
       event.preventDefault();
