@@ -1,14 +1,14 @@
 # Test results
 
-Full suite run against commit `2dcabbd` on 13 October 2026.
+Full suite run against commit `58abc89` on 13 October 2026 — the commit now deployed to production.
 
-# **1679 checks. 0 failures.**
+# **1713 checks. 0 failures.**
 
 | | |
 |---|---|
-| Suites run | 28 |
-| Suites fully clean | **27** |
-| Checks passed | **1679** |
+| Suites run | 29 |
+| Suites fully clean | **28** |
+| Checks passed | **1713** |
 | Checks failed | **0** |
 | Suites not clean | 1 — `trailer.js`, contributing 0 checks |
 
@@ -66,8 +66,9 @@ totals: they are network-backed reference scripts, not suites.
 | `prayer-ui.js` | 17 | Prayer-time interface |
 | `apnea-screening.js` | 16 | Apnea screening |
 | `storage.js` | 10 | Persistence |
+| **`variants.js`** | **34** | Interface switcher, soundscape layers |
 | `trailer.js` | **0** | See below |
-| **Total** | **1679** | |
+| **Total** | **1713** | |
 
 ---
 

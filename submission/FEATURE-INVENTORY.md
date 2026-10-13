@@ -67,6 +67,53 @@ feedback.
 
 ---
 
+## Interface variants, for testers
+
+![Interface variants](screenshots/11-interface-variants.png)
+
+The same app and the same data, presented four ways: **Classic**,
+**Simple**, **Flight** and **Plain**. All four existed before; until now
+the only way to reach one was to type a URL parameter, so in practice
+nobody compared them and *"which deserves to stay"* went unanswered.
+
+The switcher now sits on the tester screen, where someone is already being
+asked for an opinion. Exactly one presentation layer may be live, so each
+choice writes all three interface flags rather than relying on which script
+runs first.
+
+**Switching changes how the app looks, never what it holds.** A seeded
+record is asserted to survive every switch, in `test/variants.js`.
+
+## Soundscape
+
+![Soundscape](screenshots/13-soundscape.png)
+
+Six layers: **Rain, Water, Leaves, Wind, Snowfield, Night air**, mixable,
+with a master level and mute. All six are **synthesised** — noise through
+one bandpass, swept by a slow oscillator — so there are no files, no
+downloads and nothing to license.
+
+They were tuned against measurement rather than opinion. Each was rendered
+offline and compared on spectral centroid:
+
+```
+rain 4500Hz   water 1930   leaves 980   wind 490   snow 390   night 260
+```
+
+That measurement changed the build: at its first settings **Snowfield sat
+at 329 Hz against Night air's 265 Hz** with near-identical level, which is
+not a different sound. It was pulled apart by giving it slow deep swells
+where Night air is nearly static.
+
+Two honest limits, recorded rather than glossed:
+
+- **Snowfield is the weakest of the six.** Snow mostly sounds like low
+  wind, and one bandpass cannot render *muffled* as distinct from *quiet
+  and low*.
+- **The tree layer is called Leaves, not Forest.** A filter bank cannot
+  make birdsong, so it is named for what it actually is: wind through
+  foliage.
+
 ## Sleep tracking
 
 The engine is reachable at `window.SS.engine` and is the **only** sanctioned

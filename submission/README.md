@@ -1,7 +1,7 @@
 # SleepSphere — submission package
 
 **Submission date: 15 October 2026.** Prepared 13 October 2026 from commit
-`2dcabbd` on `claude/sleepsphere-integration-oct20`.
+`58abc89`, which is **deployed to production**.
 
 SleepSphere is a sleep companion for a student research cohort at Jamea. It
 is a single-page progressive web app: no server, no account, no build step.
@@ -14,8 +14,10 @@ deliberately export it.
 
 | | |
 |---|---|
-| **Open the app** | https://claude.ai/artifact/RBuC7x43HjyN47N5EixqnU |
-| **Source** | `claude/sleepsphere-integration-oct20` @ `2dcabbd` |
+| **Open the app** | **https://sleepsphere1809.netlify.app** — the live site |
+| Preview with a daypart switcher | https://claude.ai/artifact/RBuC7x43HjyN47N5EixqnU |
+| The app with no harness at all | https://claude.ai/artifact/7SEd9bb7h57eHPSuyPbDfc |
+| **Source** | `claude/sleepsphere-integration-oct20` @ `58abc89` |
 | **Opens on** | the drawn sky, about 1 MB, no video |
 
 The preview carries a small switcher at the top left. It is **not part of

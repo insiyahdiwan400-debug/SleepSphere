@@ -1,7 +1,27 @@
 # Known limitations and roadmap
 
-Commit `2dcabbd`. Everything here is a limitation that exists in the build
-being submitted. Nothing in this document is a plan presented as a feature.
+Commit `58abc89`, deployed to production on 13 October 2026. Everything here
+is a limitation that exists in the build being submitted. Nothing in this
+document is a plan presented as a feature.
+
+## 0. Deployment
+
+Production is live at **https://sleepsphere1809.netlify.app** and serves
+`58abc89`. The deploy was a clean fast-forward and was byte-verified: the
+served `index.html` differs from the commit by exactly **114 bytes** of
+Netlify injection — a rewritten `data-netlify` form tag and one HUD script
+— which is the signature the handover records.
+
+The feedback form delivers only on this site, which is why it was deployed.
+
+One caveat about the verification, stated because it looked alarming at
+first: a browser smoke test run **from this container** reports random
+subsets of assets failing with `ERR_TOO_MANY_RETRIES`, and a different
+subset each run. That is the container's egress proxy, not the site. Every
+asset returns 200 to `curl`, every deployed file is byte-identical to the
+repository, and a smoke test against those exact mirrored bytes passes
+13/13. Anyone re-running the live test from a restricted network should
+expect the same noise.
 
 ---
 
@@ -85,6 +105,25 @@ Home Screen behaviour, or real network conditions.
 
 ---
 
+## 3b. Soundscape, honestly
+
+Six synthesised layers, no files and nothing licensed. Two limits worth
+stating:
+
+- **Snowfield is the weakest.** Snow mostly sounds like low wind, and a
+  single bandpass cannot render "muffled" as a quality distinct from
+  "quiet and low". It was separated from Night air by movement rather
+  than by tone, which is audible but is the thinnest distinction of the
+  six. If a tester says it is redundant, they are right and it should go.
+- **There is no Forest, and no birdsong.** A filter bank cannot produce
+  it. The tree layer is called Leaves because that is what it is.
+
+Real field recordings would fix both, and would reintroduce exactly the
+problems the synthesis avoids: licensing, megabytes, and a download on a
+screen meant for going to sleep.
+
+---
+
 ## 4. Incomplete features
 
 | Item | State |
@@ -120,26 +159,32 @@ sees them as choices.
 
 ### Before submission (15 October)
 
-1. Open the preview on a real iPhone and report what the glitch looks like.
-   This is the only open item that cannot be progressed without the device.
-2. Write the research paperwork with the supervisor. Largest remaining gap.
-3. Decide whether the footage is demonstrated at all, now that it is
+1. **Recruit testers to the live site** and collect feedback. This is now
+   unblocked: the form delivers, and the four interface variants are
+   reachable from the tester screen so "which deserves to stay" can
+   actually be answered.
+2. **Write the research paperwork** with the supervisor. Largest remaining
+   gap, and the one a reviewer will probe first.
+3. **Open the live site on a real iPhone** and report what the reported
+   glitching looks like. Still the only item that cannot be progressed
+   without the device.
+4. Decide whether the footage is demonstrated at all, now that it is
    optional and unverified.
 
 ### Immediately after
 
-4. Verify H.264 on a real device; if it works, consider whether footage
+5. Verify H.264 on a real device; if it works, consider whether footage
    should default on, and re-tune the three scrim values — they were chosen
    against a drawn sky because the footage could not be seen.
-5. Raise or make adaptive the 12-second media timeout. An 11.5 MB clip on
+6. Raise or make adaptive the 12-second media timeout. An 11.5 MB clip on
    mobile data may exceed it and fall back although it would have played.
-6. Retire or rewrite `test/trailer.js`.
+7. Retire or rewrite `test/trailer.js`.
 
 ### Next development cycle
 
-7. Source `dawn`, `morning` and `day` footage, which needs either a
+8. Source `dawn`, `morning` and `day` footage, which needs either a
    transcoder in the toolchain or smaller licensed sources.
-8. Build Space and Sanctuary, already specified.
-9. Jame al Anwar, if and only if authentic references can be licensed.
-10. Consider an optional encrypted sync, given `localStorage` durability is
+9. Build Space and Sanctuary, already specified.
+10. Jame al Anwar, if and only if authentic references can be licensed.
+11. Consider an optional encrypted sync, given `localStorage` durability is
     the clearest risk to a participant's months of records.

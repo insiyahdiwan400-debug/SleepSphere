@@ -73,6 +73,21 @@ could not reach a third party even if a future change tried to.
 | What happens if the site disappears? | Installed copies keep working offline; exports already on the phone are unaffected. |
 | How does a participant delete everything? | One control in **Me**. It clears the store. |
 
+### The one exception, and it is deliberate
+
+The **feedback form** is the single thing that leaves the phone, and only
+when a tester fills it in and taps Send. It submits five ratings, two
+dropdowns, a free-text comment, an optional name and an optional device
+string — and nothing else. No sleep record, no time, no plan, and nothing
+from Motherhood.
+
+The app says exactly this on the screen, above the form, before anything
+is typed. The answer is also saved locally **before** the send is
+attempted, so a failed submission is never a lost answer.
+
+It is a Netlify form, which is why it only delivers on the deployed site;
+anywhere else the POST fails and the app offers the mail app instead.
+
 ### Export is always deliberate
 
 Three exports, each triggered by the participant:
