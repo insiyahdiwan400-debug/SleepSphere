@@ -424,6 +424,34 @@
     .source-card h4 { margin: 7px 0 5px; }
     .source-card p { color: var(--muted); font-size: 12px; }
     .source-card a { color: var(--teal-deep); font-weight: 800; font-size: 12px; }
+    /* Interface variants, on the tester screen.
+
+       minmax(0, 1fr) and NOT 1fr. A bare 1fr is minmax(auto, 1fr), whose
+       auto floor is the widest unbreakable content — so one long label
+       pushes the track wider than the card and the page scrolls
+       sideways. That exact bug has been fixed three times in this file
+       already; this is the form that does not come back. */
+    .variant-row {
+      display: grid; gap: 8px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .variant-btn {
+      display: flex; flex-direction: column; gap: 3px;
+      min-width: 0;                      /* a grid item will not shrink without this */
+      text-align: left; cursor: pointer;
+      padding: 11px 12px; min-height: 56px;
+      border: 1px solid var(--line); border-radius: 12px;
+      background: transparent; color: inherit; font: inherit;
+      appearance: none; -webkit-appearance: none;
+    }
+    .variant-btn strong { font-size: 13px; font-weight: 650; }
+    .variant-btn small { font-size: 10.5px; color: var(--muted); overflow-wrap: anywhere; }
+    .variant-btn.on {
+      border-color: var(--accent, #c9b27a);
+      background: color-mix(in srgb, var(--accent, #c9b27a) 12%, transparent);
+    }
+    .variant-btn:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
     .feedback-row { padding: 14px 0; border-bottom: 1px solid var(--line); }
     .feedback-row:last-child { border-bottom: 0; }
     .feedback-row .scale { margin-top: 8px; }
@@ -3576,6 +3604,30 @@
                 <div class="loop-step"><div class="loop-number">3</div><div><strong>Return in the morning</strong><small>Did the result help you notice anything useful?</small></div></div>
               </div>
               <div class="callout" style="margin-top:14px"><strong>Tester notice:</strong> This is a functioning research prototype, not a medical device or a finished clinical intervention.</div>
+            </article>
+
+            <!-- Interface variants, for testers.
+
+                 The same app, four ways. These already existed and were
+                 reachable only by typing a URL parameter, which meant in
+                 practice nobody compared them. Asking "which deserves to
+                 stay" without giving people a way to see the alternatives
+                 is asking them to guess.
+
+                 Switching reloads, because each variant decides what to
+                 build at start-up. Records are untouched: this changes
+                 how the app looks, never what it holds. -->
+            <article class="card span-5" id="variantCard">
+              <div class="card-label">Try another interface</div>
+              <p class="muted" style="margin:0 0 12px">
+                The same app and the same data, presented four ways. Switch
+                freely — nothing you have entered is affected.
+              </p>
+              <div class="variant-row" id="variantRow"></div>
+              <p class="muted" style="margin:12px 0 0;font-size:11.5px">
+                Tell us which one you were using in the comment box when you
+                send feedback.
+              </p>
             </article>
 
             <article class="card span-7">
@@ -7882,6 +7934,80 @@
         return response.ok;
       } catch { return false; }
     }
+
+    /* ------------------------------------------------------------------
+       Interface variants, for testers.
+
+       Four presentations of this same app and this same data. They were
+       always here; until now the only way to reach one was to type a URL
+       parameter, so almost nobody compared them and "which deserves to
+       stay" went unanswered.
+
+       Exactly one layer may be active, so each choice switches the other
+       two off explicitly rather than relying on which script happens to
+       run first. The reload is required: every variant decides what to
+       build at start-up, and there is no live teardown for them.
+
+       Nothing here touches state. Reading which variant is on is enough
+       to label it; changing it writes three interface flags and nothing
+       else, so a tester can switch as often as they like without putting
+       a single record at risk.
+       ------------------------------------------------------------------ */
+    const VARIANTS = [
+      { id: 'classic', label: 'Classic', note: 'The default',
+        set: { ss_ui: 'classic', ss_world: 'off', ss_concept: 'off' } },
+      { id: 'calm',    label: 'Simple',  note: 'Less on screen',
+        set: { ss_ui: 'calm',    ss_world: 'off', ss_concept: 'off' } },
+      { id: 'flight',  label: 'Flight',  note: 'A sky you move through',
+        set: { ss_ui: 'classic', ss_world: 'flight', ss_concept: 'off' } },
+      { id: 'plain',   label: 'Plain',   note: 'No theme at all',
+        set: { ss_ui: 'classic', ss_world: 'plain',  ss_concept: 'off' } }
+    ];
+
+    function currentVariant() {
+      let world = null, ui = null;
+      try {
+        world = localStorage.getItem('ss_world');
+        ui = localStorage.getItem('ss_ui');
+      } catch { /* private mode: fall through to the default */ }
+      const params = new URLSearchParams(location.search);
+      world = params.get('world') || world;
+      ui = params.get('ui') || ui;
+      if (world && world !== 'off') return world === 'flight' ? 'flight' : 'plain';
+      return ui === 'calm' ? 'calm' : 'classic';
+    }
+
+    function buildVariantRow() {
+      const row = $('#variantRow');
+      if (!row) return;
+      const active = currentVariant();
+      row.textContent = '';
+      VARIANTS.forEach(variant => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'variant-btn' + (variant.id === active ? ' on' : '');
+        button.setAttribute('aria-pressed', String(variant.id === active));
+        button.innerHTML = '<strong></strong><small></small>';
+        button.querySelector('strong').textContent = variant.label;
+        button.querySelector('small').textContent =
+          variant.id === active ? 'Showing now' : variant.note;
+        button.addEventListener('click', () => {
+          if (variant.id === active) return;
+          try {
+            Object.keys(variant.set).forEach(k => localStorage.setItem(k, variant.set[k]));
+          } catch {
+            toast('This browser will not remember the choice');
+            return;
+          }
+          /* Land back on this screen, so a tester who switches is still
+             looking at the feedback form rather than the home page. The
+             parameter is `go`, which is what the deep-link router reads. */
+          location.search = '?go=test';
+        });
+        row.appendChild(button);
+      });
+    }
+    buildVariantRow();
 
     $('#feedbackForm').addEventListener('submit', async event => {
       event.preventDefault();

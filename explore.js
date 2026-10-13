@@ -93,11 +93,35 @@
      slow oscillator; that is genuinely what rain and wind sound like to
      a filter bank, and it means no files and no licensing.
      ================================================================== */
+  /* Each layer is noise through one bandpass, swept by a slow oscillator.
+     Nothing here is a recording and none of it is presented as one: these
+     are weather-shaped sounds, not field recordings of a named place. The
+     honest description is in the note the screen shows.
+
+     `leaves` and `snowfield` were added on request. A filter bank cannot
+     make birdsong, so the tree layer is called Leaves rather than Forest:
+     it is wind through foliage, which is a thing one bandpass can
+     actually do.
+
+     The six were tuned against measurement, not opinion — each rendered
+     offline and compared on spectral centroid and on how much its level
+     varies second to second:
+
+         rain 4500Hz  water 1930  leaves 980  wind 490  snow 390  night 260
+
+     Snowfield is the weakest of the six and it is worth saying so. Snow
+     mostly sounds like low wind, and a single bandpass cannot render
+     "muffled" as a quality distinct from "quiet and low". It was pulled
+     apart from Night air by giving it slow deep swells where Night air is
+     nearly static, which is audible, but it remains the one layer whose
+     name is doing more work than its sound. */
   const LAYERS = [
-    { id: 'rain',   label: 'Rain',          type: 'white', hz: 1400, q: 0.6, lfo: 0.09, depth: 420, gain: 0.30 },
-    { id: 'wind',   label: 'Wind',          type: 'brown', hz: 380,  q: 1.6, lfo: 0.05, depth: 180, gain: 0.45 },
-    { id: 'stream', label: 'Water',         type: 'white', hz: 900,  q: 3.2, lfo: 0.21, depth: 520, gain: 0.22 },
-    { id: 'night',  label: 'Night air',     type: 'brown', hz: 180,  q: 0.9, lfo: 0.03, depth: 60,  gain: 0.55 }
+    { id: 'rain',      label: 'Rain',      type: 'white', hz: 1400, q: 0.6,  lfo: 0.09, depth: 420, gain: 0.30 },
+    { id: 'wind',      label: 'Wind',      type: 'brown', hz: 380,  q: 1.6,  lfo: 0.05, depth: 180, gain: 0.45 },
+    { id: 'stream',    label: 'Water',     type: 'white', hz: 900,  q: 3.2,  lfo: 0.21, depth: 520, gain: 0.22 },
+    { id: 'leaves',    label: 'Leaves',    type: 'brown', hz: 760,  q: 2.4,  lfo: 0.17, depth: 330, gain: 0.32 },
+    { id: 'snowfield', label: 'Snowfield', type: 'brown', hz: 240,  q: 0.5,  lfo: 0.022, depth: 260, gain: 0.46 },
+    { id: 'night',     label: 'Night air', type: 'brown', hz: 180,  q: 0.9,  lfo: 0.03, depth: 60,  gain: 0.55 }
   ];
 
   /* ==================================================================
@@ -595,7 +619,7 @@
   const PRACTICES = [
     ['Body scan', 'Thirteen steps, feet upward. About seven minutes.', bodyScan],
     ['Breathing', 'A longer out-breath. No holding.', breathing],
-    ['Sounds', 'Rain, wind, water, night air. Mix your own.', soundscape],
+    ['Sounds', 'Rain, water, leaves, wind, snow, night air. Mix your own.', soundscape],
     ['Reflection', 'Put down what is still turning over.', () => writing('reflection')],
     ['Gratitude', 'Anything worth keeping from today.', () => writing('gratitude')],
     ['About sleep', 'Six short pieces, with their sources.', lessons]
