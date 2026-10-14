@@ -497,16 +497,19 @@
     LAYERS.forEach(spec => {
       const row = el('div', 'ex-layer-row');
       const on = btn(spec.label, 'ex-toggle', async () => {
+        if (on.disabled) return;
         if (live.has(spec.id)) {
           stopLayer(live.get(spec.id)); live.delete(spec.id);
           on.classList.remove('on'); on.setAttribute('aria-pressed', 'false');
           slider.disabled = true;
         } else {
+          on.disabled = true;
           let node;
           try {
             if (!ensureContext()) throw new Error('Audio is unsupported');
             if (ctx.state !== 'running') await ctx.resume();
             if (ctx.state !== 'running') throw new Error('Audio playback blocked by browser');
+            if (!layer || !layer.isConnected || document.hidden) return;
             node = startLayer(spec, Number(slider.value) / 100);
             if (!node) throw new Error('Sound could not start');
           } catch (err) {
@@ -516,7 +519,7 @@
             warning.textContent = err.message || 'Audio could not start';
             card.appendChild(warning);
             return;
-          }
+          } finally { on.disabled = false; }
           live.set(spec.id, node);
           on.classList.add('on'); on.setAttribute('aria-pressed', 'true');
           slider.disabled = false;
