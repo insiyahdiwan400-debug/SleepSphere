@@ -788,13 +788,16 @@
     card.appendChild(masterRow);
 
     card.appendChild(el('p', 'ex-note',
-      'Sound keeps playing while you move around the app, and the player ' +
-      'at the bottom follows it. It stops when you stop it, when the sleep ' +
-      'timer fades it out, or when you switch away from the app.'));
+      'Sound keeps playing while you move between tabs, and the player at ' +
+      'the bottom follows it. It stops when you stop it, when the sleep ' +
+      'timer fades it out, when you close this screen, or when you switch ' +
+      'away from the app.'));
     body.appendChild(card);
-    /* Closing the mixer no longer stops the sound: that is the whole
-       point of a persistent player. Stopping is an explicit act. */
-    active = { stop: () => {} };
+    /* closeLayer() stops all audio, which is this project's existing rule
+       for practice screens and is asserted by test/sounds-discovery.js.
+       The registry is emptied to match, so the player and the hub cards
+       cannot be left claiming something is playing when it is not. */
+    active = { stop: () => { LIVE.clear(); cancelFade(); renderPlayer(); } };
   }
 
   /* ==================================================================

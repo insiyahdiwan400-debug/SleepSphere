@@ -59,16 +59,26 @@ const SEED = `(() => {
     await page.waitForTimeout(250);
     check('Explore page is active', await page.locator('#learn.view.active').count() === 1);
 
-    const soundsTile = page.locator('#explore .ex-tile').filter({ hasText: 'Sounds' });
-    const found = await soundsTile.count() === 1 && await soundsTile.isVisible();
-    check('Sounds tile is visible from Explore', found);
+    /* Sounds is no longer one tile among the practices: Explore is now a
+       hub with a labelled Sounds group whose cards each start a sound
+       directly. That serves this check's intent better — it is one tap
+       from Explore to a playing sound instead of three — so the
+       assertion follows the structure rather than the other way round.
+       The mixer is still reachable, from the group's own link, and
+       everything below still exercises it. */
+    const soundsGroup = page.locator('#explore .ex-group-head h4').filter({ hasText: 'Sounds' });
+    const soundCards = page.locator('#explore .ex-sound');
+    const found = await soundsGroup.count() === 1 && await soundsGroup.isVisible()
+      && await soundCards.count() >= 6 && await soundCards.first().isVisible();
+    check('Sounds is visible from Explore', found);
     if (found) {
-      await soundsTile.click();
+      await page.locator('#explore .ex-link').filter({ hasText: 'Open the mixer' }).click();
       check('Sounds dialog opens', await page.locator('.ex-layer[role="dialog"][aria-label="Sounds"]').count() === 1);
       check('Opening Sounds does not autoplay audio',
         await page.evaluate(() => window.SSExplore.audioRunning() === false));
-      check('Six independent sound layers are available',
-        await page.locator('.ex-layer-row:not(.ex-master) .ex-toggle').count() === 6);
+      /* Seven since Cabin hum was added for Flight Mode. */
+      check('Every sound layer is independently available',
+        await page.locator('.ex-layer-row:not(.ex-master) .ex-toggle').count() === 7);
       await page.locator('.ex-layer-row:not(.ex-master) .ex-toggle').first().click();
       await page.waitForTimeout(700);
       check('Tapping a layer starts its audio graph',
