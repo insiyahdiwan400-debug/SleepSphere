@@ -209,6 +209,12 @@
      last overwrote the other — so a record could be reported saved, and be
      gone. A tail promise makes each write wait for the one before it. */
   let entryWriteTail = Promise.resolve();
+  function queueVaultWrite(work) {
+    const operation = entryWriteTail.then(work);
+    /* Keep the queue usable after a failed encryption or storage write. */
+    entryWriteTail = operation.then(() => {}, () => {});
+    return operation;
+  }
 
   function liveEntries(vault, kind) {
     const superseded = new Set(vault.entries.map(e => e.supersedes).filter(Boolean));
@@ -221,7 +227,7 @@
 
   function addEntry(entry) {
     const input = { ...entry };
-    const operation = entryWriteTail.then(async () => {
+    return queueVaultWrite(async () => {
       if (!isUnlocked()) throw new Error('locked');
       if (!KINDS.includes(input.kind)) throw new Error('unknown kind');
       /* Metadata belongs to the vault, not to caller-supplied form fields.
@@ -259,77 +265,79 @@
       session.vault = next;
       return full;
     });
-    /* A failed write must not permanently block the next valid one, so the
-       tail swallows the rejection; the caller still gets it from `operation`. */
-    entryWriteTail = operation.then(() => {}, () => {});
-    return operation;
   }
 
-  async function removeEntry(id) {
-    if (!isUnlocked()) throw new Error('locked');
-    const entries = session.vault.entries;
-    const byId = new Map(entries.map(e => [e.id, e]));
-    if (!byId.has(id)) return false;
+  function removeEntry(id) {
+    return queueVaultWrite(async () => {
+      if (!isUnlocked()) throw new Error('locked');
+      const key = session.key, currentVault = session.vault;
+      const entries = currentVault.entries;
+      const byId = new Map(entries.map(e => [e.id, e]));
+      if (!byId.has(id)) return false;
 
-    /* Delete the whole correction chain. Removing only the entry named
-       un-supersedes whatever it corrected, so the OLD version reappears in
-       liveEntries() — someone deletes a record and watches an earlier draft
-       of it take its place. Deleted revisions are not kept hidden inside
-       the vault either; "delete" has to mean gone. */
-    const doomed = new Set([id]);
-    let current = byId.get(id);
-    while (current && current.supersedes && byId.has(current.supersedes)) {
-      const previous = current.supersedes;
-      if (doomed.has(previous)) break;          /* guard cyclic imports */
-      doomed.add(previous);
-      current = byId.get(previous);
-    }
-    /* And the descendants, for a non-latest revision deleted through the API. */
-    let changed;
-    do {
-      changed = false;
-      for (const entry of entries) {
-        if (entry.supersedes && doomed.has(entry.supersedes) && !doomed.has(entry.id)) {
-          doomed.add(entry.id);
-          changed = true;
-        }
+      /* Remove the entire correction chain, including both ancestors and
+         descendants, so deleting a correction never resurrects old data. */
+      const doomed = new Set([id]);
+      let current = byId.get(id);
+      while (current && current.supersedes && byId.has(current.supersedes)) {
+        const previous = current.supersedes;
+        if (doomed.has(previous)) break;
+        doomed.add(previous);
+        current = byId.get(previous);
       }
-    } while (changed);
+      let changed;
+      do {
+        changed = false;
+        for (const entry of entries) {
+          if (entry.supersedes && doomed.has(entry.supersedes) && !doomed.has(entry.id)) {
+            doomed.add(entry.id);
+            changed = true;
+          }
+        }
+      } while (changed);
 
-    session.vault.entries = entries.filter(e => !doomed.has(e.id));
-    if (Array.isArray(session.vault.revisions)) {
-      session.vault.revisions = session.vault.revisions.filter(ref => !doomed.has(ref));
-    }
-    await persist();
-    return true;
+      /* Seal a copy, not the live vault. If storage rejects the write,
+         both the encrypted record and the unlocked session stay intact. */
+      const next = {
+        ...currentVault,
+        entries: entries.filter(e => !doomed.has(e.id)),
+        revisions: Array.isArray(currentVault.revisions)
+          ? currentVault.revisions.filter(ref => !doomed.has(ref))
+          : []
+      };
+      const cipher = await sealVault(next, key);
+      if (session.key !== key || session.vault !== currentVault) {
+        throw new Error('vault session changed during save');
+      }
+      const existing = record() || {};
+      MH.set({ enabled: true, v: VAULT_VERSION, kdf: existing.kdf, cipher });
+      session.vault = next;
+      return true;
+    });
   }
 
-  async function setStage(stage, detail) {
-    if (!isUnlocked()) throw new Error('locked');
-    /* Prepare a new snapshot and leave the unlocked vault untouched until
-       the save succeeds. Mutating in place meant a failed write left the
-       screen saying "postpartum" over a device that still said "pregnant",
-       and the next thing saved would have written that contradiction down. */
-    const key = session.key;
-    const current = session.vault;
-    const next = {
-      ...current,
-      pregnancy: { ...current.pregnancy },
-      postpartum: { ...current.postpartum }
-    };
-    next.stage = stage;
-    /* A transition keeps everything. Someone who moves from pregnancy to
-       postpartum has nine months of their own records in here, and losing
-       them at the moment of the birth would be indefensible. */
-    if (stage === 'pregnancy') Object.assign(next.pregnancy, detail || {});
-    if (stage === 'postpartum') Object.assign(next.postpartum, detail || {});
-    const cipher = await sealVault(next, key);
-    if (session.key !== key || session.vault !== current) {
-      throw new Error('vault session changed during save');
-    }
-    const existing = record() || {};
-    MH.set({ enabled: true, v: VAULT_VERSION, kdf: existing.kdf, cipher });
-    session.vault = next;
+  function setStage(stage, detail) {
+    return queueVaultWrite(async () => {
+      if (!isUnlocked()) throw new Error('locked');
+      const key = session.key;
+      const current = session.vault;
+      const next = {
+        ...current,
+        pregnancy: { ...current.pregnancy },
+        postpartum: { ...current.postpartum }
+      };
+      next.stage = stage;
+      /* Moving into postpartum keeps all pregnancy records. */
+      if (stage === 'pregnancy') Object.assign(next.pregnancy, detail || {});
+      if (stage === 'postpartum') Object.assign(next.postpartum, detail || {});
+      const cipher = await sealVault(next, key);
+      if (session.key !== key || session.vault !== current) {
+        throw new Error('vault session changed during save');
+      }
+      const existing = record() || {};
+      MH.set({ enabled: true, v: VAULT_VERSION, kdf: existing.kdf, cipher });
+      session.vault = next;
+    });
   }
 
   /* ==================================================================
