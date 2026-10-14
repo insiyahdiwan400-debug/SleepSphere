@@ -30,7 +30,7 @@ document.getElementById('native').addEventListener('click',async()=>{
     player.volume=1;
     player.addEventListener('playing',()=>{status.textContent='Browser says: playing. Did you hear a one-second tone?';});
     player.addEventListener('ended',()=>{status.textContent='Browser says: playback finished. Did you hear the tone?';});
-    player.addEventListener('error',()=>{status.textContent='Audio error: '+(player.error?.code||'unknown');});
+    player.addEventListener('error',()=>{const code=player.error?.code||'unknown';status.textContent='Audio error: '+code+(code===4?' (source unsupported or blocked by browser security settings)':'')+'; source type: audio/wav; readyState: '+player.readyState;});
     status.textContent='Starting native browser audio…';
     await player.play();
   }catch(e){status.textContent='Playback rejected: '+e.name+': '+e.message;}
