@@ -347,14 +347,54 @@
   function layerSpec(id) { return LAYERS.find(l => l.id === id) || null; }
   function layerOn(id) { return LIVE.has(id); }
 
-  function startSound(id, level) {
+  /* Starting a sound, with the guards that were written for the mixer
+     and now apply everywhere.
+
+     A context can be suspended by the OS at any moment, and resume() is
+     asynchronous and allowed to fail. Firing it and hoping — which is
+     what the first version of this did — means a tap that silently does
+     nothing. This waits, checks the context really is running, and
+     throws something sayable if it is not, so the caller can show it
+     rather than leaving a dead button. */
+  async function startSoundOrThrow(id, level) {
     const spec = layerSpec(id);
-    if (!spec || LIVE.has(id)) return Boolean(spec);
+    if (!spec) throw new Error('No such sound');
+    if (LIVE.has(id)) return true;
+    if (!ensureContext()) throw new Error('Audio is unsupported in this browser');
+    if (ctx.state !== 'running') { try { await ctx.resume(); } catch (e) {} }
+    if (ctx.state !== 'running') throw new Error('Audio is blocked by the browser. Tap again.');
+    /* The screen may have closed, or the app been backgrounded, while
+       resume() was in flight. Starting then would leave sound playing
+       with nothing on screen that can stop it. */
+    if (document.hidden) return false;
     const node = startLayer(spec, typeof level === 'number' ? level : 0.6);
-    if (!node) return false;
+    if (!node) throw new Error('Sound could not start');
     LIVE.set(id, node);
     renderPlayer();
     return true;
+  }
+
+  /* The forgiving form, for callers with nowhere to show an error. It
+     never rejects, so a card tap cannot raise an unhandled rejection. */
+  function startSound(id, level) {
+    return startSoundOrThrow(id, level).catch(err => {
+      announce(err && err.message ? err.message : 'Sound could not start');
+      return false;
+    });
+  }
+
+  /* Said out loud to assistive tech, and shown on the hub if it is open.
+     A failure nobody is told about is the same as a dead button. */
+  function announce(message) {
+    let live = document.getElementById('ssAudioSays');
+    if (!live) {
+      live = el('p', 'ex-note');
+      live.id = 'ssAudioSays';
+      live.setAttribute('role', 'alert');
+      const host = document.getElementById('explore');
+      if (host) host.appendChild(live); else return;
+    }
+    live.textContent = message;
   }
 
   function stopSound(id) {
@@ -366,7 +406,7 @@
   }
 
   function toggleSound(id, level) {
-    if (LIVE.has(id)) { stopSound(id); return false; }
+    if (LIVE.has(id)) { stopSound(id); return Promise.resolve(false); }
     return startSound(id, level);
   }
 
@@ -689,19 +729,30 @@
 
     LAYERS.forEach(spec => {
       const row = el('div', 'ex-layer-row');
-      const on = btn(spec.label, 'ex-toggle', () => {
+      /* Merged: this screen keeps the shared registry, and takes the
+         three protections that were written against its old local Map —
+         they now live in startSound() so they also cover the hub's
+         cards, which the earlier version could not reach. */
+      const on = btn(spec.label, 'ex-toggle', async () => {
+        if (on.disabled) return;                 /* no double taps */
         if (layerOn(spec.id)) {
           stopSound(spec.id);
           on.classList.remove('on'); on.setAttribute('aria-pressed', 'false');
           slider.disabled = true;
-        } else {
-          if (!startSound(spec.id, Number(slider.value) / 100)) {
-            card.appendChild(el('p', 'ex-note', 'Sound is not available in this browser.'));
-            return;
-          }
+          return;
+        }
+        on.disabled = true;
+        try {
+          await startSoundOrThrow(spec.id, Number(slider.value) / 100);
           on.classList.add('on'); on.setAttribute('aria-pressed', 'true');
           slider.disabled = false;
-        }
+        } catch (err) {
+          const warning = card.querySelector('[data-audio-warning]') || el('p', 'ex-note');
+          warning.dataset.audioWarning = 'true';
+          warning.setAttribute('role', 'alert');
+          warning.textContent = err.message || 'Audio could not start';
+          card.appendChild(warning);
+        } finally { on.disabled = false; }
       });
       /* Reflects what is ALREADY playing, because sound can now be
          started from the hub and this screen may be opened on top of it. */
@@ -1051,7 +1102,7 @@
     /* The hub and the player need these, and so do the tests: what is
        playing has to be inspectable from outside, or "the sound works"
        is an opinion. */
-    startSound, stopSound, toggleSound, stopEverySound,
+    startSound, startSoundOrThrow, stopSound, toggleSound, stopEverySound,
     playing: () => [...LIVE.keys()],
     setSleepTimer,
     timerEndsAt: () => fadeEndsAt,
