@@ -496,14 +496,27 @@
 
     LAYERS.forEach(spec => {
       const row = el('div', 'ex-layer-row');
-      const on = btn(spec.label, 'ex-toggle', () => {
+      const on = btn(spec.label, 'ex-toggle', async () => {
         if (live.has(spec.id)) {
           stopLayer(live.get(spec.id)); live.delete(spec.id);
           on.classList.remove('on'); on.setAttribute('aria-pressed', 'false');
           slider.disabled = true;
         } else {
-          const node = startLayer(spec, Number(slider.value) / 100);
-          if (!node) { card.appendChild(el('p', 'ex-note', 'Sound is not available in this browser.')); return; }
+          let node;
+          try {
+            if (!ensureContext()) throw new Error('Audio is unsupported');
+            if (ctx.state !== 'running') await ctx.resume();
+            if (ctx.state !== 'running') throw new Error('Audio playback blocked by browser');
+            node = startLayer(spec, Number(slider.value) / 100);
+            if (!node) throw new Error('Sound could not start');
+          } catch (err) {
+            const warning = card.querySelector('[data-audio-warning]') || el('p', 'ex-note');
+            warning.dataset.audioWarning = 'true';
+            warning.setAttribute('role', 'alert');
+            warning.textContent = err.message || 'Audio could not start';
+            card.appendChild(warning);
+            return;
+          }
           live.set(spec.id, node);
           on.classList.add('on'); on.setAttribute('aria-pressed', 'true');
           slider.disabled = false;
