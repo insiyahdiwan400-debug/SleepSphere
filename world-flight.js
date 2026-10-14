@@ -105,6 +105,16 @@
       src.connect(lp); lp.connect(gain); gain.connect(ctx.destination);
       src.start();
       state.audio = { ctx: ctx, gain: gain, src: src };
+      /* Mobile Safari can create a suspended context even after a tap.
+         Request playback explicitly, and never leave a silent "on" state
+         when the browser rejects it. */
+      if (ctx.state === 'suspended' && typeof ctx.resume === 'function') {
+        Promise.resolve(ctx.resume()).then(function () {
+          if (ctx.state !== 'running' && state.audio && state.audio.ctx === ctx) audioOff();
+        }).catch(function () {
+          if (state.audio && state.audio.ctx === ctx) audioOff();
+        });
+      }
     } catch (e) { /* no audio is a fine outcome */ }
   }
   function audioOff() {
