@@ -793,6 +793,41 @@
       card.appendChild(row);
     });
 
+    /* Independent output check: a short sine tone goes directly to the
+       destination, bypassing the weather filters and the mixer master.
+       On iOS the oscillator is started in the user's tap handler. */
+    const speakerStatus = el('p', 'ex-note');
+    speakerStatus.setAttribute('role', 'status');
+    const speakerTest = btn('Test speaker tone', 'ex-quiet', () => {
+      try {
+        const audio = ensureContext();
+        if (!audio) {
+          speakerStatus.textContent = 'This browser has no Web Audio support.';
+          return;
+        }
+        const tone = audio.createOscillator();
+        const level = audio.createGain();
+        tone.type = 'sine';
+        tone.frequency.value = 440;
+        level.gain.setValueAtTime(0.0001, audio.currentTime);
+        level.gain.exponentialRampToValueAtTime(0.12, audio.currentTime + 0.04);
+        level.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.65);
+        tone.connect(level).connect(audio.destination);
+        tone.start();
+        tone.stop(audio.currentTime + 0.67);
+        wake();
+        speakerStatus.textContent = 'Audio engine: ' + audio.state +
+          '. A short test tone was requested.';
+        setTimeout(() => {
+          speakerStatus.textContent = 'Audio engine: ' + audio.state +
+            '. If silent, check iPad volume and output device.';
+        }, 850);
+      } catch (err) {
+        speakerStatus.textContent = 'Speaker test error: ' + (err.message || String(err));
+      }
+    });
+    card.append(speakerTest, speakerStatus);
+
     const masterRow = el('div', 'ex-layer-row ex-master');
     const muteBtn = btn(muted ? 'Unmute' : 'Mute', 'ex-toggle', () => {
       setMuted(!muted);
