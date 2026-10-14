@@ -57,7 +57,7 @@ const text = p => p.evaluate(() => document.querySelector('.ex-body').innerText)
     /* The index became a hub with two groups, so the tile count grew:
        Flight Mode, Living Sky and the Sabat Compass were URL parameters
        and a button on another screen before. */
-    check('Every experience is offered', n === 8, String(n));
+    check('Every experience is offered', n === 9, String(n));
 
     /* Press every one. A tile that opens nothing is the exact failure the
        brief names, and it is invisible until someone presses it. */
@@ -79,9 +79,15 @@ const text = p => p.evaluate(() => document.querySelector('.ex-body').innerText)
       const moved = await p.evaluate(() =>
         document.documentElement.dataset.view === 'compass' ||
         !document.querySelector('#explore') ||
-        location.search.indexOf('world=') > -1);
+        location.search.indexOf('world=') > -1 ||
+        /* Flight Mode opens the cabin, which is its own full-screen
+           overlay rather than an ex-layer. */
+        Boolean(document.getElementById('flightCabin')));
       opened.push((title && hasBody) ? title : (moved ? 'MOVED:' + i : 'EMPTY:' + i));
-      await p.evaluate(() => window.SSExplore.close());
+      await p.evaluate(() => {
+        window.SSExplore.close();
+        if (window.SSFlightCabin) window.SSFlightCabin.close();
+      });
       await p.waitForTimeout(140);
     }
     check('Every tile opens a screen with something on it',

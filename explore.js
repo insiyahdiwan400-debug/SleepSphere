@@ -1014,7 +1014,12 @@
   /* Each experience names what it is and what starting it does. Nothing
      here is new behaviour; every one of these already worked. */
   const EXPERIENCES = [
-    ['Flight Mode', 'A window seat, and a wind-down you move through.', () => goWorld('flight')],
+    /* Opens the cabin: the window-seat screen built to the visual
+       reference. The Flight world's wind-down is still reachable from
+       its own card below. */
+    ['Flight Mode', 'A window seat above the clouds. Real footage where it exists.',
+      () => { if (window.SSFlightCabin) window.SSFlightCabin.open(); else goWorld('flight'); }],
+    ['Flight wind-down', 'The descent: arrive, settle, release.', () => goWorld('flight')],
     /* Living Sky is a toggle, not a journey: it puts recorded footage
        behind the whole app. Tapping it used to enable the layer and
        leave you looking at the same screen with no sign anything had
@@ -1106,6 +1111,7 @@
        playing has to be inspectable from outside, or "the sound works"
        is an opinion. */
     startSound, startSoundOrThrow, stopSound, toggleSound, stopEverySound,
+    openMixer: soundscape,
     playing: () => [...LIVE.keys()],
     setSleepTimer,
     timerEndsAt: () => fadeEndsAt,
