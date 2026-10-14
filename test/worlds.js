@@ -188,9 +188,19 @@ const clockAt = (h, mi) => `(()=>{const R=Date;const f=new R(2026,8,9,${h},${mi}
     check('Continue moves it to Settle', settleUI.phase === 'Settle', settleUI.phase);
     check('The line changes with the phase',
           /Let the day go/.test(settleUI.line || ''), settleUI.line);
-    check('And the SKY actually moved, evening towards twilight',
-          settle.sky > before.sky + 0.4,
+    /* The Descent now starts from wherever the clock has left the sky
+       and walks FORWARD to night, rather than from a fixed evening
+       position. So the distance covered depends on the hour — a Descent
+       begun at dusk has less evening left to cross — and the invariant
+       worth asserting is the direction, not a fixed amount. Padding a
+       short journey out would mean cycling the sky through morning and
+       midday on the way to bed. */
+    check('And the SKY moved forward, never backwards',
+          settle.sky >= before.sky - 0.001,
           before.sky.toFixed(2) + ' -> ' + settle.sky.toFixed(2));
+    check('Towards night, not away from it',
+          Math.abs(2.0 - settle.sky) <= Math.abs(2.0 - before.sky) + 0.001,
+          'night is 2.0; ' + before.sky.toFixed(2) + ' -> ' + settle.sky.toFixed(2));
 
     await p.locator('#flContinue').click();
     await p.waitForTimeout(2300);
@@ -198,9 +208,13 @@ const clockAt = (h, mi) => `(()=>{const R=Date;const f=new R(2026,8,9,${h},${mi}
     const releaseUI = await p.evaluate(() =>
       (document.querySelector('.fl-phase') || {}).textContent);
     check('And again to Release', releaseUI === 'Release', releaseUI);
-    check('With the sky carried on into the night',
-          release.sky > settle.sky + 0.5,
+    /* Same reasoning as above: direction and destination, not distance. */
+    check('With the sky carried on, never back',
+          release.sky >= settle.sky - 0.001,
           settle.sky.toFixed(2) + ' -> ' + release.sky.toFixed(2));
+    check('And arriving at night by the end',
+          Math.abs(2.0 - release.sky) < 0.25,
+          'night is 2.0; reached ' + release.sky.toFixed(2));
     check('No console errors through the Descent', errs.length === 0, errs.join(' | '));
     await ctx.close();
   }

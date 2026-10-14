@@ -52,11 +52,26 @@
      through night. Both are fixed: daytime is the day sky, and the scale
      now wraps, so morning runs forward into day and day forward into
      evening. */
+  /* The resting sky follows the CLOCK, not the sleep phase.
+
+     It used to read model.phase, which is about where someone is in
+     their night rather than where the sun is. At half past ten at night
+     the phase is still EVENING, so the screen showed a bright orange
+     sunset — at 22:30. The descent still drives the sky itself while it
+     is running; this is only what the sky rests at. */
+  function skyForClock(now) {
+    var h = (now || new Date()).getHours() + (now || new Date()).getMinutes() / 60;
+    if (h >= 5  && h < 7)    return 2.60 + (h - 5) / 2 * 0.70;     /* night → morning */
+    if (h >= 7  && h < 10)   return 3.30 + (h - 7) / 3 * 0.70;     /* morning → day   */
+    if (h >= 10 && h < 16)   return 4.00;                           /* day             */
+    if (h >= 16 && h < 18)   return 4.00 + (h - 16) / 2;            /* day → evening   */
+    if (h >= 18 && h < 19.5) return (h - 18) / 1.5;                 /* evening → dusk  */
+    if (h >= 19.5 && h < 21) return 1.00 + (h - 19.5) / 1.5;        /* dusk → night    */
+    return 2.00;                                                    /* night           */
+  }
+
   function restingSky(model) {
-    if (model.phase === 'WAKE') return 3.15;      /* just past sunrise */
-    if (model.phase === 'DAY') return 4.0;        /* actual daylight */
-    if (model.phase === 'EVENING') return 0.30;   /* evening into twilight */
-    return 2.0;                                   /* night */
+    return skyForClock(new Date());
   }
 
   var sky = null, host = null, state = {
@@ -102,11 +117,26 @@
   }
 
   /* ── the descent ─────────────────────────────────────────────────── */
+  /* The Descent walks the sky FORWARD to night, from wherever it
+     actually is.
+
+     PHASES used to carry absolute sky positions — 0.35 to 1.70 — which
+     assumed the sky was always sitting at evening when the Descent
+     began. Once the resting sky started following the clock, beginning
+     it at twenty to nine meant jumping from 1.78 back to 0.35 and
+     walking forward again: the sky visibly rewound through dusk, which
+     is the same backwards-slew that was reported in the first place.
+
+     So the distance is measured at the start and is always the short way
+     round to night. Beginning later means a shorter journey, which is
+     the honest answer: there is less evening left to cross. */
+  var NIGHT_T = 2.0;
+
   function skyForProgress(p) {
     var i = p < 1 / 3 ? 0 : p < 2 / 3 ? 1 : 2;
-    var ph = PHASES[i];
-    var local = (p - i / 3) * 3;
-    return { t: ph.from + (ph.to - ph.from) * Math.max(0, Math.min(1, local)), phase: i };
+    var from = typeof state.skyFrom === 'number' ? state.skyFrom : 0.35;
+    var span = typeof state.skySpan === 'number' ? state.skySpan : (NIGHT_T - 0.35);
+    return { t: from + span * Math.max(0, Math.min(1, p)), phase: i };
   }
 
   function setProgress(p, overlay) {
@@ -158,6 +188,24 @@
 
   function startDescent(overlay) {
     state.descending = true; state.progress = 0; state.phase = 0; state.finishing = false;
+    /* Capture where the sky is now, and how far forward night is. A
+       Descent begun in daylight crosses evening and dusk to get there; one
+       begun at dusk has only the last of it left. Either way it only ever
+       moves forward. */
+    /* The TARGET, not the eased current value. `t` is wherever the ease
+       happens to have reached this frame, so starting a Descent while
+       the sky was still settling captured a point behind where it was
+       heading — and the journey then began by going backwards. Reading
+       the target makes it deterministic and matches what the world
+       reports about itself. */
+    var here = sky && typeof sky.target === 'number' ? sky.target : restingSky({});
+    var n = 5;                                        /* skies in the cycle */
+    state.skyFrom = here;
+    state.skySpan = ((NIGHT_T - here) % n + n) % n;
+    /* Deliberately NOT padded out when it is short. Adding a cycle to
+       make the journey feel longer would walk the sky through morning
+       and midday on the way to bed, which is the absurdity this world
+       was just rescued from. A late Descent is a short one. */
     /* The Descent is a focused mode: navigation goes away so the only
        things on screen are the sky, one line, and the way onward. */
     document.documentElement.dataset.descending = 'yes';
@@ -227,11 +275,12 @@
         box.appendChild(timesBar(model, api));
 
         var mid = el('div', { class: 'fl-mid' });
-        mid.appendChild(t('p', 'fl-kick', model.saved ? 'Tonight' : 'Proposed'));
         mid.appendChild(t('p', 'fl-head',
           model.phase === 'EVENING' || model.phase === 'SLEEP'
             ? 'Wind down at ' + model.stages[0].time + '.'
             : 'Tonight is ready.'));
+        /* The instrument, between the headline and the action. */
+        if (model.stages && model.stages.length) mid.appendChild(boardingPass(model, api));
         box.appendChild(mid);
 
         var foot = el('div', { class: 'fl-foot' });
@@ -392,6 +441,118 @@
       wrap.appendChild(grid);
     }
     return wrap;
+  }
+
+  /* ── the boarding pass ───────────────────────────────────────────────
+     WORLDS.md §5 specifies this world as an aviation instrument: a
+     boarding pass with a perforated stub, a route strip drawn to scale,
+     and a split-flap board. None of it had been built — the world was a
+     photographic sky with a question on it, which is why it read as the
+     simplified interface with a backdrop.
+
+     Everything here is drawn from the model's own minutes. Nothing is
+     eyeballed and nothing is invented: a stage with no time does not get
+     a tick, and the stub says what the engine says. */
+
+  var CODES = { wind: 'WND', sleep: 'SLP', fajr: 'FJR', return: 'RTN', wake: 'UP' };
+  var LABELS = { wind: 'Wind down', sleep: 'Asleep by', fajr: 'Fajr',
+                 return: 'Back to sleep', wake: 'Up' };
+
+  /* Clock minutes wrap at midnight, so a night reads 1310, 1355, 285,
+     310, 390. Unwrapped once here; every position downstream is then
+     just arithmetic. */
+  function unwrapped(stages) {
+    var out = [], add = 0, prev = null;
+    for (var i = 0; i < stages.length; i++) {
+      var m = stages[i].minutes;
+      if (typeof m !== 'number') continue;
+      if (prev !== null && m + add < prev) add += 1440;
+      prev = m + add;
+      out.push({ key: stages[i].key, time: stages[i].time, at: m + add,
+                 elapsed: stages[i].elapsed });
+    }
+    return out;
+  }
+
+  /* The route strip. One line, to scale, from the first stage to the
+     last, with Fajr as the single amber tick — the one thing on it that
+     is not about sleeping. */
+  function routeStrip(pts) {
+    var strip = el('div', { class: 'fl-route' });
+    if (pts.length < 2) return strip;
+    var a = pts[0].at, b = pts[pts.length - 1].at, span = b - a;
+    if (span <= 0) return strip;
+    var line = el('div', { class: 'fl-route-line' });
+    strip.appendChild(line);
+    pts.forEach(function (p) {
+      var pct = (p.at - a) / span * 100;
+      var tick = el('div', { class: 'fl-tick' + (p.key === 'fajr' ? ' fl-tick-fajr' : '') });
+      tick.style.left = pct.toFixed(2) + '%';
+      tick.setAttribute('title', LABELS[p.key] + ' ' + p.time);
+      strip.appendChild(tick);
+    });
+    var from = el('span', { class: 'fl-route-end fl-route-from', text: pts[0].time });
+    var to = el('span', { class: 'fl-route-end fl-route-to', text: pts[pts.length - 1].time });
+    strip.appendChild(from); strip.appendChild(to);
+    return strip;
+  }
+
+  /* The split-flap board. The live row is the last stage already past,
+     and it is the only one that flips — once, 220ms, and not at all
+     under reduced motion. A board where everything flips is a slot
+     machine, which is the opposite of the point. */
+  function board(pts) {
+    var reduced = false;
+    try { reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+    /* Which row is live, computed against the SAME unwrapped clock the
+       strip uses. The model's own `elapsed` is not wrap-corrected, so at
+       half past ten it reported Fajr, Back-to-sleep and Up as all
+       already past — the whole night lit at once, and the last row
+       marked live. Here, now is placed in whichever 24-hour frame puts
+       it nearest the night, and the live row is the last one it has
+       actually reached. */
+    var live = -1;
+    if (pts.length) {
+      var d = new Date();
+      var nowMin = d.getHours() * 60 + d.getMinutes();
+      var first = pts[0].at, last = pts[pts.length - 1].at;
+      var dist = function (v) {
+        return v < first ? first - v : (v > last ? v - last : 0);
+      };
+      var nowAt = dist(nowMin + 1440) < dist(nowMin) ? nowMin + 1440 : nowMin;
+      for (var i = 0; i < pts.length; i++) if (pts[i].at <= nowAt) live = i;
+    }
+    var wrap = el('div', { class: 'fl-board', role: 'table', 'aria-label': 'Tonight, stage by stage' });
+    pts.forEach(function (p, i) {
+      var row = el('div', { class: 'fl-brow' + (i === live ? ' fl-brow-live' : ''), role: 'row' });
+      row.appendChild(t('span', 'fl-bcode', CODES[p.key] || '—'));
+      row.appendChild(t('span', 'fl-blabel', LABELS[p.key] || p.key));
+      row.appendChild(t('b', 'fl-btime', p.time));
+      if (i === live && !reduced) row.classList.add('fl-flip');
+      wrap.appendChild(row);
+    });
+    return wrap;
+  }
+
+  function boardingPass(model, api) {
+    var pts = unwrapped(model.stages || []);
+    var pass = el('div', { class: 'fl-pass' });
+
+    var main = el('div', { class: 'fl-pass-main' });
+    main.appendChild(t('p', 'fl-pass-kick', model.saved ? 'Tonight' : 'Proposed'));
+    main.appendChild(routeStrip(pts));
+    main.appendChild(board(pts));
+    pass.appendChild(main);
+
+    /* The stub. One number worth anticipating, and the shape of the
+       night beside it. Not a score. */
+    var stub = el('div', { class: 'fl-stub' });
+    stub.appendChild(t('span', 'fl-stub-k', 'Total'));
+    stub.appendChild(t('b', 'fl-stub-v', model.total ? api.dur(model.total) : '—'));
+    var blocks = pts.some(function (p) { return p.key === 'return'; }) ? 'two blocks' : 'one block';
+    stub.appendChild(t('span', 'fl-stub-c', model.total ? blocks : 'not set'));
+    pass.appendChild(stub);
+    return pass;
   }
 
   /* The morning. The sky has already walked back to sunrise by the time
