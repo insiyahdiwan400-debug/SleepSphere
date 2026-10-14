@@ -18,6 +18,7 @@ function check(name, ok, detail = '') {
 }
 
 const SEED = `(() => {
+  if (localStorage.getItem('sleepsphere_state_v2') !== null) return;
   localStorage.setItem('sleepsphere_state_v2', JSON.stringify({
     version: 3,
     settings: { welcomeSeen: true, openingOff: true, mode: 'dark', target: 480 },
@@ -52,6 +53,18 @@ const SEED = `(() => {
         motherhoodKeys: Object.keys(localStorage).filter(k => /motherhood/i.test(k)) };
     });
     check('Existing sleep record loaded', Boolean(before.record));
+    /* Re-running the init script must not overwrite records saved later. */
+    await page.evaluate(SEED);
+    const persisted = await page.evaluate(() => {
+      const state = JSON.parse(localStorage.getItem('sleepsphere_state_v2'));
+      state.mornings.push({ id: 'reload-preservation-check', date: '2026-10-13' });
+      localStorage.setItem('sleepsphere_state_v2', JSON.stringify(state));
+      return JSON.stringify(state.mornings);
+    });
+    await page.reload({ waitUntil: 'networkidle' });
+    const afterReload = await page.evaluate(() =>
+      JSON.stringify(JSON.parse(localStorage.getItem('sleepsphere_state_v2')).mornings));
+    check('Sleep records survive page reload', afterReload === persisted);
 
     const exploreNav = page.locator('.nav button[data-view="learn"]');
     check('Explore is in main navigation', await exploreNav.count() === 1);
