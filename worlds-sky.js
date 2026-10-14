@@ -599,7 +599,20 @@
            weight by stacking rather than by any one of them being solid. */
         w: (0.10 + 0.92 * Math.pow(k, 1.85)) * (this.sprites[sp].kind === 'veil' ? 1.2 : 1),
         a: (0.18 + 0.82 * Math.pow(k, 0.78)) * (this.sprites[sp].kind === 'veil' ? 1 : 0.9),
-        speed: 0.0004 + 0.0085 * k * k,
+        /* Drift, and the reason these numbers changed.
+           `phase` advances about 1.0 per second and the track is 1.7
+           screen-widths wide, so 1/speed is roughly the seconds a cloud
+           takes to cross one screen. The old values — 0.0004 to 0.0089 —
+           worked out at between two and FORTY-TWO MINUTES per crossing.
+           The sky was animated in the sense that the numbers changed; it
+           was static in the only sense that matters, which is that
+           somebody looking at it saw a photograph.
+           Now the nearest bank crosses in about 35 seconds and the
+           farthest in about three minutes. That is a timelapse rather
+           than weather, which is what makes a sky read as alive without
+           reading as windy at bedtime. Parallax is preserved: the
+           near-to-far ratio is unchanged, everything simply moves. */
+        speed: 0.0055 + 0.023 * k * k,
         flip: rand() < 0.5
       });
     }
@@ -614,7 +627,10 @@
         y: 0.03 + rand() * 0.22,
         w: 0.70 + rand() * 0.70,
         a: 0.26 + rand() * 0.22,
-        speed: 0.0010 + rand() * 0.0013,
+        /* Cirrus is highest and so should be the slowest thing moving,
+           but it was slower than perception, which is not the same. A
+           crossing in two to four minutes reads as high, thin and far. */
+        speed: 0.0045 + rand() * 0.0055,
         flip: rand() < 0.5
       });
     }

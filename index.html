@@ -459,8 +459,13 @@
        above the tab bar, clear of the sky credit on the right. */
     #variantEscape {
       position: fixed; z-index: 8;
-      left: max(12px, env(safe-area-inset-left, 0px));
-      bottom: calc(env(safe-area-inset-bottom, 0px) + 78px);
+      /* Top right, not bottom left. Flight now composes its question and
+         its tap targets low in the frame, and a pill in the bottom-left
+         corner landed on top of them. Every variant leaves the top-right
+         clear: Flight's words are at the bottom, Plain's heading is on
+         the left, Simple is centred. */
+      right: max(12px, env(safe-area-inset-right, 0px));
+      top: calc(env(safe-area-inset-top, 0px) + 10px);
       appearance: none; -webkit-appearance: none; cursor: pointer;
       font: 600 12px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
       color: #f4f2ec; background: rgba(12, 16, 28, .86);

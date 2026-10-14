@@ -201,6 +201,15 @@
         if (state.descending) return descentScene(model, api);
 
         if (model.need) {
+          /* The question sits at the BOTTOM of the frame, not the top.
+
+             It used to stack at the top and leave two thirds of the
+             screen as empty sky, which read as an unfinished page rather
+             than as a photograph. Anchoring the words low gives the sky
+             the frame, which is how a sky is actually composed — and it
+             puts three tap targets in the half of a phone a thumb can
+             reach, which they were not before. */
+          box.classList.add('fl-ask-screen');
           box.appendChild(t('p', 'fl-kick', 'Before tonight'));
           box.appendChild(t('p', 'fl-ask', model.need === 'wake'
             ? 'When do you need to be up?' : 'After Fajr, back to sleep?'));

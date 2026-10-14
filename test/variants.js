@@ -152,6 +152,30 @@ async function open(browser, query) {
       seen.escape === 'visible', seen.escape);
     check('2 · ' + label + ' way back is tappable',
       seen.escapeTap >= 44, seen.escapeTap + 'px');
+
+    /* It must not sit on top of the variant's own controls. It did: once
+       Flight composed its question low in the frame, a pill in the
+       bottom-left corner landed across the third time button. */
+    const clash = await p.evaluate(() => {
+      const pill = document.getElementById('variantEscape');
+      if (!pill) return { pill: false };
+      const a = pill.getBoundingClientRect();
+      const hits = [];
+      document.querySelectorAll('button, a, input, [role="button"]').forEach(other => {
+        if (other === pill || pill.contains(other)) return;
+        const b = other.getBoundingClientRect();
+        if (b.width < 1 || b.height < 1) return;
+        if (a.right > b.left && a.left < b.right && a.bottom > b.top && a.top < b.bottom) {
+          hits.push((other.textContent || other.tagName).trim().slice(0, 24));
+        }
+      });
+      const atCentre = document.elementFromPoint(a.left + a.width / 2, a.top + a.height / 2);
+      return { pill: true, hits, onTop: atCentre === pill || pill.contains(atCentre) };
+    });
+    check('2 · ' + label + ' way back covers nothing tappable',
+      clash.pill && clash.hits.length === 0, (clash.hits || []).join(', ') || 'clear');
+    check('2 · ' + label + ' way back is the thing you hit when you tap it',
+      clash.onTop === true, String(clash.onTop));
     await ctx.close();
   }
 

@@ -185,6 +185,91 @@ const clockAt = h => `(()=>{const R=Date;const f=new R(2026,9,13,${h},30,0);
   }
 
   /* ================================================================
+     3b. The sky has to move fast enough to be seen moving.
+
+     It was animated and static at the same time: the numbers advanced,
+     and the median cloud crossed the screen at 0.58 px/s — eleven
+     minutes end to end, with the slowest at forty-two. Reported as "no
+     visual effects", which was a fair description of the result.
+
+     Bounded at both ends. Too slow is a photograph; too fast is weather,
+     which is the wrong thing to put in front of someone going to sleep.
+     ================================================================ */
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await ctx.addInitScript(SEED);
+    const p = await ctx.newPage();
+    await p.goto(BASE, { waitUntil: 'networkidle' });
+    await p.waitForTimeout(2000);
+    const drift = await p.evaluate(() => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 390; canvas.height = 844;
+      const scene = new window.SSSky(canvas, { t: 0 });
+      scene.stop();
+      /* phase advances dt*0.001, so one second of frames adds 1.0; px is
+         measured in screen-widths, so speed * width is px per second. */
+      const px = s => s * 390;
+      const cloud = scene.field.map(f => px(f.speed)).sort((a, b) => a - b);
+      const cirrus = scene.cirrus.map(f => px(f.speed)).sort((a, b) => a - b);
+      scene.destroy();
+      return {
+        slowest: +cloud[0].toFixed(2),
+        median: +cloud[Math.floor(cloud.length / 2)].toFixed(2),
+        fastest: +cloud[cloud.length - 1].toFixed(2),
+        cirrusSlowest: +cirrus[0].toFixed(2)
+      };
+    });
+    await ctx.close();
+    check('3b · The median cloud moves perceptibly',
+      drift.median >= 1.5, drift.median + ' px/s (' + Math.round(390 / drift.median) + 's to cross)');
+    check('3b · Even the slowest is not frozen',
+      drift.slowest >= 0.8, drift.slowest + ' px/s');
+    check('3b · Cirrus drifts too', drift.cirrusSlowest >= 0.8, drift.cirrusSlowest + ' px/s');
+    check('3b · But nothing races: this is a bedtime sky',
+      drift.fastest <= 20, drift.fastest + ' px/s');
+    check('3b · Parallax survives — near still outruns far',
+      drift.fastest > drift.slowest * 2,
+      drift.slowest + ' .. ' + drift.fastest);
+  }
+
+  /* ================================================================
+     3c. The opening question is composed low, not stacked at the top.
+     ================================================================ */
+  {
+    const ctx = await browser.newContext({
+      viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true
+    });
+    await ctx.addInitScript(clockAt(22));
+    await ctx.addInitScript(SEED);
+    const p = await ctx.newPage();
+    await p.goto(BASE, { waitUntil: 'networkidle' });
+    await p.waitForTimeout(4000);
+    const comp = await p.evaluate(() => {
+      const ask = document.querySelector('.fl-ask');
+      const opts = [...document.querySelectorAll('.fl-opt')];
+      if (!ask) return { ask: false };
+      const box = ask.getBoundingClientRect();
+      return {
+        ask: true,
+        askTopPct: Math.round(100 * box.top / innerHeight),
+        options: opts.length,
+        /* Every choice within thumb reach, i.e. the lower half. */
+        allLow: opts.every(o => o.getBoundingClientRect().top > innerHeight * 0.45),
+        minTap: opts.length ? Math.min(...opts.map(o => o.getBoundingClientRect().height)) : 0
+      };
+    });
+    await ctx.close();
+    check('3c · The opening question exists', comp.ask);
+    if (comp.ask) {
+      check('3c · It sits in the lower half of the frame, giving the sky the top',
+        comp.askTopPct >= 45, comp.askTopPct + '% down');
+      check('3c · All three choices are in thumb reach', comp.allLow,
+        comp.options + ' options');
+      check('3c · And are tappable', comp.minTap >= 44, comp.minTap + 'px');
+    }
+  }
+
+  /* ================================================================
      4. On a real clock, the four times of day actually differ.
      ================================================================ */
   {
