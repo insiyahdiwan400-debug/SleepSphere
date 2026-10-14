@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SleepSphere — Audio Diagnostic</title>
-<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#101e2a;color:#f5f4ed;font:16px system-ui,-apple-system,sans-serif}main{width:min(90vw,480px);padding:24px}button{display:block;width:100%;padding:18px;margin:14px 0;border:0;border-radius:14px;background:#a5d6d0;color:#10212c;font:600 17px system-ui}p{line-height:1.5}#status{white-space:pre-wrap;background:#1d3343;border-radius:12px;padding:16px;min-height:80px}small{color:#c1d0d5}</style></head><body><main><h1>SleepSphere audio check</h1><p>This page does not access or change your SleepSphere data. Please tap the button and listen for a one-second tone.</p><button id="native">Play standard browser audio</button><p id="status" role="status" aria-live="polite">Ready.</p><small>Use this only on the separate development preview. It checks ordinary audio playback, not SleepSphere's rain sounds.</small></main>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#101e2a;color:#f5f4ed;font:16px system-ui,-apple-system,sans-serif}main{width:min(90vw,480px);padding:24px}button{display:block;width:100%;padding:18px;margin:14px 0;border:0;border-radius:14px;background:#a5d6d0;color:#10212c;font:600 17px system-ui}p{line-height:1.5}#status{white-space:pre-wrap;background:#1d3343;border-radius:12px;padding:16px;min-height:80px}small{color:#c1d0d5}</style></head><body><main><h1>SleepSphere audio check</h1><p>This page does not access or change your SleepSphere data. Please tap the button and listen for a one-second tone.</p><button id="native">Play standard browser audio</button><button id="webAudio">Test Web Audio directly</button><p id="status" role="status" aria-live="polite">Ready.</p><small>Use this only on the separate development preview. It checks ordinary audio playback, not SleepSphere's rain sounds.</small></main>
 <script>
 'use strict';
 const status=document.getElementById('status');
@@ -34,5 +34,20 @@ document.getElementById('native').addEventListener('click',async()=>{
     status.textContent='Starting native browser audio…';
     await player.play();
   }catch(e){status.textContent='Playback rejected: '+e.name+': '+e.message;}
+});
+document.getElementById('webAudio').addEventListener('click',async()=>{
+  try {
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC){status.textContent='Web Audio unavailable';return;}
+    const c=new AC(),osc=c.createOscillator(),gain=c.createGain();
+    osc.frequency.value=440;
+    gain.gain.value=0.12;
+    osc.connect(gain).connect(c.destination);
+    osc.start();
+    osc.stop(c.currentTime+0.7);
+    await c.resume();
+    status.textContent='Web Audio context: '+c.state+'. Did you hear a tone?';
+    osc.onended=()=>c.close();
+  }catch(e){status.textContent='Web Audio error: '+e.name+' '+e.message;}
 });
 </script></body></html>
