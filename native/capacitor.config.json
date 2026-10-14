@@ -1,0 +1,15 @@
+{
+  "appId": "com.sleepsphere.app",
+  "appName": "SleepSphere",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#07080c",
+    "limitsNavigationsToAppBoundDomains": true,
+    "preferredContentMode": "mobile"
+  },
+  "plugins": {
+    "StatusBar": { "overlaysWebView": true, "style": "DARK" }
+  },
+  "server": { "iosScheme": "app" }
+}

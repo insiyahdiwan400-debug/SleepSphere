@@ -1,0 +1,248 @@
+/* SleepSphere — three concepts for direction-setting.
+ *
+ * Each concept has its own visual identity. They deliberately do NOT share
+ * a component library: the point of the exercise is to compare directions,
+ * and three variations of one card would not be a comparison.
+ *
+ * What they do share: the daypart tokens the sky engine publishes
+ * (--sky-*, --accent*, --text*), so all three sit in the same world.
+ */
+
+:root[data-ui="concept"] .app-shell { display: none !important; }
+:root[data-ui="concept"] #toast { display: none !important; }
+:root[data-ui="concept"] #calm { display: none !important; }
+
+#concept {
+  position: relative; z-index: 3; min-height: 100dvh;
+  color: var(--text, #f2f0ec);
+  font-family: var(--font-body, -apple-system, BlinkMacSystemFont, system-ui, sans-serif);
+  display: flex; flex-direction: column;
+}
+#conceptStage {
+  flex: 1 1 auto; display: flex; flex-direction: column;
+  padding: calc(env(safe-area-inset-top, 0px) + 56px) 20px
+           calc(84px + env(safe-area-inset-bottom, 0px));
+}
+
+/* ---- Review chrome. Clearly not part of any concept. ---------------- */
+.cx-bar {
+  position: fixed; z-index: 40; left: 8px; right: 8px;
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  display: flex; gap: 4px; align-items: center;
+  padding: 4px; border-radius: 999px;
+  background: rgba(8, 10, 20, .78);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, .12);
+  font: 600 11px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+.cx-bar button {
+  appearance: none; -webkit-appearance: none; border: 0; cursor: pointer;
+  flex: 1 1 0; min-height: 32px; border-radius: 999px;
+  background: transparent; color: #cdd0e4; font: inherit; padding: 0 6px;
+}
+.cx-bar button[aria-pressed="true"] { background: #eceefb; color: #12152b; }
+.cx-scenes {
+  position: fixed; z-index: 40; left: 8px; right: 8px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px;
+  padding: 4px; border-radius: 999px;
+  background: rgba(8, 10, 20, .78);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, .12);
+  font: 600 10.5px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+.cx-scenes button {
+  appearance: none; -webkit-appearance: none; border: 0; cursor: pointer;
+  min-height: 34px; border-radius: 999px; background: transparent;
+  color: #9ea2bd; font: inherit;
+}
+.cx-scenes button[aria-pressed="true"] { background: rgba(255,255,255,.93); color: #12152b; }
+
+/* A badge wherever simulated intelligence speaks. Never decoration: it is
+   the honest label on every generated sentence in all three concepts. */
+.cx-ai {
+  display: inline-flex; align-items: center; gap: 5px;
+  font: 700 9.5px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--accent, #9fa8d8);
+}
+.cx-ai::before {
+  content: ""; width: 5px; height: 5px; border-radius: 50%;
+  background: currentColor; opacity: .8;
+}
+.cx-note {
+  margin: 14px 0 0; font-size: 12px; line-height: 1.5;
+  color: var(--text-quiet, #8e90a8);
+}
+
+/* ===================================================================
+   CONCEPT A — ORBIT
+   Ambient. One celestial object, time as the only navigation, almost
+   no chrome. Reads as an instrument rather than an app.
+   =================================================================== */
+.a-wrap { display: flex; flex-direction: column; align-items: center;
+          justify-content: center; flex: 1; text-align: center; }
+.a-dial { position: relative; width: min(78vw, 300px); aspect-ratio: 1; margin-bottom: 26px; }
+.a-dial svg { width: 100%; height: 100%; display: block; }
+.a-track { fill: none; stroke: rgba(255,255,255,.1); stroke-width: 1.2; }
+.a-arc   { fill: none; stroke: var(--accent, #9fa8d8); stroke-width: 2.4;
+           stroke-linecap: round; opacity: .9; }
+.a-tick  { fill: var(--text-quiet, #8e90a8); font-size: 4.4px;
+           font-family: -apple-system, system-ui, sans-serif; text-anchor: middle; }
+.a-knob  { fill: var(--accent-lift, #cdd2ee); }
+.a-core  { position: absolute; inset: 24%; display: grid; place-items: center;
+           text-align: center; }
+.a-core b { display: block; font-family: var(--font-display, ui-serif, Georgia, serif);
+            font-weight: 400; font-size: 30px; letter-spacing: -.02em; }
+.a-core span { display: block; margin-top: 5px; font-size: 11px; letter-spacing: .15em;
+               text-transform: uppercase; color: var(--text-quiet, #8e90a8); }
+.a-line { margin: 0; max-width: 26ch; font-family: var(--font-display, ui-serif, Georgia, serif);
+          font-size: 21px; line-height: 1.3; }
+.a-sub { margin: 10px 0 0; max-width: 30ch; font-size: 14px; line-height: 1.5;
+         color: var(--text-soft, #c6c6d6); }
+.a-hold {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  margin: 28px 0 0; width: 190px; height: 190px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.2); position: relative; overflow: hidden;
+  background: radial-gradient(circle at 36% 30%, rgba(255,255,255,.16), rgba(255,255,255,.04));
+  color: var(--text, #f2f0ec); font: 600 15px/1 inherit;
+}
+.a-hold .a-fill {
+  position: absolute; inset: 0; background: var(--accent, #9fa8d8);
+  opacity: .32; transform: scaleY(0); transform-origin: bottom;
+  transition: transform .9s linear;
+}
+.a-hold[data-holding="yes"] .a-fill { transform: scaleY(1); }
+.a-hold span { position: relative; }
+
+/* ===================================================================
+   CONCEPT B — COMPANION
+   Conversational. Warm, close, text-led. Everything is a reply.
+   =================================================================== */
+.b-thread { flex: 1; display: flex; flex-direction: column; gap: 12px;
+            justify-content: flex-end; padding-bottom: 8px; }
+.b-msg {
+  max-width: 85%; padding: 14px 17px; border-radius: 20px 20px 20px 6px;
+  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.09);
+  font-size: 15.5px; line-height: 1.5; align-self: flex-start;
+}
+.b-msg.b-mine {
+  align-self: flex-end; border-radius: 20px 20px 6px 20px;
+  background: var(--accent, #9fa8d8); color: #12152b; border-color: transparent;
+  font-weight: 550;
+}
+.b-msg.b-big { font-family: var(--font-display, ui-serif, Georgia, serif);
+               font-size: 20px; line-height: 1.32; }
+.b-who { margin: 0 0 7px; }
+.b-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 4px; }
+.b-chip {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  min-height: 44px; padding: 0 16px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.05);
+  color: var(--text, #f2f0ec); font: 550 14px/1 inherit;
+}
+.b-input { display: flex; gap: 8px; align-items: flex-end; margin-top: 12px; }
+.b-input textarea {
+  flex: 1; min-height: 48px; max-height: 112px; resize: none;
+  padding: 13px 15px; border-radius: 22px;
+  border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.05);
+  color: var(--text, #f2f0ec); font: 400 15px/1.4 inherit;
+}
+.b-input textarea::placeholder { color: var(--text-quiet, #8e90a8); }
+.b-send, .b-mic {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  width: 48px; height: 48px; border-radius: 50%; border: 0;
+  background: var(--accent, #9fa8d8); color: #12152b; font: 700 16px/1 inherit;
+  display: grid; place-items: center; flex: 0 0 auto;
+}
+.b-mic { background: rgba(255,255,255,.08); color: var(--text, #f2f0ec);
+         border: 1px solid rgba(255,255,255,.18); }
+.b-mic[aria-pressed="true"] { background: #e8b79a; color: #231109; }
+.b-card {
+  margin-top: 4px; padding: 15px 17px; border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.045);
+}
+.b-card h4 { margin: 0 0 10px; font: 700 10.5px/1 inherit;
+             letter-spacing: .14em; text-transform: uppercase;
+             color: var(--text-quiet, #8e90a8); }
+.b-row { display: flex; justify-content: space-between; gap: 12px;
+         padding: 7px 0; font-size: 14.5px; }
+.b-row + .b-row { border-top: 1px solid rgba(255,255,255,.07); }
+.b-row b { font-weight: 600; }
+.b-row i { font-style: normal; color: var(--text-soft, #c6c6d6); }
+.b-row i.b-unknown { color: #e8b79a; }
+
+/* ===================================================================
+   CONCEPT C — ATLAS
+   Structured, Apple-like. One card per moment, strict hierarchy,
+   generous whitespace, nothing floating.
+   =================================================================== */
+.c2-head { margin: 0 0 4px; font: 700 11px/1 inherit; letter-spacing: .16em;
+           text-transform: uppercase; color: var(--accent, #9fa8d8); }
+.c2-title { margin: 0 0 22px; font-family: var(--font-display, ui-serif, Georgia, serif);
+            font-weight: 400; font-size: clamp(26px, 7.4vw, 33px); line-height: 1.16;
+            letter-spacing: -.015em; text-wrap: balance; }
+.c2-card {
+  padding: 20px; border-radius: 22px; margin-bottom: 12px;
+  background: rgba(255,255,255,.055); border: 1px solid rgba(255,255,255,.1);
+}
+.c2-card.c2-lead { background: rgba(255,255,255,.085); }
+.c2-k { margin: 0 0 3px; font: 600 11.5px/1 inherit; letter-spacing: .1em;
+        text-transform: uppercase; color: var(--text-quiet, #8e90a8); }
+.c2-v { margin: 0; font-family: var(--font-display, ui-serif, Georgia, serif);
+        font-size: 27px; line-height: 1.15; }
+.c2-vs { margin: 6px 0 0; font-size: 14.5px; line-height: 1.5;
+         color: var(--text-soft, #c6c6d6); }
+.c2-steps { display: flex; gap: 0; margin: 4px 0 0; }
+.c2-step { flex: 1; text-align: center; padding: 10px 2px 0;
+           border-top: 2px solid rgba(255,255,255,.14); }
+.c2-step.on { border-top-color: var(--accent, #9fa8d8); }
+.c2-step b { display: block; font: 600 14.5px/1.2 inherit; }
+.c2-step span { display: block; margin-top: 3px; font-size: 11px;
+                color: var(--text-quiet, #8e90a8); }
+.c2-go {
+  appearance: none; -webkit-appearance: none; border: 0; cursor: pointer;
+  display: block; width: 100%; min-height: 52px; border-radius: 15px;
+  margin-top: 6px; padding: 0 20px;
+  background: linear-gradient(142deg, var(--accent-lift, #cdd2ee), var(--accent, #9fa8d8));
+  color: #12152b; font: 650 16px/1 inherit;
+}
+.c2-alt {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  display: block; width: 100%; min-height: 48px; border-radius: 15px;
+  margin-top: 8px; padding: 0 20px;
+  border: 1px solid rgba(255,255,255,.18); background: transparent;
+  color: var(--text, #f2f0ec); font: 550 15px/1 inherit;
+}
+.c2-disc {
+  margin-top: 8px; border-radius: 15px; overflow: hidden;
+  border: 1px solid rgba(255,255,255,.1);
+}
+.c2-disc summary {
+  list-style: none; cursor: pointer; padding: 14px 17px; min-height: 48px;
+  display: flex; align-items: center; justify-content: space-between;
+  font: 550 14.5px/1.2 inherit; color: var(--text-soft, #c6c6d6);
+}
+.c2-disc summary::-webkit-details-marker { display: none; }
+.c2-disc summary::after { content: "⌄"; opacity: .6; }
+.c2-disc[open] summary::after { content: "⌃"; }
+.c2-disc .c2-body { padding: 0 17px 16px; font-size: 14.5px; line-height: 1.6;
+                    color: var(--text-soft, #c6c6d6); }
+.c2-body ul { margin: 0; padding-left: 18px; }
+.c2-body li { margin: 5px 0; }
+.c2-seg { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; margin-top: 4px; }
+.c2-seg button {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  min-height: 54px; border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.05);
+  color: var(--text, #f2f0ec); font: 600 16px/1 inherit;
+}
+.c2-seg button[aria-pressed="true"] {
+  background: var(--accent-lift, #cdd2ee); color: #12152b; border-color: transparent;
+}
+.c2-ends { display: flex; justify-content: space-between; margin-top: 8px;
+           font-size: 12px; color: var(--text-quiet, #8e90a8); }
+
+@media (prefers-reduced-motion: reduce) {
+  .a-hold .a-fill { transition: none; }
+}

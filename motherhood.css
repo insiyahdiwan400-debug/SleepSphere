@@ -1,0 +1,259 @@
+/* SleepSphere Motherhood — interface styling.
+ *
+ * Built on the app's existing tokens rather than a second palette, so the
+ * module reads as part of SleepSphere and not as a bolted-on product. Every
+ * colour below resolves through --ink/--paper/--card/--accent and inherits
+ * whatever the app's current mode has set them to.
+ *
+ * Nothing here is loaded conditionally — the stylesheet is identical on
+ * every device, like the module's script, so neither discloses anything
+ * about the person holding the phone. The rules only match elements that
+ * the module creates, and it creates none until it is turned on.
+ */
+
+/* The entry point, in "Me". Quiet on purpose: it is a door, not a feature. */
+.mh-entrycard .mh-entry-btn {
+  appearance: none; -webkit-appearance: none;
+  display: block; width: 100%;
+  margin-top: 12px; padding: 14px 16px;
+  font: inherit; font-weight: 600; text-align: left;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card, 16px);
+  cursor: pointer;
+}
+.mh-entrycard .mh-entry-btn::after { content: ' ›'; opacity: .5; }
+.mh-entrycard .mh-entry-btn:hover { border-color: var(--accent); }
+
+/* ------------------------------------------------------------------
+   The layer.
+   ------------------------------------------------------------------ */
+html.mh-open, html.mh-open body { overflow: hidden; }
+
+.mh-layer {
+  position: fixed; inset: 0; z-index: 90;
+  display: flex; flex-direction: column;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body, inherit);
+}
+
+.mh-bar {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: 12px;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+.mh-bar-title {
+  flex: 1 1 auto; min-width: 0;
+  font-weight: 600; font-size: .95rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mh-bar button {
+  appearance: none; -webkit-appearance: none;
+  border: 1px solid var(--line); background: transparent;
+  color: var(--muted); font: inherit; font-size: .85rem;
+  padding: 7px 12px; border-radius: var(--r-pill, 999px); cursor: pointer;
+}
+.mh-bar button:hover { color: var(--ink); border-color: var(--accent); }
+
+.mh-body {
+  flex: 1 1 auto; min-height: 0;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 40px);
+  display: flex; flex-direction: column; gap: 14px;
+}
+
+/* Cards. One radius, one border; weight is spent on the stage card and the
+   danger card only, so the hierarchy survives a long screen. */
+.mh-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card, 16px);
+  padding: 18px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.mh-card h2 { margin: 0; font-family: var(--font-display, inherit); font-size: 1.35rem; line-height: 1.25; }
+.mh-card h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+.mh-card p { margin: 0; line-height: 1.6; color: var(--muted); font-size: .92rem; }
+.mh-lede { color: var(--ink) !important; }
+.mh-sub { font-size: .9rem; }
+.mh-foot { font-size: .82rem; opacity: .85; }
+.mh-eyebrow {
+  font-size: .72rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted);
+}
+.mh-empty { font-style: italic; }
+.mh-caution { color: var(--ink) !important; }
+
+.mh-stagecard { background: linear-gradient(160deg, var(--card), var(--paper)); }
+.mh-stagecard h2 { font-size: 2rem; }
+
+.mh-list { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+.mh-list li { line-height: 1.55; font-size: .92rem; color: var(--muted); }
+
+.mh-careline { border-color: color-mix(in oklab, var(--accent) 40%, var(--line)); }
+.mh-careline summary { cursor: pointer; font-weight: 600; padding: 2px 0; }
+.mh-lesson summary { cursor: pointer; font-weight: 600; padding: 6px 0; line-height: 1.4; }
+.mh-lesson p { margin-top: 6px; }
+.mh-lesson + .mh-lesson { border-top: 1px solid var(--line); }
+
+/* ------------------------------------------------------------------
+   Controls.
+   ------------------------------------------------------------------ */
+.mh-field { display: flex; flex-direction: column; gap: 6px; }
+.mh-label { font-size: .85rem; font-weight: 600; }
+.mh-hint { font-size: .8rem; color: var(--muted); line-height: 1.5; }
+
+/* border-box everywhere in the layer. Without it a width:100% control plus
+   its own padding is wider than its track, and a row of them pushes its
+   last child off the right edge of the phone. */
+.mh-layer *, .mh-layer *::before, .mh-layer *::after { box-sizing: border-box; }
+
+.mh-layer input[type="text"], .mh-layer input[type="password"],
+.mh-layer input[type="date"], .mh-layer input[type="time"],
+.mh-layer input[type="number"], .mh-layer select, .mh-layer textarea {
+  font: inherit; font-size: 1rem;           /* 16px: iOS zooms anything smaller */
+  color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line); border-radius: 12px;
+  padding: 11px 12px; width: 100%; min-width: 0;
+}
+.mh-layer textarea { resize: vertical; line-height: 1.5; }
+.mh-layer input:focus-visible, .mh-layer select:focus-visible,
+.mh-layer textarea:focus-visible, .mh-layer button:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+
+.mh-row { display: flex; gap: 8px; align-items: center; }
+.mh-row select { width: auto; flex: 0 0 auto; }
+
+.mh-check { display: flex; gap: 10px; align-items: flex-start; line-height: 1.55; font-size: .92rem; }
+.mh-check input { width: 20px; height: 20px; flex: 0 0 auto; margin-top: 1px; }
+
+.mh-primary, .mh-quiet, .mh-danger {
+  appearance: none; -webkit-appearance: none;
+  font: inherit; font-weight: 600; font-size: .95rem;
+  padding: 13px 18px; border-radius: var(--r-pill, 999px);
+  cursor: pointer; border: 1px solid transparent;
+  min-height: 44px;                          /* a real touch target */
+}
+.mh-primary { background: var(--accent); color: var(--paper); }
+.mh-primary:disabled { opacity: .6; cursor: default; }
+.mh-quiet { background: transparent; color: var(--ink); border-color: var(--line); }
+.mh-quiet:hover { border-color: var(--accent); }
+.mh-danger { background: transparent; color: #c0392b; border-color: #c0392b; }
+.mh-danger-card { border-color: #c0392b; }
+
+.mh-actions { display: grid; gap: 8px; }
+
+/* Record tiles. */
+.mh-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.mh-tile {
+  appearance: none; -webkit-appearance: none;
+  font: inherit; font-size: .9rem; font-weight: 600; text-align: left;
+  color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px 14px; min-height: 58px; cursor: pointer;
+}
+.mh-tile:hover { border-color: var(--accent); }
+
+/* Stage choice. */
+.mh-choice { display: grid; gap: 8px; }
+.mh-opt {
+  appearance: none; -webkit-appearance: none; text-align: left;
+  display: grid; gap: 3px; font: inherit;
+  color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px; cursor: pointer;
+}
+.mh-opt strong { font-size: 1rem; }
+.mh-opt span { font-size: .85rem; color: var(--muted); }
+.mh-opt.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.mh-detail { display: flex; flex-direction: column; gap: 12px; }
+
+/* Scales and chips. */
+.mh-scale { display: flex; flex-direction: column; gap: 8px; }
+.mh-scale-row { display: flex; gap: 8px; }
+.mh-dot {
+  appearance: none; -webkit-appearance: none;
+  flex: 1 1 0; min-width: 0; min-height: 46px;
+  font: inherit; font-weight: 600;
+  color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line); border-radius: 12px; cursor: pointer;
+}
+.mh-dot.on { background: var(--accent); color: var(--paper); border-color: var(--accent); }
+.mh-ends { display: flex; justify-content: space-between; font-size: .76rem; color: var(--muted); }
+
+.mh-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.mh-chip {
+  appearance: none; -webkit-appearance: none;
+  font: inherit; font-size: .85rem;
+  color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line); border-radius: var(--r-pill, 999px);
+  padding: 9px 13px; min-height: 38px; cursor: pointer;
+}
+.mh-chip.on { background: var(--accent); color: var(--paper); border-color: var(--accent); }
+
+/* Rest intervals. */
+/* A grid, not a flex row: a native time control carries an intrinsic
+   minimum width that flex honours and grid tracks do not, which is what
+   pushed the remove button off the screen edge. */
+.mh-intervals { display: grid; gap: 8px; }
+.mh-interval {
+  display: grid; gap: 6px; align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+}
+.mh-interval input { min-width: 0; padding-left: 8px; padding-right: 4px; }
+.mh-to { font-size: .8rem; color: var(--muted); }
+
+/* Entries. */
+.mh-entries { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px;
+  background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.mh-entry {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center;
+  background: var(--paper); padding: 11px 12px;
+}
+.mh-entry-d { font-size: .8rem; color: var(--muted); white-space: nowrap; }
+.mh-entry-k { font-size: .88rem; min-width: 0; overflow-wrap: anywhere; }
+.mh-del {
+  appearance: none; -webkit-appearance: none;
+  font: inherit; font-size: .78rem; color: var(--muted);
+  background: transparent; border: 1px solid var(--line);
+  border-radius: var(--r-pill, 999px); padding: 6px 10px; cursor: pointer;
+  min-height: 32px; white-space: nowrap;
+}
+.mh-del:hover { color: #c0392b; border-color: #c0392b; }
+.mh-del-x { padding: 0; width: 38px; min-height: 38px; font-size: .9rem; }
+
+/* Insights. Numbers that were typed by a person, laid out so a missing one
+   reads as missing rather than as zero. */
+.mh-stats { display: grid; gap: 1px; background: var(--line);
+  border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.mh-stat { background: var(--paper); padding: 12px 14px; display: grid; gap: 2px; }
+.mh-stat-k { font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.mh-stat-v { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.mh-stat-v.mh-none { font-size: .95rem; font-weight: 400; color: var(--muted); font-style: italic; }
+.mh-stat-n { font-size: .78rem; color: var(--muted); }
+
+/* Toast. */
+.mh-toast {
+  position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
+  transform: translate(-50%, 10px);
+  background: var(--ink); color: var(--paper);
+  padding: 11px 18px; border-radius: var(--r-pill, 999px);
+  font-size: .88rem; max-width: calc(100% - 32px); text-align: center;
+  opacity: 0; pointer-events: none;
+}
+.mh-toast.on { opacity: 1; transform: translate(-50%, 0); }
+@media (prefers-reduced-motion: no-preference) {
+  .mh-toast { transition: opacity .2s var(--ease, ease), transform .2s var(--ease, ease); }
+}
+
+/* Comfortable on a larger screen without becoming a desktop form. */
+@media (min-width: 680px) {
+  .mh-body { padding-left: max(16px, calc(50% - 330px)); padding-right: max(16px, calc(50% - 330px)); }
+  .mh-grid { grid-template-columns: repeat(3, 1fr); }
+  .mh-actions { grid-template-columns: repeat(2, 1fr); }
+}
