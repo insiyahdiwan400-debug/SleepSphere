@@ -459,3 +459,36 @@
 @media (prefers-reduced-motion: reduce) {
   .fl-wrap, .fl-line, .fl-dot { transition: none; }
 }
+
+/* In-flight controls. Small, low-contrast, out of the sky's way. */
+.fl-ctl {
+  display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+  margin-top: 14px;
+}
+.fl-ctl-btn {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  font: inherit; font-size: 12px; font-weight: 600;
+  color: rgba(255, 255, 255, .80);
+  background: rgba(8, 12, 22, .52);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, .20);
+  border-radius: 999px; padding: 0 14px; min-height: 44px;
+}
+.fl-ctl-btn[disabled] { opacity: .45; cursor: default; }
+.fl-ctl-btn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+/* Hidden controls: the sky, and nothing else. The hint is the only
+   thing left, and it fades rather than sitting there competing. */
+.fl-bare .fl-desc-top,
+.fl-bare .fl-desc-foot,
+.fl-bare .fl-ctl { opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .fl-desc-top, .fl-desc-foot, .fl-ctl { transition: opacity .45s ease; }
+}
+.fl-bare-hint {
+  position: absolute; left: 0; right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 26px);
+  margin: 0; text-align: center;
+  font-size: 11.5px; color: rgba(255, 255, 255, .50);
+  text-shadow: 0 1px 14px rgba(5, 8, 14, .7);
+}

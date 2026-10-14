@@ -54,7 +54,10 @@ const text = p => p.evaluate(() => document.querySelector('.ex-body').innerText)
   {
     const { ctx, p, errs } = await open(browser);
     const n = await p.evaluate(() => document.querySelectorAll('.ex-tile').length);
-    check('Six practices are offered', n === 6, String(n));
+    /* The index became a hub with two groups, so the tile count grew:
+       Flight Mode, Living Sky and the Sabat Compass were URL parameters
+       and a button on another screen before. */
+    check('Every experience is offered', n === 8, String(n));
 
     /* Press every one. A tile that opens nothing is the exact failure the
        brief names, and it is invisible until someone presses it. */
@@ -69,7 +72,15 @@ const text = p => p.evaluate(() => document.querySelector('.ex-body').innerText)
       const hasBody = await p.evaluate(() =>
         Boolean(document.querySelector('.ex-body')) &&
         document.querySelector('.ex-body').innerText.trim().length > 40);
-      opened.push(title && hasBody ? title : 'EMPTY:' + i);
+      /* A tile may open a layer OR take you somewhere — Flight Mode
+         reloads into the world and the Compass changes screen. What is
+         never acceptable is a tile that does nothing at all, which is
+         what this has always been here to catch. */
+      const moved = await p.evaluate(() =>
+        document.documentElement.dataset.view === 'compass' ||
+        !document.querySelector('#explore') ||
+        location.search.indexOf('world=') > -1);
+      opened.push((title && hasBody) ? title : (moved ? 'MOVED:' + i : 'EMPTY:' + i));
       await p.evaluate(() => window.SSExplore.close());
       await p.waitForTimeout(140);
     }

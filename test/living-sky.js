@@ -412,7 +412,10 @@ async function open(browser, hour, opts) {
       })()
     }));
     check('15 · Motherhood is still reachable', intact.motherhood);
-    check('15 · Explore still has its practices', intact.explore === 6, String(intact.explore));
+    /* The index became a hub, so the count grew from six practices to
+       eight experiences. The invariant is that Explore still offers
+       them, not that there are exactly six. */
+    check('15 · Explore still has its practices', intact.explore >= 6, String(intact.explore));
     check('15 · Insights is still mounted', intact.insights);
     check('15 · Sleep tracking is untouched', intact.engineMornings);
     check('15 · The sky sits behind the app and takes no taps', intact.skyBehind);

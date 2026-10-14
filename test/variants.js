@@ -285,11 +285,14 @@ async function open(browser, query) {
      ================================================================ */
   {
     const { ctx, p, errs } = await open(browser, '?go=learn');
+        /* The mixer used to be a tile called 'Sounds'. It is now reached
+       from the hub's 'Open the mixer' link, the sound cards being the
+       quick way in. */
     const opened = await p.evaluate(() => {
-      const tile = [...document.querySelectorAll('.ex-tile')]
-        .find(t => /Sounds/.test(t.textContent));
-      if (!tile) return false;
-      tile.click();
+      const link = [...document.querySelectorAll('.ex-link')]
+        .find(b => /Open the mixer/.test(b.textContent));
+      if (!link) return false;
+      link.click();
       return true;
     });
     await p.waitForTimeout(1000);
@@ -298,13 +301,15 @@ async function open(browser, query) {
       specs: (window.SSExplore && window.SSExplore.LAYERS || []).map(s => s.id),
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth
     }));
-    check('3 · The Sounds practice opens', opened);
-    check('3 · Six layers are offered', r.specs.length === 6, r.specs.join(','));
+    check('3 · The mixer opens from the hub', opened);
+    check('3 · Seven layers are offered', r.specs.length === 7, r.specs.join(','));
     check('3 · Including the two added for testers',
       r.specs.includes('leaves') && r.specs.includes('snowfield'), r.specs.join(','));
+    check('3 · And the cabin hum for Flight Mode',
+      r.specs.includes('engine'), r.specs.join(','));
     check('3 · Every layer has a control', r.labels.length === r.specs.length + 1,
       r.labels.join(','));          /* +1 for Mute */
-    check('3 · No horizontal overflow with six layers', r.overflow <= 0, r.overflow + 'px');
+    check('3 · No horizontal overflow with seven layers', r.overflow <= 0, r.overflow + 'px');
     check('3 · No console errors', errs.length === 0, errs.join(' | '));
     await ctx.close();
   }
@@ -343,14 +348,12 @@ async function open(browser, query) {
     const p2 = await ctx2.newPage();
     await p2.goto(BASE + '?go=learn', { waitUntil: 'networkidle' });
     await p2.waitForTimeout(1500);
+    /* Straight off the hub now, which is the path a person actually
+       takes: one tap on the Explore tab, one on the sound. */
     await p2.evaluate(() => {
-      const tile = [...document.querySelectorAll('.ex-tile')].find(t => /Sounds/.test(t.textContent));
-      if (tile) tile.click();
-    });
-    await p2.waitForTimeout(700);
-    await p2.evaluate(() => {
-      const b = [...document.querySelectorAll('.ex-toggle')].find(x => /Rain/.test(x.textContent));
-      if (b) b.click();
+      const card = [...document.querySelectorAll('.ex-sound')]
+        .find(x => /Rain/.test(x.textContent));
+      if (card) card.click();
     });
     await p2.waitForTimeout(1600);
     const audio = await p2.evaluate(() => ({
