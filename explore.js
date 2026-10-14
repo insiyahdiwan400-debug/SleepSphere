@@ -197,10 +197,15 @@
     /* Everything a practice started, stopped — in one place, so a new
        practice cannot forget. This is also what stops audio continuing
        after the screen is gone. */
-    if (active && active.stop) { try { active.stop(); } catch {} }
+    /* Opening a dialog from the Explore hub is not closing an existing
+       practice. The old unconditional stopAudio() silenced sounds as soon
+       as the mixer opened, while the UI could still say Playing. */
+    if (layer) {
+      if (active && active.stop) { try { active.stop(); } catch {} }
+      stopAudio();
+      layer.remove();
+    }
     active = null;
-    stopAudio();
-    if (layer) layer.remove();
     layer = null;
     document.documentElement.classList.remove('ex-open');
   }
@@ -314,7 +319,10 @@
   function stopAudio() {
     nodes.forEach(n => { try { n.src.stop(); n.lfo.stop(); } catch {} });
     nodes = [];
+    LIVE.clear();  /* The controls must never report Playing after shutdown. */
+    cancelFade();
     if (ctx) { try { ctx.close(); } catch {} ctx = null; master = null; }
+    renderPlayer();
   }
   function suspendAudio() { if (ctx && ctx.state === 'running') ctx.suspend(); }
 
@@ -355,23 +363,36 @@
      what the first version of this did — means a tap that silently does
      nothing. This waits, checks the context really is running, and
      throws something sayable if it is not, so the caller can show it
-     rather than leaving a dead button. */
+     rather than leaving a dead button. Sources start inside the tap. */
   async function startSoundOrThrow(id, level) {
     const spec = layerSpec(id);
     if (!spec) throw new Error('No such sound');
     if (LIVE.has(id)) return true;
     if (!ensureContext()) throw new Error('Audio is unsupported in this browser');
-    if (ctx.state !== 'running') { try { await ctx.resume(); } catch (e) {} }
-    if (ctx.state !== 'running') throw new Error('Audio is blocked by the browser. Tap again.');
-    /* The screen may have closed, or the app been backgrounded, while
-       resume() was in flight. Starting then would leave sound playing
-       with nothing on screen that can stop it. */
-    if (document.hidden) return false;
+    /* On iOS Safari, starting the source after awaiting resume() can lose
+       the original user gesture. Start the graph synchronously in the tap,
+       then await the context; never claim Playing until it really runs. */
+    const audioCtx = ctx;
     const node = startLayer(spec, typeof level === 'number' ? level : 0.6);
     if (!node) throw new Error('Sound could not start');
-    LIVE.set(id, node);
-    renderPlayer();
-    return true;
+    try {
+      if (audioCtx.state !== 'running') await audioCtx.resume();
+      if (audioCtx.state !== 'running') throw new Error('Audio is blocked by the browser. Tap again.');
+      if (document.hidden || ctx !== audioCtx) {
+        try { node.src.stop(); node.lfo.stop(); } catch {}
+        nodes = nodes.filter(n => n !== node);
+        return false;
+      }
+      LIVE.set(id, node);
+      renderPlayer();
+      return true;
+    } catch (err) {
+      try { node.src.stop(); node.lfo.stop(); } catch {}
+      nodes = nodes.filter(n => n !== node);
+      LIVE.delete(id);
+      renderPlayer();
+      throw err;
+    }
   }
 
   /* The forgiving form, for callers with nowhere to show an error. It
