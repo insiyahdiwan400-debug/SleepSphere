@@ -202,7 +202,7 @@
        as the mixer opened, while the UI could still say Playing. */
     if (layer) {
       if (active && active.stop) { try { active.stop(); } catch {} }
-      stopAudio();
+      /* Keep opted-in soundscapes alive in the persistent mini-player. */
       layer.remove();
     }
     active = null;
@@ -846,14 +846,14 @@
     card.appendChild(el('p', 'ex-note',
       'Sound keeps playing while you move between tabs, and the player at ' +
       'the bottom follows it. It stops when you stop it, when the sleep ' +
-      'timer fades it out, when you close this screen, or when you switch ' +
+      'timer fades it out, or when you switch ' +
       'away from the app.'));
     body.appendChild(card);
     /* closeLayer() stops all audio, which is this project's existing rule
        for practice screens and is asserted by test/sounds-discovery.js.
        The registry is emptied to match, so the player and the hub cards
        cannot be left claiming something is playing when it is not. */
-    active = { stop: () => { LIVE.clear(); cancelFade(); renderPlayer(); } };
+    active = { stop: () => {} };
   }
 
   /* ==================================================================
