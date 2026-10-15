@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SleepSphere audio output check</title>
+<style>body{font:17px system-ui;background:#101e2a;color:#f3f5fa;max-width:38rem;margin:3rem auto;padding:1rem}button{font:inherit;padding:1rem;margin:.4rem;border:0;border-radius:12px}pre{white-space:pre-wrap}</style>
+<h1>SleepSphere audio output check</h1>
+<p>Tap each button on the iPad. No sleep data is accessed or changed.</p>
+<button id="tone">Test tone</button><button id="rain">Test synthesized rain</button><button id="stop">Stop</button>
+<pre id="status" role="status" aria-live="polite">Ready.</pre>
+<script>
+'use strict';
+let context=null,active=[];
+const status=document.getElementById('status');
+function stop(){for(const node of active){try{node.stop()}catch{}}active=[];status.textContent='Stopped. '+(context?'AudioContext: '+context.state:'');}
+function start(kind){
+  stop();
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC)throw Error('Web Audio unavailable');
+    if(!context||context.state==='closed')context=new AC();
+    const ctx=context;
+    if(kind==='tone'){
+      const osc=ctx.createOscillator(),gain=ctx.createGain();
+      osc.frequency.value=440;gain.gain.value=.15;osc.connect(gain).connect(ctx.destination);
+      osc.start();osc.stop(ctx.currentTime+1);active.push(osc);
+    }else{
+      const buffer=ctx.createBuffer(1,ctx.sampleRate*3,ctx.sampleRate);
+      const data=buffer.getChannelData(0);
+      for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*.35;
+      const source=ctx.createBufferSource(),filter=ctx.createBiquadFilter(),gain=ctx.createGain();
+      source.buffer=buffer;source.loop=true;filter.type='bandpass';filter.frequency.value=850;filter.Q.value=.55;gain.gain.value=.5;
+      source.connect(filter).connect(gain).connect(ctx.destination);
+      source.start();source.stop(ctx.currentTime+3);active.push(source);
+    }
+    const resume=ctx.state==='suspended'?ctx.resume():Promise.resolve();
+    status.textContent=kind+' requested; state: '+ctx.state;
+    Promise.resolve(resume).then(()=>{status.textContent=kind+' requested; state: '+ctx.state+'; sample rate: '+ctx.sampleRate+'. Hearing sound requires an iPad test.'}).catch(e=>{status.textContent='Resume failed: '+e.message});
+  }catch(e){status.textContent='Audio error: '+e.name+': '+e.message}
+}
+document.getElementById('tone').addEventListener('click',()=>start('tone'));
+document.getElementById('rain').addEventListener('click',()=>start('rain'));
+document.getElementById('stop').addEventListener('click',stop);
+</script>
