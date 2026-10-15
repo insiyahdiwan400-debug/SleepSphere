@@ -98,7 +98,12 @@ const SEED = `(() => {
         await page.evaluate(() => window.SSExplore.audioRunning() === true));
       await page.locator('.ex-layer .ex-close').click();
       await page.waitForTimeout(250);
-      check('Closing Sounds stops the audio graph',
+      check('Closing Sounds preserves opted-in audio',
+        await page.evaluate(() => window.SSExplore.audioRunning() === true));
+      check('Persistent sound player remains available',
+        await page.locator('#ssPlayer[aria-label="Sound player"]').count() === 1);
+      await page.locator('#ssPlayer button[aria-label="Stop all sound"]').click();
+      check('Explicit Stop all sound stops the audio graph',
         await page.evaluate(() => window.SSExplore.audioRunning() === false));
     }
 
