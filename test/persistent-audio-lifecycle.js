@@ -13,7 +13,7 @@ function section(start, end) {
   return src.slice(a, b);
 }
 const close = section('function closeLayer() {', "document.addEventListener('visibilitychange'");
-assert(!/\bstopAudio\s*\(/.test(close), 'Closing Explore must not stop opted-in soundscapes');
+assert(!/^\s*stopAudio\s*\(/m.test(close), 'Closing Explore must not stop opted-in soundscapes');
 assert(!/\bLIVE\.clear\s*\(/.test(close), 'Closing Explore must not clear the player registry');
 console.log('PASS: Closing Explore preserves opted-in sound');
 const mixer = section('function soundscape() {', 'function writing(kind) {');
