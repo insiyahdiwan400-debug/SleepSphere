@@ -1,4 +1,4 @@
-const CACHE = 'sleepsphere-v12-livingsky-20261013';
+const CACHE = 'sleepsphere-v13-navigation-20261015';
 /* The Arabic face is shell, not an extra. The dua is read at bedtime, which
    is exactly when a phone is likeliest to be in a basement, on aeroplane
    mode, or out of data — so it is fetched on install with everything else
@@ -22,10 +22,20 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET' || new URL(event.request.url).origin !== self.location.origin) return;
   if (event.request.mode === 'navigate') {
+    // Only the app entry point may refresh the cached offline home screen.
+    // Visiting a diagnostic page must not replace the offline app.
+    const rootPath = new URL('./', self.registration.scope).pathname;
+    const requestPath = new URL(event.request.url).pathname;
+    const isAppEntry = requestPath === rootPath || requestPath === rootPath + 'index.html';
     event.respondWith(fetch(event.request, { cache: 'no-store' }).then(response => {
-      if (response.ok) caches.open(CACHE).then(cache => cache.put('./', response.clone()));
+      if (response.ok && isAppEntry) {
+        const copy = response.clone();
+        event.waitUntil(caches.open(CACHE).then(cache => cache.put('./', copy)));
+      }
       return response;
-    }).catch(() => caches.match('./')));
+    }).catch(() => isAppEntry
+      ? caches.match('./').then(cached => cached || Response.error())
+      : Response.error()));
     return;
   }
   event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {
