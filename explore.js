@@ -350,6 +350,8 @@
      than owning it.
      ================================================================== */
   const LIVE = new Map();
+  /* Cancel sound starts still awaiting iOS AudioContext.resume(). */
+  let audioGeneration = 0;
   let fadeTimer = null, fadeEndsAt = 0;
 
   function layerSpec(id) { return LAYERS.find(l => l.id === id) || null; }
@@ -373,12 +375,13 @@
        the original user gesture. Start the graph synchronously in the tap,
        then await the context; never claim Playing until it really runs. */
     const audioCtx = ctx;
+    const generation = audioGeneration;
     const node = startLayer(spec, typeof level === 'number' ? level : 0.6);
     if (!node) throw new Error('Sound could not start');
     try {
       if (audioCtx.state !== 'running') await audioCtx.resume();
       if (audioCtx.state !== 'running') throw new Error('Audio is blocked by the browser. Tap again.');
-      if (document.hidden || ctx !== audioCtx) {
+      if (document.hidden || ctx !== audioCtx || generation !== audioGeneration) {
         try { node.src.stop(); node.lfo.stop(); } catch {}
         nodes = nodes.filter(n => n !== node);
         return false;
@@ -432,6 +435,7 @@
   }
 
   function stopEverySound() {
+    audioGeneration += 1;
     LIVE.forEach(stopLayer);
     LIVE.clear();
     cancelFade();
