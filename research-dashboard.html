@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
+<title>SleepSphere — Local researcher dashboard</title>
+<style>
+:root{font-family:system-ui;color-scheme:dark;background:#0d1b26;color:#e9f3f5}body{max-width:950px;margin:auto;padding:28px 16px;line-height:1.5}
+section{background:#182b37;padding:20px;border:1px solid #385260;border-radius:14px;margin:18px 0}
+h1{font-size:2rem}h2{font-size:1.1rem}p{color:#cadde3}input,button{font:inherit;padding:8px}input{background:#0c1b25;color:white;border:1px solid #72909c;border-radius:5px}button{background:#c4e2e0;color:#0d252a;border:0;border-radius:6px;cursor:pointer}
+table{border-collapse:collapse;width:100%;min-width:580px}th,td{text-align:left;padding:10px;border-bottom:1px solid #385260}.scroll{overflow:auto}
+.stats{display:flex;gap:14px;flex-wrap:wrap}.stats div{flex:1;min-width:120px;background:#233c49;padding:12px;border-radius:8px}.stats strong{display:block;font-size:1.4rem}
+</style></head><body>
+<h1>SleepSphere researcher dashboard</h1>
+<p><strong>Local-only prototype.</strong> This page makes no network requests and stores nothing. Imported files and locally entered names disappear when you refresh or close the page. Do not use it on a shared device.</p>
+<section><h2>Review voluntarily shared research data</h2><p>Import only SleepSphere study CSV exports from participants who separately consented to identifiable research use. Do not import full backups, diary files, or Motherhood information. Consent and withdrawal records must be maintained separately.</p>
+<label>Study CSV files <input id="files" type="file" accept=".csv,text/csv" multiple></label>
+<button id="clear" type="button">Clear workspace</button><p id="status" role="status">No files imported.</p></section>
+<section class="stats"><div>Participants<strong id="participants">0</strong></div><div>Completed nights<strong id="nights">0</strong></div><div>Average recorded sleep<strong id="average">—</strong></div><div>Completion rate<strong id="rate">—</strong></div></section>
+<section><h2>Participants</h2><p>Optional names are typed here only; nothing is saved or transmitted.</p><div class="scroll">
+<table><thead><tr><th>Code</th><th>Local name</th><th>Study days</th><th>Completed</th><th>Mean sleep</th><th>Last day</th></tr></thead><tbody id="rows"></tbody></table></div></section>
+<script>
+'use strict';
+function parseCSV(text) {
+  if(typeof text!=='string'||text.length>300000) throw Error('File too large');
+  const rows=[];let row=[],cell='',quoted=false,start=true;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(quoted){
+      if(c==='"'&&text[i+1]==='"'){cell+='"';i++}
+      else if(c==='"'){quoted=false}
+      else cell+=c;
+    }else if(c==='"'&&start){quoted=true;start=false}
+    else if(c===','){row.push(cell);cell='';start=true}
+    else if(c==='\n'||c==='\r'){
+      if(c==='\r'&&text[i+1]==='\n')i++;
+      row.push(cell);if(row.some(x=>x!==''))rows.push(row);
+      row=[];cell='';start=true;
+    }else{cell+=c;start=false}
+  }
+  if(quoted)throw Error('Unclosed quoted field');
+  row.push(cell);if(row.some(x=>x!==''))rows.push(row);
+  return rows;
+}
+const byDay=new Map(), names=new Map(), $=id=>document.getElementById(id);
+function studyRows(csv){
+ const all=parseCSV(csv),headers=all.shift();
+ const required=['participant_id','study_day','date','completed','sleep_minutes'];
+ if(!headers||new Set(headers).size!==headers.length||!required.every(x=>headers.includes(x)))throw Error('Not a study CSV');
+ if(all.length>400)throw Error('Too many rows');
+ return all.map(row=>{
+   if(row.length!==headers.length)throw Error('Column mismatch');
+   const r=Object.fromEntries(headers.map((h,i)=>[h.replace(/^\uFEFF/,'') ,row[i]]));
+   if(!/^P\d{3,6}$/.test(r.participant_id)||!/^\d{4}-\d{2}-\d{2}$/.test(r.date)||!/^\d+$/.test(r.study_day)||!['0','1'].includes(r.completed))throw Error('Invalid study row');
+   if(r.sleep_minutes!==''&&(!/^\d+(\.\d+)?$/.test(r.sleep_minutes)||Number(r.sleep_minutes)>1440))throw Error('Invalid sleep minutes');
+   return r;
+ });
+}
+function render(){
+ const groups=new Map();let completed=0,total=0,sleep=0,count=0;
+ for(const r of byDay.values()){
+   if(!groups.has(r.participant_id))groups.set(r.participant_id,[]);
+   groups.get(r.participant_id).push(r);total++;
+   if(r.completed==='1')completed++;
+   if(r.completed==='1'&&r.sleep_minutes!==''){sleep+=Number(r.sleep_minutes);count++}
+ }
+ $('participants').textContent=groups.size;$('nights').textContent=completed;
+ $('average').textContent=count?Math.round(sleep/count)+' min':'—';
+ $('rate').textContent=total?Math.round(100*completed/total)+'%':'—';
+ $('rows').replaceChildren();
+ for(const [id,items] of [...groups].sort((a,b)=>a[0].localeCompare(b[0]))){
+   const tr=document.createElement('tr');
+   const td=value=>{const c=document.createElement('td');c.textContent=value;tr.append(c);return c};
+   td(id);const c=td(''),name=document.createElement('input');name.type='text';name.maxLength=100;name.autocomplete='off';name.setAttribute('aria-label','Local name for '+id);
+   name.value=names.get(id)||'';name.addEventListener('input',()=>names.set(id,name.value));c.append(name);
+   td(String(items.length));td(String(items.filter(x=>x.completed==='1').length));
+   const valid=items.filter(x=>x.completed==='1'&&x.sleep_minutes!=='');
+   td(valid.length?Math.round(valid.reduce((n,x)=>n+Number(x.sleep_minutes),0)/valid.length)+' min':'—');
+   td(items.map(x=>x.date).sort().at(-1)||'—');$('rows').append(tr);
+ }
+}
+$('files').addEventListener('change',async e=>{
+ let accepted=0;const errors=[];
+ for(const file of [...e.target.files]){
+   try{
+     if(!/\.csv$/i.test(file.name))throw Error('CSV only');
+     const rows=studyRows(await file.text());if(!rows.length)throw Error('No rows');
+     for(const r of rows)byDay.set(r.participant_id+'|'+r.date,r);
+     accepted++;
+   }catch(err){errors.push(file.name+': '+err.message)}
+ }
+ render();$('status').textContent=accepted+' file(s) imported.'+(errors.length?' Rejected: '+errors.join('; '):'');
+ e.target.value='';
+});
+$('clear').addEventListener('click',()=>{byDay.clear();names.clear();render();$('status').textContent='Workspace cleared.'});
+render();
+</script></body></html>
