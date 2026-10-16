@@ -778,7 +778,14 @@
         }
         on.disabled = true;
         try {
-          await startSoundOrThrow(spec.id, Number(slider.value) / 100);
+          const started = await startSoundOrThrow(spec.id, Number(slider.value) / 100);
+          /* A pending iOS start can be cancelled while resume() resolves.
+             Never show Playing unless the shared registry confirms audio. */
+          if (!started || !layerOn(spec.id)) {
+            on.classList.remove('on'); on.setAttribute('aria-pressed', 'false');
+            slider.disabled = true;
+            return;
+          }
           on.classList.add('on'); on.setAttribute('aria-pressed', 'true');
           slider.disabled = false;
         } catch (err) {
