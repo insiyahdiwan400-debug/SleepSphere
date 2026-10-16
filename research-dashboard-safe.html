@@ -51,9 +51,24 @@ function studyRows(csv){
    if(row.length!==headers.length)throw Error('Column mismatch');
    const r=Object.fromEntries(headers.map((h,i)=>[h.replace(/^\uFEFF/,'') ,row[i]]));
    if(!/^P\d{3,6}$/.test(r.participant_id)||!/^\d{4}-\d{2}-\d{2}$/.test(r.date)||!/^\d+$/.test(r.study_day)||!['0','1'].includes(r.completed))throw Error('Invalid study row');
+   const date=new Date(r.date+'T00:00:00Z');
+   if(!Number.isFinite(date.getTime())||date.toISOString().slice(0,10)!==r.date)throw Error('Invalid calendar date');
    if(r.sleep_minutes!==''&&(!/^\d+(\.\d+)?$/.test(r.sleep_minutes)||Number(r.sleep_minutes)>1440))throw Error('Invalid sleep minutes');
    return Object.fromEntries(required.map(h=>[h,r[h]]));
  });
+}
+/* Check a whole import before changing the workspace. Repeated identical
+   exports are fine; conflicting records must never silently overwrite data. */
+function mergeStudyRows(rows,existing){
+ const pending=new Map();
+ for(const r of rows){
+   const key=r.participant_id+'|'+r.date;
+   const prior=pending.get(key)||existing.get(key);
+   if(prior&&JSON.stringify(prior)!==JSON.stringify(r))
+     throw Error('Conflicting record for '+r.participant_id+' on '+r.date);
+   pending.set(key,r);
+ }
+ return pending;
 }
 function render(){
  const groups=new Map();let completed=0,total=0,sleep=0,count=0;
@@ -85,7 +100,8 @@ $('files').addEventListener('change',async e=>{
      if(!/\.csv$/i.test(file.name))throw Error('CSV only');
      if(file.size>300000)throw Error('File too large');
      const rows=studyRows(await file.text());if(!rows.length)throw Error('No rows');
-     for(const r of rows)byDay.set(r.participant_id+'|'+r.date,r);
+     const pending=mergeStudyRows(rows,byDay);
+     for(const [key,row] of pending)byDay.set(key,row);
      accepted++;
    }catch(err){errors.push(file.name+': '+err.message)}
  }
