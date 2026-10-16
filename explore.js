@@ -320,6 +320,8 @@
     nodes.forEach(n => { try { n.src.stop(); n.lfo.stop(); } catch {} });
     nodes = [];
     LIVE.clear();  /* The controls must never report Playing after shutdown. */
+    PENDING.clear();
+    audioGeneration += 1;
     cancelFade();
     if (ctx) { try { ctx.close(); } catch {} ctx = null; master = null; }
     renderPlayer();
@@ -350,6 +352,7 @@
      than owning it.
      ================================================================== */
   const LIVE = new Map();
+  const PENDING = new Map(); // Reserved while iOS AudioContext.resume() is pending.
   /* Cancel sound starts still awaiting iOS AudioContext.resume(). */
   let audioGeneration = 0;
   let fadeTimer = null, fadeEndsAt = 0;
@@ -370,6 +373,7 @@
     const spec = layerSpec(id);
     if (!spec) throw new Error('No such sound');
     if (LIVE.has(id)) return true;
+    if (PENDING.has(id)) return false; // Ignore duplicate taps during startup.
     if (!ensureContext()) throw new Error('Audio is unsupported in this browser');
     /* On iOS Safari, starting the source after awaiting resume() can lose
        the original user gesture. Start the graph synchronously in the tap,
@@ -378,21 +382,25 @@
     const generation = audioGeneration;
     const node = startLayer(spec, typeof level === 'number' ? level : 0.6);
     if (!node) throw new Error('Sound could not start');
+    PENDING.set(id, node);
     try {
       if (audioCtx.state !== 'running') await audioCtx.resume();
       if (audioCtx.state !== 'running') throw new Error('Audio is blocked by the browser. Tap again.');
-      if (document.hidden || ctx !== audioCtx || generation !== audioGeneration) {
+      if (document.hidden || ctx !== audioCtx || generation !== audioGeneration || PENDING.get(id) !== node) {
+        if (PENDING.get(id) === node) PENDING.delete(id);
         try { node.src.stop(); node.lfo.stop(); } catch {}
         nodes = nodes.filter(n => n !== node);
         return false;
       }
+      PENDING.delete(id);
       LIVE.set(id, node);
       renderPlayer();
       return true;
     } catch (err) {
       try { node.src.stop(); node.lfo.stop(); } catch {}
       nodes = nodes.filter(n => n !== node);
-      LIVE.delete(id);
+      if (PENDING.get(id) === node) PENDING.delete(id);
+      if (LIVE.get(id) === node) LIVE.delete(id);
       renderPlayer();
       throw err;
     }
@@ -422,20 +430,22 @@
   }
 
   function stopSound(id) {
+    const pending = PENDING.get(id);
+    if (pending) { PENDING.delete(id); stopLayer(pending); }
     const node = LIVE.get(id);
-    if (!node) return;
-    stopLayer(node);
-    LIVE.delete(id);
-    renderPlayer();
+    if (node) { stopLayer(node); LIVE.delete(id); }
+    if (pending || node) renderPlayer();
   }
 
   function toggleSound(id, level) {
-    if (LIVE.has(id)) { stopSound(id); return Promise.resolve(false); }
+    if (LIVE.has(id) || PENDING.has(id)) { stopSound(id); return Promise.resolve(false); }
     return startSound(id, level);
   }
 
   function stopEverySound() {
     audioGeneration += 1;
+    PENDING.forEach(stopLayer);
+    PENDING.clear();
     LIVE.forEach(stopLayer);
     LIVE.clear();
     cancelFade();
