@@ -872,6 +872,20 @@
     mountEntry();
   }
 
+  /* The vault must not remain readable when a phone is switched to another
+     app or the browser navigates away. Locking alone is insufficient: the
+     decrypted values must also leave the visible DOM before the user returns.
+     Do not close the layer, so the passcode prompt is ready on return. */
+  function lockWhenBackgrounded() {
+    if (!M.isUnlocked()) return;
+    M.lock();
+    if (layer) route();
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) lockWhenBackgrounded();
+  });
+  window.addEventListener('pagehide', lockWhenBackgrounded);
+
   /* A seam for tests, so the interface can be driven without guessing at
      class names from outside. */
   window.__mhUI = { open: () => { openLayer(); route(); }, close: closeLayer, route };
