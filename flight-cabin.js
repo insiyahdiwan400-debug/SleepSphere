@@ -80,6 +80,23 @@
     return 'night';
   }
 
+  /* Which view to OPEN on.
+     The honest answer for the hour is not always a usable first
+     impression: Day has no licensed clip, so anyone opening Flight Mode
+     in the afternoon met "Video footage unavailable" and reasonably
+     concluded the whole thing was broken. Opening on the nearest view
+     that actually has footage is not a lie — the selector still shows
+     all three and Day still tells the truth when chosen. */
+  function openingScene() {
+    var wanted = sceneForClock();
+    if (SCENES[wanted] && SCENES[wanted].mp4) return wanted;
+    var order = wanted === 'day' ? ['sunset', 'night'] : ['sunset', 'night', 'day'];
+    for (var i = 0; i < order.length; i++) {
+      if (SCENES[order[i]] && SCENES[order[i]].mp4) return order[i];
+    }
+    return wanted;
+  }
+
   /* ------------------------------------------------------------------
      The view inside the glass.
      ------------------------------------------------------------------ */
@@ -297,7 +314,7 @@
 
   function open() {
     if (host) return host;
-    state.scene = sceneForClock();
+    state.scene = openingScene();
     state.hidden = false;
     state.playing = false;
 

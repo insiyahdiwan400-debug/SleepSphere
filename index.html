@@ -3730,6 +3730,16 @@
         <p style="margin-top:14px">It takes about a minute a day. There are no right answers,
            and a difficult night is useful information rather than a failure.</p>
         <div class="button-row" style="margin-top:24px"><button class="btn primary" data-fw-next>Continue</button></div>
+        <!-- The study needs a participant code that only enrolled students
+             have. Without this, anyone else — a supervisor, an examiner,
+             the person who built it — is stuck at the code step with no way
+             forward, and the whole app is unreachable. -->
+        <p class="fw-say" style="margin-top:18px">
+          Not in the study? You can use SleepSphere without joining it.
+        </p>
+        <div class="button-row" style="margin-top:8px">
+          <button class="btn ghost" id="fwSkip">Skip — just use the app</button>
+        </div>
       </div>
 
       <div class="fw-panel" data-fw="2" hidden>
@@ -3766,6 +3776,7 @@
         <div class="button-row" style="margin-top:16px">
           <button class="btn primary" id="fwIdNext">Continue</button>
           <button class="btn ghost" data-fw-back>Back</button>
+          <button class="btn ghost" id="fwSkipId">I don't have a code</button>
         </div>
       </div>
 
@@ -11145,6 +11156,33 @@
       else if (id) fwIdSay(`Reads as ${id}.`, 'good');
       else fwIdSay('A code is the letter P and a number from 1 to 999.', 'bad');
     });
+    /* Using the app without joining the study.
+
+       This marks the introduction as seen and NOTHING else: no
+       participant code, no consent, no enrolment date. inFieldwork() is
+       onboarded && participantId, so with the code left empty the
+       research machinery stays switched off and the exports keep
+       refusing, which is what they already do without a code. Inventing
+       a participant here would be inventing a research subject. */
+    function skipFieldwork() {
+      state.study = {
+        ...defaults.study, ...state.study,
+        onboarded: true,
+        participantId: '',
+        cohort: APP_VERSION,
+        schemaVersion: SCHEMA_VERSION,
+        storageMode: store.healthy ? 'local' : 'memory'
+      };
+      state.settings.welcomeSeen = true;
+      const written = saveState();
+      $('#fieldwork').classList.remove('active');
+      $('#welcomeOverlay').classList.remove('active');
+      renderAll();
+      if (!written) toast('Saved in memory only — this device is not writing to disk');
+    }
+    $('#fwSkip')?.addEventListener('click', skipFieldwork);
+    $('#fwSkipId')?.addEventListener('click', skipFieldwork);
+
     $('#fwIdNext').addEventListener('click', () => {
       const id = normaliseParticipantId($('#fwId').value);
       if (!id) { fwIdSay('Enter the code you were given before continuing.', 'bad'); $('#fwId').focus(); return; }

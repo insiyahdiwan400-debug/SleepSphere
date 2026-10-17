@@ -181,6 +181,69 @@ async function open(browser, opts) {
   }
 
   /* ================================================================
+     2c. When the browser blocks audio, the person is TOLD, on screen.
+
+     Reported as "there is no sound in the app". The mixer was already
+     refusing to claim a blocked sound was playing, which was right, but
+     the explanation was appended to the end of the hub — below the fold
+     on a phone. A tap did nothing and the reason sat where nobody had
+     scrolled. Silence with no message is indistinguishable from a
+     broken app, and was reported as one.
+     ================================================================ */
+  {
+    const ctx = await browser.newContext({
+      viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true
+    });
+    await ctx.addInitScript(SEED);
+    /* Every context stays suspended, as iOS Low Power Mode does. */
+    await ctx.addInitScript(`(()=>{const A=window.AudioContext||window.webkitAudioContext;if(!A)return;
+      function W(...a){const c=new A(...a);
+        try{Object.defineProperty(c,'state',{get(){return 'suspended';}});}catch(e){}
+        c.resume=function(){return Promise.resolve();};
+        return c;}
+      W.prototype=A.prototype;window.AudioContext=W;window.webkitAudioContext=W;})()`);
+    const p = await ctx.newPage();
+    const errs = [];
+    p.on('pageerror', e => errs.push(String(e)));
+    await p.goto(BASE, { waitUntil: 'networkidle' });
+    await p.waitForTimeout(1800);
+    await p.evaluate(() => { const b = document.getElementById('fwSkip'); if (b) b.click(); });
+    await p.waitForTimeout(700);
+    await p.evaluate(() => document.querySelector('.nav button[data-view="learn"]').click());
+    await p.waitForTimeout(900);
+    await p.evaluate(() => document.querySelector('.ex-sound').click());
+    await p.waitForTimeout(1600);
+
+    const blocked = await p.evaluate(() => {
+      const says = document.getElementById('ssAudioSays');
+      const card = document.querySelector('.ex-sound');
+      const box = says ? says.getBoundingClientRect() : null;
+      return {
+        playing: window.SSExplore.playing(),
+        cardClaimsPlaying: card.classList.contains('on'),
+        message: says ? says.textContent : null,
+        onScreen: box ? (box.top < innerHeight && box.bottom > 0 && box.height > 0) : false,
+        nearTheSounds: Boolean(says && says.previousElementSibling &&
+          says.previousElementSibling.classList.contains('ex-sounds')),
+        player: !!document.getElementById('ssPlayer')
+      };
+    });
+    check('2c · Nothing plays when the browser refuses',
+      blocked.playing.length === 0, blocked.playing.join(','));
+    check('2c · The card does not claim to be playing',
+      blocked.cardClaimsPlaying === false);
+    check('2c · No player appears for silence', blocked.player === false);
+    check('2c · The person is told why',
+      /blocked/i.test(blocked.message || ''), blocked.message);
+    check('2c · And the message is actually on screen',
+      blocked.onScreen === true, String(blocked.onScreen));
+    check('2c · Right beneath the sounds, not at the end of the page',
+      blocked.nearTheSounds === true, String(blocked.nearTheSounds));
+    check('2c · No console errors', errs.length === 0, errs.join(' | '));
+    await ctx.close();
+  }
+
+  /* ================================================================
      3. The sleep timer fades rather than cutting.
      ================================================================ */
   {

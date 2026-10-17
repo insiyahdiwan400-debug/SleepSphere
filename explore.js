@@ -417,16 +417,50 @@
 
   /* Said out loud to assistive tech, and shown on the hub if it is open.
      A failure nobody is told about is the same as a dead button. */
+  /* Saying it where the person is looking.
+
+     This used to append the message to the end of the hub, which on a
+     phone is well below the fold: a tap did nothing, and the reason for
+     it sat on a part of the page nobody had scrolled to. From the
+     outside that is indistinguishable from "there is no sound in this
+     app", which is exactly how it was reported.
+
+     It now goes in three places: the app's own toast, which appears
+     wherever you are; immediately under the sound you tapped; and a
+     live region for assistive tech. */
   function announce(message) {
+    /* The shared toast belongs to index.html. Driving its element
+       directly rather than reaching into that scope keeps this module
+       standalone, and the class is the same one its own code uses. */
+    try {
+      const t = document.getElementById('toast');
+      if (t) {
+        t.textContent = message;
+        t.classList.add('show');
+        clearTimeout(announce.handle);
+        announce.handle = setTimeout(() => t.classList.remove('show'), 3800);
+      }
+    } catch (e) {}
+
     let live = document.getElementById('ssAudioSays');
     if (!live) {
-      live = el('p', 'ex-note');
+      live = el('p', 'ex-note ex-says');
       live.id = 'ssAudioSays';
       live.setAttribute('role', 'alert');
-      const host = document.getElementById('explore');
-      if (host) host.appendChild(live); else return;
     }
     live.textContent = message;
+    /* Directly beneath the sounds, not at the end of the screen. */
+    const grid = document.querySelector('#explore .ex-sounds');
+    if (grid && grid.parentNode) {
+      if (live.previousElementSibling !== grid) grid.insertAdjacentElement('afterend', live);
+      const box = live.getBoundingClientRect();
+      if (box.bottom < 0 || box.top > window.innerHeight) {
+        try { live.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
+      }
+    } else {
+      const host = document.getElementById('explore');
+      if (host && !live.parentNode) host.appendChild(live);
+    }
   }
 
   function stopSound(id) {

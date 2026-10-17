@@ -250,3 +250,11 @@ html.ex-open, html.ex-open body { overflow: hidden; }
   .ss-player-mix { display: none; }
 }
 @media print { .ss-player { display: none !important; } }
+
+/* The audio-problem line, sat directly under the sounds it refers to. */
+.ex-says {
+  margin-top: 10px; padding: 9px 11px; border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--accent, #c9b27a) 42%, transparent);
+  background: color-mix(in srgb, var(--accent, #c9b27a) 11%, transparent);
+  color: inherit;
+}

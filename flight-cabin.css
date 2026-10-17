@@ -249,7 +249,7 @@
 .fc-credit:hover, .fc-credit:focus-visible { color: rgba(238, 242, 248, .85); }
 
 /* ---- phones: the window stays dominant --------------------------- */
-@media (max-width: 760px) {
+@media (max-width: 1024px) {
   /* The window needs a height measured against the VIEWPORT, not a
      percentage of an auto-sized grid row — that resolved to zero and
      collapsed the window to a sliver. svh so the iOS URL bar appearing
@@ -282,9 +282,9 @@
   .fc-wing { width: 70%; bottom: 10%; }
 }
 @supports (height: 100svh) {
-  @media (max-width: 760px) { .fc-window { height: min(48svh, 430px); } }
+  @media (max-width: 1024px) { .fc-window { height: min(48svh, 430px); } }
 }
-@media (max-width: 760px) and (max-height: 700px) {
+@media (max-width: 1024px) and (max-height: 700px) {
   .fc-window { height: min(42vh, 330px); }
   .fc-brand { display: none; }           /* the view wins the small screen */
 }
@@ -298,3 +298,16 @@
   background: linear-gradient(180deg, #0c111b 0%, #0a0e16 100%);
 }
 .fc-waiting-note { margin: 0; font-size: 12px; color: rgba(238, 242, 248, .50); }
+
+/* Tablet portrait: the stacked layout keeps the controls off the view,
+   but a phone-sized window on an iPad leaves the glass looking small.
+   The window gets the height the extra screen affords, and the panel
+   still sits below it rather than over it. */
+@media (min-width: 700px) and (max-width: 1024px) {
+  .fc-window { height: min(62vh, 700px); }
+}
+@supports (height: 100svh) {
+  @media (min-width: 700px) and (max-width: 1024px) {
+    .fc-window { height: min(62svh, 700px); }
+  }
+}
