@@ -7834,6 +7834,7 @@
       /* MOTHERHOOD_KEY included deliberately: a separate store that
          survives the app's own delete button is a trap, not a
          protection. */
+      if (window.SSMotherhood && typeof window.SSMotherhood.lock === 'function') window.SSMotherhood.lock();
       ['ss_plan','ss_thoughts','ss_mornings','ss_feedback',STORAGE_KEY,MOTHERHOOD_KEY].forEach(key => store.remove(key));
       state = clone(defaults); demoMode = false; selectedExperiment = null; resetScan(); clearMorningForm(); saveState(); populateForms(); renderAll();
       // Back to a blank device, which means onboarding again — the only way a
