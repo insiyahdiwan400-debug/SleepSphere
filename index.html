@@ -5040,6 +5040,11 @@
       if (!ratings.rest || !ratings.energy || !ratings.focus || !ratings.calm) { toast('Rate restoration, energy, concentration and mental calm first'); return; }
       const date = $('#logDate').value;
       if (!date) { toast('Choose the night you are recording'); return; }
+      /* Lazy completion is written as ONE final record, never as an ordinary
+         record followed by a second save. This also makes storage failure
+         leave the unfinished night and the confirmation sheet intact. */
+      const lazyCompletion = finishingLazyNight && lazyAnswer && state.lazyNight?.date === date
+        ? { ...state.lazyNight, answer: lazyAnswer, rating: ratings.rest } : null;
       const existing = state.mornings.find(item => !item.demo && item.date === date);
       if (existing && !supersedeWithoutAsking
           && !window.confirm('A record already exists for this date. Replace it? The version you are replacing is kept in your backup.')) return;
@@ -5096,6 +5101,15 @@
         verified: sleepUnknown ? 'times-only'
                 : (state.lazyNight && state.lazyNight.date === date ? 'corrected' : 'entered')
       };
+      if (lazyCompletion) Object.assign(record, {
+        lazy: true,
+        energy: null, focus: null, calm: null,
+        measured: ['bedTime', lazyCompletion.stale ? null : 'wakeTime'].filter(Boolean),
+        estimated: ['sleepTime', 'awakeMinutes'].concat(lazyCompletion.stale ? ['wakeTime'] : []),
+        verified: lazyCompletion.answer,
+        wakeSource: lazyCompletion.wakeSource || null,
+        bedSource: lazyCompletion.bedSource || null
+      });
       /* Keep the pre-write objects until storage confirms the new record.
          A failed write must not erase an unfinished night, archive a
          correction, or silently rewrite experiment baseline references. */
@@ -5110,7 +5124,7 @@
       state.mornings.push(record);
       state.mornings.sort((a,b) => String(a.date).localeCompare(String(b.date)));
       /* A corrected night is a closed night only after it is saved. */
-      if (state.lazyNight && state.lazyNight.date === date && !finishingLazyNight) {
+      if (state.lazyNight && state.lazyNight.date === date && (!finishingLazyNight || lazyCompletion)) {
         state.lazyNight = null;
       }
       let saved = false;
@@ -5126,10 +5140,14 @@
         toast('Could not save this morning. Your answers are still here; please try again.');
         return;
       }
+      if (lazyCompletion) {
+        lazyAnswer = null;
+        $('#lazyMorningVeil').hidden = true;
+      }
       clearMorningForm(); renderAll();
       /* Says what changed and what did not, in the participant's terms. The
          word "supersede" appears nowhere a participant can see it. */
-      toast(existing
+      toast(lazyCompletion ? lazyVerdict(record, lazyCompletion.rating) : existing
         ? 'Updated. Your patterns now use these times; the earlier version is kept in your backup.'
         : 'Morning record saved without judgement');
     });
@@ -10056,42 +10074,12 @@
 
       finishingLazyNight = true;
       supersedeWithoutAsking = true;
-      $('#saveMorning').click();
-      supersedeWithoutAsking = false;
-      finishingLazyNight = false;
+      try { $('#saveMorning').click(); }
+      finally { supersedeWithoutAsking = false; finishingLazyNight = false; }
 
-      /* Now make the record tell the truth about itself.
-
-         The save path needs all four ratings, but only ONE was given, and
-         "how was it" is the restoration question — not three more. Mirroring
-         it into energy, focus and calm would put three judgements in the
-         record that nobody made, and they would then show up in the compass
-         and the exports as if they had. So they are cleared.
-
-         The same for the times. Bed and wake were measured; sleep onset is
-         bed plus this person's median latency, and night waking is their
-         median too. Those are estimates, and the record names them rather
-         than sitting them beside the measured values looking identical. */
-      const saved = state.mornings.find(item => !item.demo && item.date === night.date);
-      if (saved) {
-        saved.lazy = true;
-        saved.energy = null; saved.focus = null; saved.calm = null;
-        saved.measured = ['bedTime', night.stale ? null : 'wakeTime'].filter(Boolean);
-        saved.estimated = ['sleepTime', 'awakeMinutes'].concat(night.stale ? ['wakeTime'] : []);
-        /* What the participant actually said, and where the wake time came
-           from. These two fields are the whole difference between a record
-           the app believes and a record the app is merely reporting. */
-        saved.verified = lazyAnswer;
-        saved.wakeSource = night.wakeSource || null;
-        saved.bedSource = night.bedSource || null;
-      }
-      lazyAnswer = null;
-      state.lazyNight = null;
-      saveState();
-      $('#lazyMorningVeil').hidden = true;
-      clearMorningForm();
-      renderAll();
-      toast(lazyVerdict(saved, rating));
+      /* #saveMorning now saves the fully annotated lazy record and closes
+         the night in one storage write. If that write fails, the participant
+         can retry without losing the provisional night or their answer. */
     }
 
     /** One sentence. Not a dashboard, and never a scolding. */
