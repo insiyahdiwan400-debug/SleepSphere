@@ -19,8 +19,13 @@ function between(a, b) {
 }
 const loadCode = between('    function loadState() {', '\n    let state = loadState();');
 const saveCode = between('    function saveState() {', '\n    function toast(');
+/* SCHEMA_VERSION joined the injected scope when the guard stopped
+   hard-coding 3 in the future-version comparison. Without it the eval
+   throws on the first case and the whole file reports as a crash rather
+   than as a result. */
 const loadFactory = new Function('store','STORAGE_KEY','safeParse','clone','defaults',
-  'shapeState','migrateTwoToThree','uid', loadCode + '\nreturn loadState;');
+  'shapeState','migrateTwoToThree','uid','SCHEMA_VERSION',
+  loadCode + '\nreturn loadState;');
 const saveFactory = new Function('store','STORAGE_KEY','state','loadState',
   'renderStorageWarning','toast', saveCode + '\nreturn saveState;');
 
@@ -37,7 +42,7 @@ function runCase(name, raw, shouldPreserve) {
       catch { return fallback; } },
     clone, defaults,
     value => ({ ...clone(defaults), ...value, version: 3 }),
-    value => ({ ...clone(defaults), ...value, version: 3 }), () => 'test-id');
+    value => ({ ...clone(defaults), ...value, version: 3 }), () => 'test-id', 3);
   const state = load();
   const save = saveFactory(store, 'sleepsphere_state_v2', state, load, () => {}, () => {});
   const result = save();
