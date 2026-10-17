@@ -1,0 +1,313 @@
+/* SleepSphere Flight Mode — the cabin.
+ *
+ * Composition follows EXACT_VISUAL_REQUIREMENTS.md: the window dominates,
+ * the cabin is deep midnight, the panel floats over the left in
+ * translucent charcoal with blue pill toggles.
+ *
+ * The window, trim, cabin and wing are DRAWN. Only what is inside the
+ * glass is photographic, and only when a licensed clip exists for that
+ * view. Nothing here imitates footage.
+ */
+
+.fc-open, .fc-open body { overflow: hidden; }
+
+.fc {
+  position: fixed; inset: 0; z-index: 60;
+  display: grid;
+  /* The window takes the frame; the panel floats over its left. */
+  grid-template-columns: minmax(0, 1fr);
+  /* Deep midnight cabin with low-intensity edge lighting, which is what
+     stops a dark rectangle reading as "unfinished" rather than "cabin". */
+  background:
+    radial-gradient(120% 80% at 50% 50%, #10151f 0%, #080b12 58%, #04060a 100%);
+  color: #eef2f8;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  -webkit-user-select: none; user-select: none;
+  padding: max(14px, env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px))
+           max(14px, env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px));
+}
+/* A faint warm bounce along the cabin wall, as a lit cabin has. */
+.fc::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(120, 140, 190, .09) 0%, rgba(0, 0, 0, 0) 26%),
+    linear-gradient(0deg, rgba(190, 150, 110, .07) 0%, rgba(0, 0, 0, 0) 22%);
+}
+
+/* ---- the window ------------------------------------------------- */
+.fc-window {
+  position: relative; z-index: 1;
+  justify-self: center; align-self: center;
+  width: min(96%, 980px);
+  height: min(92%, 760px);
+  /* The tall rounded-rectangle of an aircraft window: nearly a stadium
+     shape, not an ellipse and not a rounded box. */
+  border-radius: 46% / 32%;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 14px #11161f,            /* inner trim */
+    0 0 0 26px #0b0f16,            /* outer trim */
+    0 0 0 27px rgba(214, 196, 168, .20),
+    0 42px 90px -40px rgba(0, 0, 0, .95);
+}
+.fc-pane {
+  position: absolute; inset: 0; overflow: hidden;
+  background: #070a10;
+}
+.fc-video {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
+}
+/* Scrim: recorded sky is busier than a gradient and the trim needs to
+   read as nearer than the view. */
+.fc-pane::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg,
+    rgba(6, 10, 18, calc(var(--fc-scrim, .25) * 1.1)) 0%,
+    rgba(6, 10, 18, 0) 42%,
+    rgba(6, 10, 18, calc(var(--fc-scrim, .25) * .9)) 100%);
+}
+/* The glass: one soft diagonal sheen, kept faint. */
+.fc-glass {
+  position: absolute; inset: 0; pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(118deg,
+    rgba(255, 255, 255, .11) 0%, rgba(255, 255, 255, .03) 18%,
+    rgba(255, 255, 255, 0) 38%);
+}
+/* Inner shadow where the trim meets the glass. */
+.fc-trim {
+  position: absolute; inset: 0; pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 0 44px 16px rgba(4, 6, 11, .72);
+}
+
+.fc-wing {
+  position: absolute; right: -1%; bottom: 10%;
+  width: 52%; height: auto; pointer-events: none; opacity: .92;
+  filter: drop-shadow(0 10px 26px rgba(0, 0, 0, .55));
+}
+
+/* ---- the "no footage" panel -------------------------------------- */
+.fc-missing {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; padding: 26px; text-align: center;
+  background: repeating-linear-gradient(135deg,
+    #0b1018 0 14px, #0d1320 14px 28px);
+}
+.fc-missing-head {
+  margin: 0; font-size: 15px; font-weight: 700; letter-spacing: .02em;
+  color: #f0d9a8;
+}
+.fc-missing-note {
+  margin: 0; max-width: 46ch; font-size: 12.5px; line-height: 1.55;
+  color: rgba(238, 242, 248, .66);
+}
+
+/* ---- the panel --------------------------------------------------- */
+.fc-panel {
+  position: absolute; z-index: 3;
+  left: max(18px, env(safe-area-inset-left, 0px));
+  top: 50%; transform: translateY(-50%);
+  width: min(340px, 42vw);
+  display: flex; flex-direction: column; gap: 14px;
+}
+.fc-brand { padding-left: 2px; }
+.fc-word {
+  margin: 0 0 10px; font-size: 15px; font-weight: 600; letter-spacing: -.01em;
+  color: rgba(238, 242, 248, .92); text-shadow: 0 2px 18px rgba(4, 6, 11, .8);
+}
+.fc-head {
+  margin: 0; display: flex; align-items: center; gap: 10px;
+  font-size: 27px; font-weight: 600; letter-spacing: -.02em;
+  text-shadow: 0 2px 22px rgba(4, 6, 11, .85);
+}
+.fc-plane { font-size: 22px; opacity: .95; }
+.fc-sub {
+  margin: 5px 0 0; font-size: 14px; letter-spacing: .01em;
+  color: rgba(238, 242, 248, .60); text-shadow: 0 2px 16px rgba(4, 6, 11, .8);
+}
+
+/* Translucent charcoal, thin border, real blur. */
+.fc-card {
+  border-radius: 16px; overflow: hidden;
+  background: rgba(22, 27, 37, .72);
+  -webkit-backdrop-filter: blur(22px) saturate(1.1);
+  backdrop-filter: blur(22px) saturate(1.1);
+  border: 1px solid rgba(255, 255, 255, .11);
+  box-shadow: 0 26px 60px -34px rgba(0, 0, 0, .95);
+}
+.fc-card-top, .fc-row {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center; gap: 11px;
+  padding: 13px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, .07);
+}
+.fc-row:last-child { border-bottom: 0; }
+.fc-ico { font-size: 15px; opacity: .72; text-align: center; }
+.fc-label { min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; }
+.fc-label-main { font-weight: 500; }
+.fc-label-sub { font-size: 11.5px; color: rgba(238, 242, 248, .52); }
+.fc-card-top .fc-label-main { font-weight: 600; font-size: 14px; }
+.fc-chev { opacity: .45; font-size: 17px; }
+
+.fc-row-link {
+  width: 100%; text-align: left; cursor: pointer;
+  appearance: none; -webkit-appearance: none;
+  background: transparent; border: 0; border-bottom: 1px solid rgba(255, 255, 255, .07);
+  color: inherit; font: inherit; min-height: 52px;
+}
+.fc-row-link:last-child { border-bottom: 0; }
+
+/* The blue pill toggles. */
+.fc-switch {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  width: 50px; height: 30px; padding: 0; border: 0; border-radius: 999px;
+  background: rgba(118, 128, 148, .40);
+  position: relative; transition: background .22s ease;
+}
+/* The pill reads best at 30px, but a 30px tap target does not meet the
+   touch-friendly requirement. The hit area is grown to 44px without
+   changing what is drawn. */
+.fc-switch::after {
+  content: ''; position: absolute; left: 0; right: 0; top: -7px; bottom: -7px;
+}
+.fc-knob {
+  position: absolute; top: 3px; left: 3px;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .45);
+  transition: transform .22s ease;
+}
+.fc-switch[aria-checked="true"] { background: #2f7bf6; }
+.fc-switch[aria-checked="true"] .fc-knob { transform: translateX(20px); }
+.fc-switch:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+.fc-play {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  min-height: 56px; border-radius: 16px; font: inherit;
+  font-size: 15px; font-weight: 600; letter-spacing: .01em; color: #eef2f8;
+  background: rgba(44, 62, 102, .60);
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  border: 1px solid rgba(150, 180, 255, .28);
+}
+.fc-play:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+.fc-scenes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.fc-scene {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  min-height: 44px; border-radius: 999px; font: inherit; font-size: 12.5px; font-weight: 600;
+  color: rgba(238, 242, 248, .76);
+  background: rgba(22, 27, 37, .62);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, .11);
+}
+.fc-scene.on { color: #fff; background: rgba(47, 123, 246, .30); border-color: rgba(120, 165, 255, .55); }
+.fc-scene:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+.fc-tools { display: flex; gap: 7px; }
+.fc-tool {
+  flex: 1; appearance: none; -webkit-appearance: none; cursor: pointer;
+  min-height: 44px; border-radius: 999px; font: inherit; font-size: 12px; font-weight: 600;
+  color: rgba(238, 242, 248, .70); background: rgba(14, 18, 27, .56);
+  border: 1px solid rgba(255, 255, 255, .13);
+}
+.fc-tool:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+/* ---- hidden controls, and the always-present way back ------------- */
+.fc[data-hidden="true"] .fc-panel { opacity: 0; pointer-events: none; }
+.fc-show {
+  position: fixed; z-index: 5;
+  left: 50%; transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+  display: none;
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  min-height: 44px; padding: 0 20px; border-radius: 999px;
+  font: inherit; font-size: 12.5px; font-weight: 600; color: #eef2f8;
+  background: rgba(14, 18, 27, .74);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, .22);
+}
+.fc[data-hidden="true"] .fc-show { display: block; }
+.fc-show:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .fc-panel { transition: opacity .45s ease; }
+}
+
+/* CC BY requires credit wherever the work is shown, so it is on screen
+   while a clip plays rather than only in a file. */
+.fc-credit {
+  position: fixed; z-index: 5;
+  right: max(10px, env(safe-area-inset-right, 0px));
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 6px);
+  max-width: 60vw; font-size: 9.5px; line-height: 1.3;
+  color: rgba(238, 242, 248, .50); text-decoration: none;
+  padding: 4px 7px; border-radius: 6px; background: rgba(6, 9, 16, .40);
+}
+.fc-credit:hover, .fc-credit:focus-visible { color: rgba(238, 242, 248, .85); }
+
+/* ---- phones: the window stays dominant --------------------------- */
+@media (max-width: 1024px) {
+  /* The window needs a height measured against the VIEWPORT, not a
+     percentage of an auto-sized grid row — that resolved to zero and
+     collapsed the window to a sliver. svh so the iOS URL bar appearing
+     does not resize it mid-flight. */
+  .fc {
+    grid-template-rows: auto auto;
+    align-content: start;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+  }
+  .fc-window {
+    width: 100%;
+    height: min(48vh, 430px);
+    align-self: start; margin-top: 2px; flex: none;
+    border-radius: 44% / 26%;
+    box-shadow:
+      0 0 0 10px #11161f, 0 0 0 18px #0b0f16,
+      0 0 0 19px rgba(214, 196, 168, .18),
+      0 30px 60px -34px rgba(0, 0, 0, .95);
+  }
+  /* The panel moves BELOW the window rather than over it, so controls
+     never cover the view — the narrow-screen layout the requirements
+     ask for. */
+  .fc-panel {
+    position: static; transform: none; width: 100%;
+    margin-top: 14px; gap: 11px;
+  }
+  .fc-head { font-size: 22px; }
+  .fc-sub { font-size: 13px; }
+  .fc-word { margin-bottom: 6px; }
+  .fc-wing { width: 70%; bottom: 10%; }
+}
+@supports (height: 100svh) {
+  @media (max-width: 1024px) { .fc-window { height: min(48svh, 430px); } }
+}
+@media (max-width: 1024px) and (max-height: 700px) {
+  .fc-window { height: min(42vh, 330px); }
+  .fc-brand { display: none; }           /* the view wins the small screen */
+}
+
+@media print { .fc { display: none !important; } }
+
+/* While a clip is still decoding. Neutral, and it says what it is doing
+   rather than leaving the window black. */
+.fc-waiting {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  background: linear-gradient(180deg, #0c111b 0%, #0a0e16 100%);
+}
+.fc-waiting-note { margin: 0; font-size: 12px; color: rgba(238, 242, 248, .50); }
+
+/* Tablet portrait: the stacked layout keeps the controls off the view,
+   but a phone-sized window on an iPad leaves the glass looking small.
+   The window gets the height the extra screen affords, and the panel
+   still sits below it rather than over it. */
+@media (min-width: 700px) and (max-width: 1024px) {
+  .fc-window { height: min(62vh, 700px); }
+}
+@supports (height: 100svh) {
+  @media (min-width: 700px) and (max-width: 1024px) {
+    .fc-window { height: min(62svh, 700px); }
+  }
+}

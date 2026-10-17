@@ -105,6 +105,16 @@
       src.connect(lp); lp.connect(gain); gain.connect(ctx.destination);
       src.start();
       state.audio = { ctx: ctx, gain: gain, src: src };
+      /* Mobile Safari can create a suspended context even after a tap.
+         Request playback explicitly, and never leave a silent "on" state
+         when the browser rejects it. */
+      if (ctx.state === 'suspended' && typeof ctx.resume === 'function') {
+        Promise.resolve(ctx.resume()).then(function () {
+          if (ctx.state !== 'running' && state.audio && state.audio.ctx === ctx) audioOff();
+        }).catch(function () {
+          if (state.audio && state.audio.ctx === ctx) audioOff();
+        });
+      }
     } catch (e) { /* no audio is a fine outcome */ }
   }
   function audioOff() {
@@ -150,6 +160,22 @@
       paintDescent(overlay, false);
     }
     if (state.progress >= 1 && !state.finishing) finish(overlay);
+  }
+
+  /* Leaving the flight WITHOUT going to bed.
+
+     Distinct from finish(), which settles the night and takes the screen
+     away. Someone who opens the Descent and changes their mind has not
+     gone to bed, and recording that they have would be a fabricated fact
+     about their night. This puts everything back and returns the sky to
+     wherever the clock says it should be. */
+  function endDescent() {
+    audioOff();
+    state.descending = false; state.finishing = false;
+    state.progress = 0; state.phase = 0;
+    state.skyFrom = null; state.skySpan = null;
+    delete document.documentElement.dataset.descending;
+    if (sky) sky.set(restingSky({}));
   }
 
   function finish(overlay) {
@@ -616,6 +642,62 @@
       text: 'Skip to good night',
       onclick: function () { setProgress(1, box); } }));
     box.appendChild(foot);
+
+    /* In-flight controls: hide, full screen, leave.
+
+       The sky is the point, so the controls can be taken off it
+       entirely. Hiding is reversible by tapping anywhere, which is
+       stated rather than left to be guessed, and leaving is always one
+       tap away — a wind-down you cannot get out of is a trap, not a
+       wind-down. */
+    var bar = el('div', { class: 'fl-ctl', 'aria-label': 'Flight controls' });
+
+    var hide = el('button', { class: 'fl-ctl-btn', type: 'button', id: 'flHide',
+      text: 'Hide controls', 'aria-label': 'Hide the controls and show only the sky',
+      onclick: function () {
+        box.classList.add('fl-bare');
+        hint.hidden = false;
+      } });
+    bar.appendChild(hide);
+
+    var full = el('button', { class: 'fl-ctl-btn', type: 'button', id: 'flFull',
+      text: 'Full screen', 'aria-label': 'Fill the screen',
+      onclick: function () {
+        var root = document.documentElement;
+        try {
+          if (document.fullscreenElement) {
+            (document.exitFullscreen || function () {}).call(document);
+            full.textContent = 'Full screen';
+          } else if (root.requestFullscreen) {
+            root.requestFullscreen().then(function () { full.textContent = 'Exit full screen'; },
+                                          function () {});
+          } else {
+            /* iPhone Safari does not offer the Fullscreen API at all.
+               Saying so is better than a button that does nothing. */
+            full.textContent = 'Not available here';
+            full.disabled = true;
+          }
+        } catch (e) { full.disabled = true; }
+      } });
+    bar.appendChild(full);
+
+    var out = el('button', { class: 'fl-ctl-btn', type: 'button', id: 'flExit',
+      text: 'Exit flight', 'aria-label': 'Leave the flight and go back',
+      onclick: function () { endDescent(); W.refresh(); } });
+    bar.appendChild(out);
+
+    box.appendChild(bar);
+
+    /* Shown only while the controls are hidden. */
+    var hint = t('p', 'fl-bare-hint', 'Tap anywhere to bring the controls back');
+    hint.hidden = true;
+    box.appendChild(hint);
+    box.addEventListener('click', function (e) {
+      if (!box.classList.contains('fl-bare')) return;
+      if (e.target.closest('button')) return;
+      box.classList.remove('fl-bare');
+      hint.hidden = true;
+    });
 
     /* The gesture: dragging down pulls the sun under the horizon. The same
        motion as the metaphor, which is why it needs no explaining beyond

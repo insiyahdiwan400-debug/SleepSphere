@@ -481,7 +481,18 @@
     .feedback-row { padding: 14px 0; border-bottom: 1px solid var(--line); }
     .feedback-row:last-child { border-bottom: 0; }
     .feedback-row .scale { margin-top: 8px; }
-    .toast { position: fixed; right: 22px; bottom: 22px; z-index: 40; max-width: min(360px,calc(100vw - 44px)); padding: 12px 15px; border-radius: 13px; color: white; background: var(--night); box-shadow: var(--shadow); opacity: 0; transform: translateY(10px); pointer-events: none; transition: .2s ease; }
+    /* The toast is the topmost thing in the document, deliberately.
+       At z-index 40 it sat UNDER every overlay the app has — the welcome
+       screen and fieldwork (60), Flight Mode (60), the night, early and
+       dua veils (66-70), the install sheet (70) and the sound mixer (92).
+       So every message the app tried to give while any of those was open
+       was painted behind it: a sound that could not start, a save that
+       did not reach the disk, a protected vault, an onboarding field that
+       needed fixing. The app was explaining itself to a layer nobody can
+       see, which from the outside is indistinguishable from an app that
+       says nothing and does nothing. It carries pointer-events: none, so
+       being on top costs no tap. */
+    .toast { position: fixed; right: 22px; bottom: 22px; z-index: 100; max-width: min(360px,calc(100vw - 44px)); padding: 12px 15px; border-radius: 13px; color: white; background: var(--night); box-shadow: var(--shadow); opacity: 0; transform: translateY(10px); pointer-events: none; transition: .2s ease; }
     .toast.show { opacity: 1; transform: none; }
     .modal { position: fixed; inset: 0; z-index: 25; display: none; place-items: center; padding: 20px; background: rgba(3,14,18,.64); backdrop-filter: blur(7px); }
     .modal.active { display: grid; }
@@ -2573,6 +2584,7 @@
   <link rel="stylesheet" href="insights.css" />
   <link rel="stylesheet" href="explore.css" />
   <link rel="stylesheet" href="living-sky.css" />
+  <link rel="stylesheet" href="flight-cabin.css" />
 </head>
 <body>
   <canvas id="starfield" aria-hidden="true"></canvas>
@@ -3729,6 +3741,16 @@
         <p style="margin-top:14px">It takes about a minute a day. There are no right answers,
            and a difficult night is useful information rather than a failure.</p>
         <div class="button-row" style="margin-top:24px"><button class="btn primary" data-fw-next>Continue</button></div>
+        <!-- The study needs a participant code that only enrolled students
+             have. Without this, anyone else — a supervisor, an examiner,
+             the person who built it — is stuck at the code step with no way
+             forward, and the whole app is unreachable. -->
+        <p class="fw-say" style="margin-top:18px">
+          Not in the study? You can use SleepSphere without joining it.
+        </p>
+        <div class="button-row" style="margin-top:8px">
+          <button class="btn ghost" id="fwSkip">Skip — just use the app</button>
+        </div>
       </div>
 
       <div class="fw-panel" data-fw="2" hidden>
@@ -3765,6 +3787,7 @@
         <div class="button-row" style="margin-top:16px">
           <button class="btn primary" id="fwIdNext">Continue</button>
           <button class="btn ghost" data-fw-back>Back</button>
+          <button class="btn ghost" id="fwSkipId">I don't have a code</button>
         </div>
       </div>
 
@@ -4115,8 +4138,34 @@
     function renderStorageWarning() {
       const node = document.getElementById('storageWarning');
       if (!node) return;
-      const broken = !store.healthy || document.documentElement.dataset.storage === 'unavailable';
+      const protectedState = Boolean(loadState.corrupt || loadState.futureVersion || loadState.unsupportedVersion);
+      const broken = protectedState || !store.healthy || document.documentElement.dataset.storage === 'unavailable';
       node.hidden = !broken;
+      const title = node.querySelector('strong');
+      const why = document.getElementById('storageWarningWhy');
+      const fix = node.querySelector('.storage-fix');
+      const button = document.getElementById('storageWarningExport');
+      if (protectedState) {
+        if (title) title.textContent = 'Saved data protected — new changes cannot be saved.';
+        if (why) why.textContent = loadState.corrupt
+          ? 'SleepSphere cannot read the saved data. The original is untouched.'
+          : loadState.futureVersion
+            ? 'Data from a newer SleepSphere version is protected from this older build.'
+            : 'An unrecognized saved-data format is protected from overwrite.';
+        if (fix) fix.textContent = 'Do not clear site data. Download the original and use a compatible version.';
+        if (button) button.textContent = 'Download original saved data';
+      } else {
+        /* Put the markup's own wording back. Erase Everything can clear
+           the protection while the page is still up, and a banner left
+           carrying "do not clear site data" would then be advice about
+           data that no longer exists — and the wrong advice for the
+           blocked-storage case, which is the only reason it could
+           reappear. */
+        if (title) title.textContent = 'Nothing is being saved.';
+        if (why) why.textContent = 'This browser is not letting SleepSphere store anything, so tonight’s entries will disappear when you close this tab.';
+        if (fix) fix.textContent = 'Try opening the link in its own browser tab rather than inside another app, or add it to your Home Screen. If you are in Private Browsing, use a normal window.';
+        if (button) button.textContent = 'Save what I have now';
+      }
     }
 
     /* ------------------------------------------------------------------
@@ -4180,6 +4229,7 @@
       // written by something that is not this app. Do not try to read it.
       if (raw && (!stored || typeof stored !== 'object' || Array.isArray(stored))) {
         loadState.corrupt = true;
+        loadState.protectedRaw = raw;
         return clone(defaults);
       }
 
@@ -4188,11 +4238,17 @@
         loadState.migratedFrom = 2;
         return migrateTwoToThree(stored);
       }
-      // A future version, written by a newer build on the same device. Keep
-      // the data rather than discarding it; the shape is additive so far.
-      if (stored && Number(stored.version) > 3) {
+      // Show future data best-effort, but never write it back as v3.
+      if (stored && Number(stored.version) > SCHEMA_VERSION) {
         loadState.futureVersion = Number(stored.version);
+        loadState.protectedRaw = raw;
         return shapeState(stored);
+      }
+      // An existing unknown primary-key schema is not legacy-key data.
+      if (stored && raw) {
+        loadState.unsupportedVersion = String(stored.version ?? 'unknown');
+        loadState.protectedRaw = raw;
+        return clone(defaults);
       }
 
       const migrated = clone(defaults);
@@ -4239,6 +4295,15 @@
     const escapeHtml = text => { const div = document.createElement('div'); div.textContent = text ?? ''; return div.innerHTML; };
 
     function saveState() {
+      // Preserve the original bytes if this build cannot safely read them.
+      if (loadState.corrupt || loadState.futureVersion || loadState.unsupportedVersion) {
+        if (!saveState.warned) {
+          saveState.warned = true;
+          renderStorageWarning();
+          toast('Saved data protected. New changes cannot be saved.');
+        }
+        return false;
+      }
       const written = store.set(STORAGE_KEY, JSON.stringify(state));
       // One warning, the first time a save does not reach the disk. Silence
       // here is how a week of entries disappears.
@@ -7397,6 +7462,26 @@
       bridge: { name:'Fajr Bridge', action:'Use the Fajr Bridge to protect total sleep opportunity and record both the plan and morning function.' }
     };
 
+    /* What the research CSV is allowed to say about an experiment.
+       `#customExperimentName` is a free-text box the participant types
+       into, and its contents were being written straight into the
+       study export's experiment_name column — so anything someone had
+       typed there, including their own name or address, left the device
+       in the researcher's dataset. Nobody consented to that: the
+       consent covers sleep timings and the ratings, not free text.
+
+       A known experiment exports the catalogue's own wording, which the
+       app wrote and the researcher already has. A custom one exports
+       the word "custom" and nothing else; the participant still sees
+       their own title everywhere on screen. An experiment whose key is
+       not in the catalogue exports nothing rather than guessing. */
+    function researchExperimentName(experiment) {
+      if (!experiment) return '';
+      if (experiment.catalogKey === 'custom') return 'custom';
+      const known = experimentCatalog[experiment.catalogKey];
+      return known ? known.name : '';
+    }
+
     function metricValue(record, metric) {
       if (!record) return null;
       if (['rest','energy','focus','calm'].includes(metric)) {
@@ -7645,7 +7730,7 @@
       ['bio_body',             'Physical comfort, 0 to 100',                                  'entered'],
       ['bio_environment',      'Sleep environment, 0 to 100',                                 'entered'],
       ['experiment_id',        'Identifier of the personal experiment running, if any',       'calculated'],
-      ['experiment_name',      'Name of that experiment',                                     'calculated'],
+      ['experiment_name',      'The catalogue name of that experiment, or "custom" for one the participant titled themselves. Participant-typed titles are never exported.', 'calculated'],
       ['adherence',            'yes, no or not_applicable for the experiment that night',     'entered'],
       ['exported_at',          'ISO timestamp the file was produced',                         'calculated']
     ];
@@ -7730,7 +7815,7 @@
           bio ? 1 : 0,
           cell(inputs.light), cell(inputs.caffeine), cell(inputs.movement), cell(inputs.meal),
           cell(inputs.stress), cell(inputs.body), cell(inputs.environment),
-          cell(record?.experimentId), cell(experiment?.name), cell(record?.adherence),
+          cell(record?.experimentId), cell(researchExperimentName(experiment)), cell(record?.adherence),
           exportedAt
         ]);
       }
@@ -7833,8 +7918,18 @@
       /* MOTHERHOOD_KEY included deliberately: a separate store that
          survives the app's own delete button is a trap, not a
          protection. */
+      if (window.SSMotherhood && typeof window.SSMotherhood.lock === 'function') window.SSMotherhood.lock();
       ['ss_plan','ss_thoughts','ss_mornings','ss_feedback',STORAGE_KEY,MOTHERHOOD_KEY].forEach(key => store.remove(key));
-      state = clone(defaults); demoMode = false; selectedExperiment = null; resetScan(); clearMorningForm(); saveState(); populateForms(); renderAll();
+      /* The save guard exists to stop this build writing over data it
+         could not read. The owner of that data has just deliberately
+         erased it, so there is nothing left to protect and the flags
+         are stale — left set, they would refuse the write, keep the
+         protected-data banner up and toast about it on a device the
+         person has just emptied on purpose. */
+      loadState.corrupt = false; loadState.futureVersion = 0;
+      loadState.unsupportedVersion = ''; loadState.protectedRaw = null;
+      saveState.warned = false;
+      state = clone(defaults); demoMode = false; selectedExperiment = null; resetScan(); clearMorningForm(); saveState(); renderStorageWarning(); populateForms(); renderAll();
       // Back to a blank device, which means onboarding again — the only way a
       // second participant can be enrolled on the same phone without
       // inheriting the first one's code.
@@ -11144,6 +11239,33 @@
       else if (id) fwIdSay(`Reads as ${id}.`, 'good');
       else fwIdSay('A code is the letter P and a number from 1 to 999.', 'bad');
     });
+    /* Using the app without joining the study.
+
+       This marks the introduction as seen and NOTHING else: no
+       participant code, no consent, no enrolment date. inFieldwork() is
+       onboarded && participantId, so with the code left empty the
+       research machinery stays switched off and the exports keep
+       refusing, which is what they already do without a code. Inventing
+       a participant here would be inventing a research subject. */
+    function skipFieldwork() {
+      state.study = {
+        ...defaults.study, ...state.study,
+        onboarded: true,
+        participantId: '',
+        cohort: APP_VERSION,
+        schemaVersion: SCHEMA_VERSION,
+        storageMode: store.healthy ? 'local' : 'memory'
+      };
+      state.settings.welcomeSeen = true;
+      const written = saveState();
+      $('#fieldwork').classList.remove('active');
+      $('#welcomeOverlay').classList.remove('active');
+      renderAll();
+      if (!written) toast('Saved in memory only — this device is not writing to disk');
+    }
+    $('#fwSkip')?.addEventListener('click', skipFieldwork);
+    $('#fwSkipId')?.addEventListener('click', skipFieldwork);
+
     $('#fwIdNext').addEventListener('click', () => {
       const id = normaliseParticipantId($('#fwId').value);
       if (!id) { fwIdSay('Enter the code you were given before continuing.', 'bad'); $('#fwId').focus(); return; }
@@ -11214,7 +11336,13 @@
     renderStopbang();
     // The escape hatch has to work even when nothing can be written to disk:
     // a download is the one way off a device that refuses to remember.
-    $('#storageWarningExport')?.addEventListener('click', () => $('#exportBackup')?.click());
+    $('#storageWarningExport')?.addEventListener('click', () => {
+      if (loadState.protectedRaw != null) {
+        download('sleepsphere-original-saved-data.txt', loadState.protectedRaw, 'text/plain');
+      } else {
+        $('#exportBackup')?.click();
+      }
+    });
     startStarfield();
     // Opening the app is the wake stamp, so this has to run on load — before
     // anything asks the person to do something.
@@ -11327,5 +11455,6 @@
   <!-- Living Sky. Recorded footage where a licensed clip exists for the
        daypart; the drawn sky stays and shows wherever one does not. -->
   <script src="living-sky.js"></script>
+  <script src="flight-cabin.js"></script>
 </body>
 </html>

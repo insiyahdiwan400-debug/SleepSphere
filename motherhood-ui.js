@@ -23,6 +23,14 @@
   if (!M) return;
 
   const $ = (sel, root) => (root || document).querySelector(sel);
+
+  /* Authentication that was cancelled because the vault locked under it —
+     the app was backgrounded, or the page hidden, while the passcode was
+     being checked. The data layer throws 'locked' for this, and it has to
+     be told apart from a wrong passcode before anything is said to the
+     person about their own credential. */
+  const cancelled = err => /\blocked\b/.test(String((err && err.message) || ''));
+
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
     c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -239,7 +247,9 @@
       } catch (err) {
         create.disabled = false;
         create.textContent = 'Turn on Motherhood';
-        toast('Could not set up. ' + (err && err.message ? err.message : ''));
+        toast(cancelled(err)
+          ? 'Setting up was cancelled because the app was closed. Nothing was saved — try again.'
+          : 'Could not set up. ' + (err && err.message ? err.message : ''));
       }
     });
     c.appendChild(create);
@@ -262,10 +272,19 @@
         await M.unlock(pass.value);
         pass.value = '';
         route();
-      } catch {
+      } catch (err) {
         go.disabled = false; go.textContent = 'Unlock';
-        toast('That passcode did not work.');
-        pass.select();
+        /* A cancelled unlock is not a refused one. Checking the passcode
+           takes a second, and leaving the app during that second
+           deliberately cancels it — telling someone their correct
+           passcode "did not work" is simply untrue, and is how a person
+           concludes the vault has eaten their data. */
+        if (cancelled(err)) {
+          toast('Unlocking was cancelled because the app was closed. Try again.');
+        } else {
+          toast('That passcode did not work.');
+          pass.select();
+        }
       }
     });
     pass.addEventListener('keydown', e => { if (e.key === 'Enter') go.click(); });
@@ -871,6 +890,31 @@
   } else {
     mountEntry();
   }
+
+  /* The vault must not remain readable when a phone is switched to another
+     app or the browser navigates away. Locking alone is insufficient: the
+     decrypted values must also leave the visible DOM before the user returns.
+     Do not close the layer, so the passcode prompt is ready on return. */
+  function lockWhenBackgrounded() {
+    /* An unlock that is still deriving the key counts. isUnlocked() is
+       false for the second or so that 250,000 PBKDF2 iterations take, so
+       a handler that only asked isUnlocked() let a passcode entered just
+       before the app was backgrounded finish and open the vault after
+       the lock. Cancelling it is what lock() now does. */
+    /* Called defensively: sw.js caches these files separately, so a
+       fresh motherhood-ui.js can run against a cached motherhood.js
+       that has no isAuthenticating yet. Throwing here would break
+       locking on every backgrounding, which is worse than falling back
+       to the unlocked-only check. */
+    const authenticating = typeof M.isAuthenticating === 'function' && M.isAuthenticating();
+    if (!M.isUnlocked() && !authenticating) return;
+    M.lock();
+    if (layer) route();
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) lockWhenBackgrounded();
+  });
+  window.addEventListener('pagehide', lockWhenBackgrounded);
 
   /* A seam for tests, so the interface can be driven without guessing at
      class names from outside. */

@@ -54,7 +54,10 @@ const text = p => p.evaluate(() => document.querySelector('.ex-body').innerText)
   {
     const { ctx, p, errs } = await open(browser);
     const n = await p.evaluate(() => document.querySelectorAll('.ex-tile').length);
-    check('Six practices are offered', n === 6, String(n));
+    /* The index became a hub with two groups, so the tile count grew:
+       Flight Mode, Living Sky and the Sabat Compass were URL parameters
+       and a button on another screen before. */
+    check('Every experience is offered', n === 9, String(n));
 
     /* Press every one. A tile that opens nothing is the exact failure the
        brief names, and it is invisible until someone presses it. */
@@ -69,8 +72,22 @@ const text = p => p.evaluate(() => document.querySelector('.ex-body').innerText)
       const hasBody = await p.evaluate(() =>
         Boolean(document.querySelector('.ex-body')) &&
         document.querySelector('.ex-body').innerText.trim().length > 40);
-      opened.push(title && hasBody ? title : 'EMPTY:' + i);
-      await p.evaluate(() => window.SSExplore.close());
+      /* A tile may open a layer OR take you somewhere — Flight Mode
+         reloads into the world and the Compass changes screen. What is
+         never acceptable is a tile that does nothing at all, which is
+         what this has always been here to catch. */
+      const moved = await p.evaluate(() =>
+        document.documentElement.dataset.view === 'compass' ||
+        !document.querySelector('#explore') ||
+        location.search.indexOf('world=') > -1 ||
+        /* Flight Mode opens the cabin, which is its own full-screen
+           overlay rather than an ex-layer. */
+        Boolean(document.getElementById('flightCabin')));
+      opened.push((title && hasBody) ? title : (moved ? 'MOVED:' + i : 'EMPTY:' + i));
+      await p.evaluate(() => {
+        window.SSExplore.close();
+        if (window.SSFlightCabin) window.SSFlightCabin.close();
+      });
       await p.waitForTimeout(140);
     }
     check('Every tile opens a screen with something on it',
@@ -201,9 +218,35 @@ const text = p => p.evaluate(() => document.querySelector('.ex-body').innerText)
       [...document.querySelectorAll('.ex-toggle')].some(b => /mute/i.test(b.textContent)));
     check('There is a mute', hasMute);
 
+    /* This used to assert that closing the mixer silenced everything.
+       That was the behaviour when the mixer was the only place sound
+       lived, and it is no longer the behaviour: a soundscape you opted
+       into now survives the screen it was started from, and the
+       persistent mini-player is what owns it. Closing a dialog is not
+       the same act as stopping a sound, and conflating them was itself
+       a reported fault — the sound stopped the moment you went to look
+       at anything else, with the toggles still lit.
+
+       The protection the old check was really providing — sound cannot
+       outlive your intention to hear it — is what is asserted now: the
+       means to stop it must be on screen after the dialog is gone, and
+       it must work. Backgrounding the app is still handled separately,
+       by the visibilitychange suspend. */
     await p.evaluate(() => window.SSExplore.close());
     await p.waitForTimeout(800);
-    check('Leaving the screen stops the sound',
+    const afterClose = await p.evaluate(() => ({
+      running: window.SSExplore.audioRunning(),
+      dialog: document.querySelectorAll('.ex-layer[role="dialog"]').length,
+      stop: !!document.querySelector('#ssPlayer button[aria-label="Stop all sound"]')
+    }));
+    check('Leaving the screen keeps the sound you opted into',
+      afterClose.running === true && afterClose.dialog === 0);
+    check('And leaves a way to stop it on screen', afterClose.stop === true);
+
+    await p.evaluate(() =>
+      document.querySelector('#ssPlayer button[aria-label="Stop all sound"]').click());
+    await p.waitForTimeout(1200);
+    check('Which stops it',
       (await p.evaluate(() => window.SSExplore.audioRunning())) === false);
 
     /* No files. Synthesised audio is why this works offline and why there

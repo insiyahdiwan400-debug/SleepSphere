@@ -130,6 +130,61 @@ const DISCARDS = `(()=>{const m={};Object.defineProperty(window,'localStorage',{
         await fine.p.evaluate(() => document.querySelectorAll('.trend-bar').length) === 1);
   await fine.ctx.close();
 
+  /* ---- Saved data this build cannot read.
+     Three shapes reach loadState() that it has no way to interpret:
+     bytes that will not parse, a state written by a newer build, and a
+     schema it has never heard of. Before the guard, all three were
+     replaced by the defaults in memory and then written over on the
+     next save — so opening an older build once was enough to lose
+     everything. The bytes must survive, and the app must say so rather
+     than carry on as though the device were new. */
+  const PROTECTED = [
+    ['unparseable bytes', '{"version":3,"mornings":', /cannot read the saved data/i],
+    ['a newer version', JSON.stringify({ version: 4, mornings: [{ id: 'from-v4' }] }), /newer SleepSphere version/i],
+    ['an unknown schema', JSON.stringify({ mornings: [{ id: 'from-nowhere' }] }), /unrecognized saved-data format/i]
+  ];
+  for (const [name, raw, why] of PROTECTED) {
+    const seed = `localStorage.setItem('sleepsphere_state_v2', ${JSON.stringify(raw)});
+      window.confirm = () => true;`;
+    const g = await open(seed);
+    check(`Protected (${name}): the app says so`, await bannerUp(g.p));
+    const text = await g.p.locator('#storageWarning').innerText();
+    check(`Protected (${name}): and says which case it is`, why.test(text), text.replace(/\s+/g, ' ').slice(0, 90));
+    check(`Protected (${name}): it does not offer to clear site data`,
+      /do not clear site data/i.test(text));
+    check(`Protected (${name}): saving refuses rather than writing`,
+      await g.p.evaluate(() => window.SS.save() === false));
+    check(`Protected (${name}): the original bytes are untouched`,
+      await g.p.evaluate(() => localStorage.getItem('sleepsphere_state_v2')) === raw);
+    check(`Protected (${name}): and are kept for download`,
+      await g.p.evaluate(() => {
+        const b = document.getElementById('storageWarningExport');
+        return Boolean(b && b.offsetParent !== null && /original saved data/i.test(b.textContent));
+      }));
+
+    /* Erase Everything is the owner deciding there is nothing left to
+       protect. The guard has to stand down, or the device they just
+       emptied on purpose keeps the protected-data banner up and never
+       saves again. */
+    await g.p.evaluate(() => document.getElementById('eraseData').click());
+    await g.p.waitForTimeout(900);
+    const after = await g.p.evaluate(() => {
+      const raw = localStorage.getItem('sleepsphere_state_v2');
+      let parsed = null;
+      try { parsed = JSON.parse(raw); } catch (e) {}
+      return {
+        banner: !document.getElementById('storageWarning').hidden,
+        version: parsed && Number(parsed.version),
+        mornings: parsed && Array.isArray(parsed.mornings) ? parsed.mornings.length : -1
+      };
+    });
+    check(`Protected (${name}): erasing stands the guard down`, after.banner === false);
+    check(`Protected (${name}): and the device saves again, empty`,
+      after.version === 3 && after.mornings === 0, JSON.stringify(after));
+    check(`Protected (${name}): nothing thrown`, g.errs.length === 0, g.errs.join(' | '));
+    await g.ctx.close();
+  }
+
   await b.close();
   console.log(fails === 0 ? '\nALL CHECKS PASSED' : `\n${fails} FAILED`);
   process.exit(fails ? 1 : 0);

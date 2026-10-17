@@ -121,7 +121,12 @@
     { id: 'stream',    label: 'Water',     type: 'white', hz: 900,  q: 3.2,  lfo: 0.21, depth: 520, gain: 0.22 },
     { id: 'leaves',    label: 'Leaves',    type: 'brown', hz: 760,  q: 2.4,  lfo: 0.17, depth: 330, gain: 0.32 },
     { id: 'snowfield', label: 'Snowfield', type: 'brown', hz: 240,  q: 0.5,  lfo: 0.022, depth: 260, gain: 0.46 },
-    { id: 'night',     label: 'Night air', type: 'brown', hz: 180,  q: 0.9,  lfo: 0.03, depth: 60,  gain: 0.55 }
+    { id: 'night',     label: 'Night air', type: 'brown', hz: 180,  q: 0.9,  lfo: 0.03, depth: 60,  gain: 0.55 },
+    /* Cabin hum, for Flight Mode. The lowest and steadiest thing in the
+       set by a wide margin — a jet cabin is a drone, not weather, so it
+       barely moves. Synthesised like the rest: it is not a recording of
+       an aircraft and is never described as one. */
+    { id: 'engine',    label: 'Cabin hum', type: 'brown', hz: 85,   q: 0.42, lfo: 0.012, depth: 22, gain: 0.58 }
   ];
 
   /* ==================================================================
@@ -192,10 +197,15 @@
     /* Everything a practice started, stopped — in one place, so a new
        practice cannot forget. This is also what stops audio continuing
        after the screen is gone. */
-    if (active && active.stop) { try { active.stop(); } catch {} }
+    /* Opening a dialog from the Explore hub is not closing an existing
+       practice. The old unconditional stopAudio() silenced sounds as soon
+       as the mixer opened, while the UI could still say Playing. */
+    if (layer) {
+      if (active && active.stop) { try { active.stop(); } catch {} }
+      /* Keep opted-in soundscapes alive in the persistent mini-player. */
+      layer.remove();
+    }
     active = null;
-    stopAudio();
-    if (layer) layer.remove();
     layer = null;
     document.documentElement.classList.remove('ex-open');
   }
@@ -309,7 +319,12 @@
   function stopAudio() {
     nodes.forEach(n => { try { n.src.stop(); n.lfo.stop(); } catch {} });
     nodes = [];
+    LIVE.clear();  /* The controls must never report Playing after shutdown. */
+    PENDING.clear();
+    audioGeneration += 1;
+    cancelFade();
     if (ctx) { try { ctx.close(); } catch {} ctx = null; master = null; }
+    renderPlayer();
   }
   function suspendAudio() { if (ctx && ctx.state === 'running') ctx.suspend(); }
 
@@ -323,6 +338,253 @@
        chance to wake a context the OS suspended behind our back. */
     if (!on) wake();
     if (master && ctx) master.gain.linearRampToValueAtTime(on ? 0 : masterLevel, ctx.currentTime + 0.15);
+    renderPlayer();
+  }
+
+  /* ==================================================================
+     WHAT IS PLAYING — one registry, shared.
+
+     Which layers are live used to be a Map created inside the mixer
+     screen and thrown away with it, so nothing else in the app could
+     tell whether sound was playing. That is why there was no way to
+     start a sound from anywhere else, and no way to show a player.
+     One module-level registry now, and the mixer reflects it rather
+     than owning it.
+     ================================================================== */
+  const LIVE = new Map();
+  const PENDING = new Map(); // Reserved while iOS AudioContext.resume() is pending.
+  /* Cancel sound starts still awaiting iOS AudioContext.resume(). */
+  let audioGeneration = 0;
+  let fadeTimer = null, fadeEndsAt = 0;
+
+  function layerSpec(id) { return LAYERS.find(l => l.id === id) || null; }
+  function layerOn(id) { return LIVE.has(id); }
+
+  /* Starting a sound, with the guards that were written for the mixer
+     and now apply everywhere.
+
+     A context can be suspended by the OS at any moment, and resume() is
+     asynchronous and allowed to fail. Firing it and hoping — which is
+     what the first version of this did — means a tap that silently does
+     nothing. This waits, checks the context really is running, and
+     throws something sayable if it is not, so the caller can show it
+     rather than leaving a dead button. Sources start inside the tap. */
+  async function startSoundOrThrow(id, level) {
+    const spec = layerSpec(id);
+    if (!spec) throw new Error('No such sound');
+    if (LIVE.has(id)) return true;
+    if (PENDING.has(id)) return false; // Ignore duplicate taps during startup.
+    if (!ensureContext()) throw new Error('Audio is unsupported in this browser');
+    /* On iOS Safari, starting the source after awaiting resume() can lose
+       the original user gesture. Start the graph synchronously in the tap,
+       then await the context; never claim Playing until it really runs. */
+    const audioCtx = ctx;
+    const generation = audioGeneration;
+    const node = startLayer(spec, typeof level === 'number' ? level : 0.6);
+    if (!node) throw new Error('Sound could not start');
+    PENDING.set(id, node);
+    try {
+      if (audioCtx.state !== 'running') await audioCtx.resume();
+      if (audioCtx.state !== 'running') throw new Error('Audio is blocked by the browser. Tap again.');
+      if (document.hidden || ctx !== audioCtx || generation !== audioGeneration || PENDING.get(id) !== node) {
+        if (PENDING.get(id) === node) PENDING.delete(id);
+        try { node.src.stop(); node.lfo.stop(); } catch {}
+        nodes = nodes.filter(n => n !== node);
+        return false;
+      }
+      PENDING.delete(id);
+      LIVE.set(id, node);
+      renderPlayer();
+      return true;
+    } catch (err) {
+      try { node.src.stop(); node.lfo.stop(); } catch {}
+      nodes = nodes.filter(n => n !== node);
+      if (PENDING.get(id) === node) PENDING.delete(id);
+      if (LIVE.get(id) === node) LIVE.delete(id);
+      renderPlayer();
+      throw err;
+    }
+  }
+
+  /* The forgiving form, for callers with nowhere to show an error. It
+     never rejects, so a card tap cannot raise an unhandled rejection. */
+  function startSound(id, level) {
+    return startSoundOrThrow(id, level).catch(err => {
+      announce(err && err.message ? err.message : 'Sound could not start');
+      return false;
+    });
+  }
+
+  /* Said out loud to assistive tech, and shown on the hub if it is open.
+     A failure nobody is told about is the same as a dead button. */
+  /* Saying it where the person is looking.
+
+     This used to append the message to the end of the hub, which on a
+     phone is well below the fold: a tap did nothing, and the reason for
+     it sat on a part of the page nobody had scrolled to. From the
+     outside that is indistinguishable from "there is no sound in this
+     app", which is exactly how it was reported.
+
+     It now goes in three places: the app's own toast, which appears
+     wherever you are; immediately under the sound you tapped; and a
+     live region for assistive tech. */
+  function announce(message) {
+    /* The shared toast belongs to index.html. Driving its element
+       directly rather than reaching into that scope keeps this module
+       standalone, and the class is the same one its own code uses. */
+    try {
+      const t = document.getElementById('toast');
+      if (t) {
+        t.textContent = message;
+        t.classList.add('show');
+        clearTimeout(announce.handle);
+        announce.handle = setTimeout(() => t.classList.remove('show'), 3800);
+      }
+    } catch (e) {}
+
+    let live = document.getElementById('ssAudioSays');
+    if (!live) {
+      live = el('p', 'ex-note ex-says');
+      live.id = 'ssAudioSays';
+      live.setAttribute('role', 'alert');
+    }
+    live.textContent = message;
+    /* Directly beneath the sounds, not at the end of the screen. */
+    const grid = document.querySelector('#explore .ex-sounds');
+    if (grid && grid.parentNode) {
+      if (live.previousElementSibling !== grid) grid.insertAdjacentElement('afterend', live);
+      const box = live.getBoundingClientRect();
+      if (box.bottom < 0 || box.top > window.innerHeight) {
+        try { live.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
+      }
+    } else {
+      const host = document.getElementById('explore');
+      if (host && !live.parentNode) host.appendChild(live);
+    }
+  }
+
+  function stopSound(id) {
+    const pending = PENDING.get(id);
+    if (pending) { PENDING.delete(id); stopLayer(pending); }
+    const node = LIVE.get(id);
+    if (node) { stopLayer(node); LIVE.delete(id); }
+    if (pending || node) renderPlayer();
+  }
+
+  function toggleSound(id, level) {
+    if (LIVE.has(id) || PENDING.has(id)) { stopSound(id); return Promise.resolve(false); }
+    return startSound(id, level);
+  }
+
+  function stopEverySound() {
+    audioGeneration += 1;
+    PENDING.forEach(stopLayer);
+    PENDING.clear();
+    LIVE.forEach(stopLayer);
+    LIVE.clear();
+    cancelFade();
+    renderPlayer();
+  }
+
+  function cancelFade() {
+    if (fadeTimer) { clearTimeout(fadeTimer); fadeTimer = null; }
+    fadeEndsAt = 0;
+  }
+
+  /* The sleep timer fades rather than cuts. Silence arriving suddenly is
+     the thing most likely to wake someone who has just gone under, which
+     would defeat the entire point of the timer. */
+  function setSleepTimer(minutes) {
+    cancelFade();
+    if (!minutes) { renderPlayer(); return; }
+    fadeEndsAt = Date.now() + minutes * 60000;
+    const FADE = 60000;                       /* a minute of fading out */
+    fadeTimer = setTimeout(() => {
+      const from = masterLevel;
+      const started = Date.now();
+      (function step() {
+        const k = Math.min(1, (Date.now() - started) / FADE);
+        setMaster(from * (1 - k));
+        if (k < 1) { fadeTimer = setTimeout(step, 250); return; }
+        stopEverySound();
+        setMaster(from);                      /* restored for next time */
+      })();
+    }, Math.max(0, minutes * 60000 - FADE));
+    renderPlayer();
+  }
+
+  /* ==================================================================
+     THE MINI-PLAYER.
+
+     Persistent, because sound outlives the screen it was started from.
+     It only exists while something is playing, so it costs nothing when
+     the app is silent.
+     ================================================================== */
+  /* The hub's cards show whether their sound is playing, so they have to
+     be told when it changes somewhere else — from the mixer, from the
+     player's stop button, or from the sleep timer fading out. Without
+     this a card sits reading "Tap to play" while its sound is audible. */
+  function refreshSoundCards() {
+    document.querySelectorAll('.ex-sound[data-sound]').forEach(card => {
+      const on = layerOn(card.dataset.sound);
+      card.classList.toggle('on', on);
+      card.setAttribute('aria-pressed', String(on));
+      const state = card.querySelector('.ex-sound-state');
+      if (state) state.textContent = on ? 'Playing' : 'Tap to play';
+    });
+  }
+
+  function renderPlayer() {
+    refreshSoundCards();
+    const existing = document.getElementById('ssPlayer');
+    if (!LIVE.size) { if (existing) existing.remove(); return; }
+
+    const names = [...LIVE.keys()].map(id => (layerSpec(id) || {}).label).filter(Boolean);
+    const bar = existing || el('div', 'ss-player');
+    bar.id = 'ssPlayer';
+    bar.setAttribute('role', 'region');
+    bar.setAttribute('aria-label', 'Sound player');
+    bar.textContent = '';
+
+    const now = el('div', 'ss-player-now');
+    now.appendChild(el('strong', null, names.length === 1 ? names[0] : names.length + ' sounds'));
+    const sub = el('span', null,
+      fadeEndsAt ? 'Fading out in ' + Math.max(1, Math.round((fadeEndsAt - Date.now()) / 60000)) + ' min'
+                 : (muted ? 'Muted' : 'Playing'));
+    now.appendChild(sub);
+    bar.appendChild(now);
+
+    const controls = el('div', 'ss-player-controls');
+    const play = btn(muted ? '▶' : '❚❚', 'ss-player-btn', () => setMuted(!muted));
+    play.setAttribute('aria-label', muted ? 'Resume sound' : 'Pause sound');
+    controls.appendChild(play);
+
+    const vol = el('input');
+    vol.type = 'range'; vol.min = 0; vol.max = 100;
+    vol.value = Math.round(masterLevel * 100);
+    vol.className = 'ss-player-vol';
+    vol.setAttribute('aria-label', 'Overall volume');
+    vol.addEventListener('input', () => setMaster(Number(vol.value) / 100));
+    controls.appendChild(vol);
+
+    const timer = btn(fadeEndsAt ? '⏱' : '⏱', 'ss-player-btn', () => {
+      const next = fadeEndsAt ? 0 : 45;
+      setSleepTimer(next);
+    });
+    timer.setAttribute('aria-label', fadeEndsAt ? 'Cancel the sleep timer' : 'Fade out after 45 minutes');
+    timer.setAttribute('aria-pressed', String(Boolean(fadeEndsAt)));
+    controls.appendChild(timer);
+
+    const mix = btn('Mixer', 'ss-player-btn ss-player-mix', () => soundscape());
+    mix.setAttribute('aria-label', 'Open the full sound mixer');
+    controls.appendChild(mix);
+
+    const stop = btn('×', 'ss-player-btn', stopEverySound);
+    stop.setAttribute('aria-label', 'Stop all sound');
+    controls.appendChild(stop);
+
+    bar.appendChild(controls);
+    if (!existing) document.body.appendChild(bar);
   }
 
   /* ==================================================================
@@ -355,9 +617,46 @@
     controls.append(back, toggle, fwd);
     card.appendChild(controls);
 
+    /* Spoken guidance, so the scan can be done with eyes closed.
+
+       OFF until asked for, and the toggle is the asking: audio that
+       starts on its own is the one thing this app must never do. It
+       uses the device's own voice rather than a recording, which is
+       said plainly here rather than left to be discovered. */
+    let speak = false;
+    const voiceRow = el('div', 'ex-controls');
+    const voiceBtn = btn('Speak the steps', 'ex-quiet', () => {
+      speak = !speak;
+      voiceBtn.classList.toggle('on', speak);
+      voiceBtn.setAttribute('aria-pressed', String(speak));
+      voiceBtn.textContent = speak ? 'Stop speaking' : 'Speak the steps';
+      if (speak) say(REGIONS[i][0] + '. ' + REGIONS[i][1]);
+      else hush();
+    });
+    voiceBtn.setAttribute('aria-pressed', 'false');
+    voiceRow.appendChild(voiceBtn);
+    card.appendChild(voiceRow);
+
+    function say(text) {
+      if (!speak) return;
+      try {
+        const synth = window.speechSynthesis;
+        if (!synth) return;
+        synth.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.rate = 0.82; u.pitch = 0.95; u.volume = 0.9;
+        synth.speak(u);
+      } catch (e) { /* no voice on this device; the text is still on screen */ }
+    }
+    function hush() {
+      try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) {}
+    }
+
     const note = el('p', 'ex-note',
-      'Every step is written out, and it moves on its own. You can pause ' +
-      'anywhere, go back, or stop and leave — nothing is being counted.');
+      'Every step is written out, and it moves on its own — you do not ' +
+      'have to tap anything once it starts. You can pause anywhere, go ' +
+      'back, or stop and leave; nothing is being counted. Spoken guidance ' +
+      'uses your device’s own voice and stays off until you turn it on.');
     card.appendChild(note);
     body.appendChild(card);
 
@@ -379,6 +678,7 @@
       if (left <= 0) {
         if (i >= REGIONS.length - 1) { finish(); return; }
         i += 1; left = perStep;
+        say(REGIONS[i][0] + '. ' + REGIONS[i][1]);
       }
       paint();
     }
@@ -389,10 +689,13 @@
       timer = setInterval(tick, 1000);
       paint();
     }
-    function pause() { running = false; clearInterval(timer); paint(); }
+    function pause() { running = false; clearInterval(timer); hush(); paint(); }
     function finish() {
       running = false; done = true; clearInterval(timer);
       fill.style.width = '100%';
+      /* A gentle ending rather than a stop: the last thing said is an
+         invitation to stay, not an announcement that it is over. */
+      say('That is the whole body. Stay as long as you like.');
       paint();
     }
     function go(n) {
@@ -400,7 +703,7 @@
       i = n; left = perStep; done = false; paint();
     }
 
-    active = { stop: () => clearInterval(timer), pause };
+    active = { stop: () => { clearInterval(timer); hush(); }, pause };
     paint();
   }
 
@@ -485,7 +788,6 @@
      ================================================================== */
   function soundscape() {
     const body = openLayer('Sounds');
-    const live = new Map();
 
     const card = el('section', 'ex-card');
     card.appendChild(el('h2', null, 'Sounds'));
@@ -496,31 +798,90 @@
 
     LAYERS.forEach(spec => {
       const row = el('div', 'ex-layer-row');
-      const on = btn(spec.label, 'ex-toggle', () => {
-        if (live.has(spec.id)) {
-          stopLayer(live.get(spec.id)); live.delete(spec.id);
+      /* Merged: this screen keeps the shared registry, and takes the
+         three protections that were written against its old local Map —
+         they now live in startSound() so they also cover the hub's
+         cards, which the earlier version could not reach. */
+      const on = btn(spec.label, 'ex-toggle', async () => {
+        if (on.disabled) return;                 /* no double taps */
+        if (layerOn(spec.id)) {
+          stopSound(spec.id);
           on.classList.remove('on'); on.setAttribute('aria-pressed', 'false');
           slider.disabled = true;
-        } else {
-          const node = startLayer(spec, Number(slider.value) / 100);
-          if (!node) { card.appendChild(el('p', 'ex-note', 'Sound is not available in this browser.')); return; }
-          live.set(spec.id, node);
+          return;
+        }
+        on.disabled = true;
+        try {
+          const started = await startSoundOrThrow(spec.id, Number(slider.value) / 100);
+          /* A pending iOS start can be cancelled while resume() resolves.
+             Never show Playing unless the shared registry confirms audio. */
+          if (!started || !layerOn(spec.id)) {
+            on.classList.remove('on'); on.setAttribute('aria-pressed', 'false');
+            slider.disabled = true;
+            return;
+          }
           on.classList.add('on'); on.setAttribute('aria-pressed', 'true');
           slider.disabled = false;
-        }
+        } catch (err) {
+          const warning = card.querySelector('[data-audio-warning]') || el('p', 'ex-note');
+          warning.dataset.audioWarning = 'true';
+          warning.setAttribute('role', 'alert');
+          warning.textContent = err.message || 'Audio could not start';
+          card.appendChild(warning);
+        } finally { on.disabled = false; }
       });
-      on.setAttribute('aria-pressed', 'false');
+      /* Reflects what is ALREADY playing, because sound can now be
+         started from the hub and this screen may be opened on top of it. */
+      const alreadyOn = layerOn(spec.id);
+      if (alreadyOn) on.classList.add('on');
+      on.setAttribute('aria-pressed', String(alreadyOn));
       const slider = el('input');
-      slider.type = 'range'; slider.min = 0; slider.max = 100; slider.value = 60;
-      slider.disabled = true;
+      slider.type = 'range'; slider.min = 0; slider.max = 100;
+      slider.value = alreadyOn ? Math.round((LIVE.get(spec.id).level || 0.6) * 100) : 60;
+      slider.disabled = !alreadyOn;
       slider.setAttribute('aria-label', spec.label + ' volume');
       slider.addEventListener('input', () => {
-        const node = live.get(spec.id);
+        const node = LIVE.get(spec.id);
         if (node) setLayerLevel(node, Number(slider.value) / 100);
       });
       row.append(on, slider);
       card.appendChild(row);
     });
+
+    /* Independent output check: a short sine tone goes directly to the
+       destination, bypassing the weather filters and the mixer master.
+       On iOS the oscillator is started in the user's tap handler. */
+    const speakerStatus = el('p', 'ex-note');
+    speakerStatus.setAttribute('role', 'status');
+    const speakerTest = btn('Test speaker tone', 'ex-quiet', () => {
+      try {
+        const audio = ensureContext();
+        if (!audio) {
+          speakerStatus.textContent = 'This browser has no Web Audio support.';
+          return;
+        }
+        const tone = audio.createOscillator();
+        const level = audio.createGain();
+        tone.type = 'sine';
+        tone.frequency.value = 440;
+        level.gain.setValueAtTime(0.0001, audio.currentTime);
+        level.gain.exponentialRampToValueAtTime(0.12, audio.currentTime + 0.04);
+        level.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.65);
+        tone.connect(level).connect(audio.destination);
+        tone.start();
+        tone.stop(audio.currentTime + 0.67);
+        wake();
+        speakerStatus.textContent = 'Audio engine: ' + audio.state +
+          '. A short test tone was requested.';
+        setTimeout(() => {
+          speakerStatus.textContent = 'Audio engine: ' + audio.state +
+            '. If silent, check iPad volume and output device.';
+        }, 850);
+      } catch (err) {
+        speakerStatus.textContent = 'Speaker test error: ' + (err.message || String(err));
+      }
+    });
+    card.append(speakerTest, speakerStatus);
 
     const masterRow = el('div', 'ex-layer-row ex-master');
     const muteBtn = btn(muted ? 'Unmute' : 'Mute', 'ex-toggle', () => {
@@ -538,10 +899,16 @@
     card.appendChild(masterRow);
 
     card.appendChild(el('p', 'ex-note',
-      'Sound stops when you close this screen, and when you switch away ' +
-      'from the app.'));
+      'Sound keeps playing while you move between tabs, and the player at ' +
+      'the bottom follows it. It stops when you stop it, when the sleep ' +
+      'timer fades it out, or when you switch ' +
+      'away from the app.'));
     body.appendChild(card);
-    active = { stop: () => { live.forEach(stopLayer); live.clear(); } };
+    /* closeLayer() stops all audio, which is this project's existing rule
+       for practice screens and is asserted by test/sounds-discovery.js.
+       The registry is emptied to match, so the player and the hub cards
+       cannot be left claiming something is playing when it is not. */
+    active = { stop: () => {} };
   }
 
   /* ==================================================================
@@ -644,32 +1011,195 @@
   const PRACTICES = [
     ['Body scan', 'Thirteen steps, feet upward. About seven minutes.', bodyScan],
     ['Breathing', 'A longer out-breath. No holding.', breathing],
-    ['Sounds', 'Rain, water, leaves, wind, snow, night air. Mix your own.', soundscape],
+    ['Sounds', 'Rain, water, leaves, wind, snow, night air, cabin hum. Mix your own.', soundscape],
     ['Reflection', 'Put down what is still turning over.', () => writing('reflection')],
     ['Gratitude', 'Anything worth keeping from today.', () => writing('gratitude')],
     ['About sleep', 'Six short pieces, with their sources.', lessons]
   ];
+
+  /* ==================================================================
+     THE HUB — Sounds & Experiences.
+
+     Everything in this app that can be started was reachable, and almost
+     none of it was findable: sounds were three taps inside a practice
+     called "Sounds" inside a tab called Explore, Flight Mode was a URL
+     parameter, Living Sky was another one, and the Sabat Compass was
+     behind a button on a different screen.
+
+     This is one screen with two labelled groups. It does NOT add a fifth
+     destination — the four-tab architecture is unchanged — and it does
+     not reimplement anything: every card starts something that already
+     exists. From the home screen it is two taps to any sound and two to
+     any experience.
+     ================================================================== */
+
+  function goWorld(id) {
+    try {
+      localStorage.setItem('ss_world', id);
+      localStorage.setItem('ss_ui', 'classic');
+      localStorage.setItem('ss_concept', 'off');
+    } catch (e) {}
+    location.search = '?world=' + id;
+  }
+
+  function livingSkyOn() {
+    if (window.SSLivingSky && typeof window.SSLivingSky.setEnabled === 'function') {
+      window.SSLivingSky.setEnabled(true);
+      return true;
+    }
+    try { localStorage.setItem('ss_living_sky', 'on'); } catch (e) {}
+    location.search = '?sky=real';
+    return false;
+  }
+
+  /* A real screen, so the tile leads somewhere like every other one.
+     It also reports what the footage layer actually did, which is the
+     only honest thing to show: most dayparts have no recording, and
+     saying "on" when nothing can play would be a lie. */
+  function livingSkyTile() {
+    const body = openLayer('Living Sky');
+    const card = el('section', 'ex-card');
+    card.appendChild(el('h2', null, 'Living Sky'));
+
+    const sky = window.SSLivingSky;
+    const on = Boolean(sky && typeof sky.enabled === 'function' && sky.enabled());
+
+    card.appendChild(el('p', 'ex-note',
+      'Real recorded sky behind the whole app, where a clip exists for the ' +
+      'time of day. Everything else is the drawn sky, which is never ' +
+      'described as footage.'));
+
+    const state = el('p', 'ex-words');
+    state.setAttribute('role', 'status');
+    const row = el('div', 'ex-controls');
+    const toggle = btn(on ? 'Turn off' : 'Turn on', 'ex-primary', () => {
+      const want = !(sky && sky.enabled && sky.enabled());
+      if (sky && typeof sky.setEnabled === 'function') sky.setEnabled(want);
+      else { try { localStorage.setItem('ss_living_sky', want ? 'on' : 'off'); } catch (e) {} }
+      paint();
+    });
+    row.appendChild(toggle);
+    const look = btn('Go and look', 'ex-quiet', () => { closeLayer(); goView('today'); });
+    row.appendChild(look);
+
+    function paint() {
+      const live = Boolean(sky && sky.enabled && sky.enabled());
+      toggle.textContent = live ? 'Turn off' : 'Turn on';
+      const status = sky && typeof sky.status === 'function' ? sky.status() : 'unavailable';
+      const covered = sky && typeof sky.covered === 'function' ? sky.covered() : [];
+      state.textContent = !live
+        ? 'Off. The drawn sky is showing.'
+        : status === 'playing' || status === 'paused'
+          ? 'On, and footage is playing now.'
+          : status === 'unavailable'
+            ? 'On, but there is no recording for this time of day, so the drawn sky is showing.'
+            : 'On. Loading the recording for this time of day.';
+      if (covered.length) {
+        state.textContent += ' Footage exists for: ' + covered.join(', ') + '.';
+      }
+    }
+    paint();
+
+    card.appendChild(state);
+    card.appendChild(row);
+    card.appendChild(el('p', 'ex-note',
+      'Playback of these clips has never been verified on an iPhone, so ' +
+      'this may show the drawn sky on your device. It is labelled either ' +
+      'way rather than guessed at.'));
+    body.appendChild(card);
+    active = { stop: () => {} };
+  }
+
+  function goView(view) {
+    const nav = document.querySelector('.nav button[data-view="' + view + '"]');
+    if (nav) { nav.click(); return true; }
+    return false;
+  }
+
+  function goScreen(target) {
+    const b = document.querySelector('[data-go="' + target + '"]');
+    if (b) { b.click(); return true; }
+    return false;
+  }
+
+  /* Each experience names what it is and what starting it does. Nothing
+     here is new behaviour; every one of these already worked. */
+  const EXPERIENCES = [
+    /* Opens the cabin: the window-seat screen built to the visual
+       reference. The Flight world's wind-down is still reachable from
+       its own card below. */
+    ['Flight Mode', 'A window seat above the clouds. Real footage where it exists.',
+      () => { if (window.SSFlightCabin) window.SSFlightCabin.open(); else goWorld('flight'); }],
+    ['Flight wind-down', 'The descent: arrive, settle, release.', () => goWorld('flight')],
+    /* Living Sky is a toggle, not a journey: it puts recorded footage
+       behind the whole app. Tapping it used to enable the layer and
+       leave you looking at the same screen with no sign anything had
+       happened, which is indistinguishable from a dead button. It now
+       says what it did and takes you where you can see it. */
+    ['Living Sky', 'Recorded sky behind the app, where footage exists.', livingSkyTile],
+    ['Body scan', 'Thirteen steps, feet upward. Voice-free, hands-free.', bodyScan],
+    ['Breathing', 'A longer out-breath. No holding.', breathing],
+    ['Sabat Compass', 'What your own nights have shown so far.', () => goScreen('compass')],
+    ['Reflection', 'Put down what is still turning over.', () => writing('reflection')],
+    ['Gratitude', 'Anything worth keeping from today.', () => writing('gratitude')],
+    ['About sleep', 'Six short pieces, with their sources.', lessons]
+  ];
+
+  function soundCard(spec) {
+    const b = btn('', 'ex-sound' + (layerOn(spec.id) ? ' on' : ''), null);
+    b.dataset.sound = spec.id;
+    b.appendChild(el('strong', null, spec.label));
+    b.appendChild(el('span', 'ex-sound-state', layerOn(spec.id) ? 'Playing' : 'Tap to play'));
+    b.setAttribute('aria-pressed', String(layerOn(spec.id)));
+    /* The card does not paint itself: toggleSound drives the player,
+       which refreshes every card. One source of truth for what is
+       playing, so a card can never disagree with the sound. */
+    b.addEventListener('click', () => { toggleSound(spec.id); });
+    return b;
+  }
 
   function mount() {
     const host = document.getElementById('learn');
     if (!host || document.getElementById('explore') || !SS || !SS.engine) return;
     const section = el('section', 'card ex-card ex-index');
     section.id = 'explore';
-    section.appendChild(el('h3', null, 'Practices'));
-    /* Deliberately does not say "no streaks". Naming the thing plants it,
-       and a reassurance about a mechanic nobody mentioned invites the
-       reader to wonder where it is. */
+    section.appendChild(el('h3', null, 'Sounds & Experiences'));
     section.appendChild(el('p', 'ex-note',
-      'Each of these does something. Nothing here is timed against you or ' +
+      'Everything you can start is here. Nothing is timed against you or ' +
       'kept as a record of how often you came back.'));
+
+    /* ---- Sounds ---- */
+    const sh = el('div', 'ex-group-head');
+    sh.appendChild(el('h4', null, 'Sounds'));
+    sh.appendChild(el('span', 'ex-group-note', 'Tap to play. Layer as many as you like.'));
+    section.appendChild(sh);
+
+    const sounds = el('div', 'ex-sounds');
+    LAYERS.forEach(spec => sounds.appendChild(soundCard(spec)));
+    section.appendChild(sounds);
+
+    const mixRow = el('div', 'ex-group-foot');
+    mixRow.appendChild(btn('Open the mixer', 'ex-link', soundscape));
+    section.appendChild(mixRow);
+    section.appendChild(el('p', 'ex-note',
+      'These are generated on the device rather than streamed, so they ' +
+      'work with no connection and download nothing.'));
+
+    /* ---- Experiences ---- */
+    const eh = el('div', 'ex-group-head');
+    eh.appendChild(el('h4', null, 'Experiences'));
+    eh.appendChild(el('span', 'ex-group-note', 'Longer things to move through.'));
+    section.appendChild(eh);
+
     const grid = el('div', 'ex-grid');
-    PRACTICES.forEach(([label, blurb, open]) => {
+    EXPERIENCES.forEach(([label, blurb, open]) => {
       const b = btn('', 'ex-tile', open);
       b.appendChild(el('strong', null, label));
       b.appendChild(el('span', null, blurb));
       grid.appendChild(b);
     });
     section.appendChild(grid);
+
     /* The religious material is not reimplemented here. It is verified
        content that already exists in this app, and a second copy is a
        second thing to keep correct. */
@@ -688,6 +1218,15 @@
     },
     close: closeLayer,
     audioRunning: () => Boolean(ctx && nodes.length),
+    /* The hub and the player need these, and so do the tests: what is
+       playing has to be inspectable from outside, or "the sound works"
+       is an opinion. */
+    startSound, startSoundOrThrow, stopSound, toggleSound, stopEverySound,
+    openMixer: soundscape,
+    playing: () => [...LIVE.keys()],
+    setSleepTimer,
+    timerEndsAt: () => fadeEndsAt,
+    EXPERIENCES: () => EXPERIENCES.map(e => e[0]),
     REGIONS, PACES, LAYERS, LESSONS
   };
 })();

@@ -85,7 +85,13 @@ const SEED = `(()=>{localStorage.setItem('sleepsphere_state_v2', JSON.stringify(
    recording. The app reads the time constantly — for the sky, the prayer
    card and the bed stamp — so it has to be held, not nudged. */
 const FREEZE = () => {
-  const fixed = new Date(); fixed.setHours(23, 10, 0, 0);
+  /* 20:40 is the EVENING phase. This was 23:10, which is SLEEP — and the
+     app deliberately puts the night console away at bedtime, so the beat
+     this whole trailer is built around, "Too tired to log it?", was
+     clicking a button the app had correctly hidden. The sky is driven
+     separately by __setHour, so the footage is still a night sky; only
+     the app's own sense of the hour moves. */
+  const fixed = new Date(); fixed.setHours(20, 40, 0, 0);
   const Real = Date;
   window.Date = class extends Real {
     constructor(...a) { return a.length ? new Real(...a) : new Real(fixed); }
@@ -249,8 +255,22 @@ const wait = async (p, ms, label) => {
   await p.goto('http://localhost:8099/index.html', { waitUntil: 'networkidle' });
   await p.evaluate(CINEMA);
 
+  /* Two kinds of destination, and this script predated the difference.
+
+     The navigation is four tabs — today, twin, learn, data — and that is
+     a tested invariant. Everything else (plan, compass, bio, morning,
+     unload, experiment…) is a SCREEN, reached from a [data-go] button
+     rather than a tab. This asked for `.nav button[data-view="plan"]`,
+     which has not existed since the navigation was cut to four, so the
+     script died on a null click before recording a single frame of the
+     second half. Taking either kind, and saying which target is missing
+     when one is, is the difference between a stale script and a usable
+     one. */
   const go = (view, y = 0) => p.evaluate(([v, top]) => {
-    document.querySelector(`.nav button[data-view="${v}"]`).click();
+    const target = document.querySelector(`.nav button[data-view="${v}"]`)
+      || document.querySelector(`[data-go="${v}"]`);
+    if (!target) throw new Error(`No destination "${v}": not one of the four tabs and no [data-go] for it`);
+    target.click();
     window.scrollTo({ top, behavior: 'instant' });
     window.__pop();
   }, [view, y]);
