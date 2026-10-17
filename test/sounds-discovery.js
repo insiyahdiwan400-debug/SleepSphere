@@ -102,7 +102,18 @@ const SEED = `(() => {
         await page.evaluate(() => window.SSExplore.audioRunning() === true));
       check('Persistent sound player remains available',
         await page.locator('#ssPlayer[aria-label="Sound player"]').count() === 1);
+      /* Stop is deliberately a fade, not a cut: 0.4s of ramp, then the
+         sources are stopped. Reading audioRunning() in the same tick as
+         the click therefore caught the graph mid-fade and called a
+         working Stop broken. Split into the two things that matter, and
+         both are now asserted rather than one by accident: the controls
+         must stop claiming Playing at once, and the graph must really be
+         down once the fade has run. */
       await page.locator('#ssPlayer button[aria-label="Stop all sound"]').click();
+      check('Stop all sound clears the controls immediately',
+        await page.evaluate(() => window.SSExplore.playing().length === 0
+          && document.getElementById('ssPlayer') === null));
+      await page.waitForTimeout(1200);
       check('Explicit Stop all sound stops the audio graph',
         await page.evaluate(() => window.SSExplore.audioRunning() === false));
     }
