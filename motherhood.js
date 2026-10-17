@@ -125,8 +125,12 @@
 
   async function persist() {
     if (!isUnlocked()) throw new Error('locked');
-    const cipher = await sealVault(session.vault, session.key);
-    const existing = record() || {};
+    const key = session.key;
+    const vault = session.vault;
+    const cipher = await sealVault(vault, key);
+    if (session.key !== key || session.vault !== vault) throw new Error('locked');
+    const existing = record();
+    if (!existing || !existing.kdf) throw new Error('vault erased');
     MH.set({
       enabled: true,
       v: VAULT_VERSION,
