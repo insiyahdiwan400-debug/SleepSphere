@@ -4130,11 +4130,11 @@
       const protectedState = Boolean(loadState.corrupt || loadState.futureVersion || loadState.unsupportedVersion);
       const broken = protectedState || !store.healthy || document.documentElement.dataset.storage === 'unavailable';
       node.hidden = !broken;
+      const title = node.querySelector('strong');
+      const why = document.getElementById('storageWarningWhy');
+      const fix = node.querySelector('.storage-fix');
+      const button = document.getElementById('storageWarningExport');
       if (protectedState) {
-        const title = node.querySelector('strong');
-        const why = document.getElementById('storageWarningWhy');
-        const fix = node.querySelector('.storage-fix');
-        const button = document.getElementById('storageWarningExport');
         if (title) title.textContent = 'Saved data protected — new changes cannot be saved.';
         if (why) why.textContent = loadState.corrupt
           ? 'SleepSphere cannot read the saved data. The original is untouched.'
@@ -4143,6 +4143,17 @@
             : 'An unrecognized saved-data format is protected from overwrite.';
         if (fix) fix.textContent = 'Do not clear site data. Download the original and use a compatible version.';
         if (button) button.textContent = 'Download original saved data';
+      } else {
+        /* Put the markup's own wording back. Erase Everything can clear
+           the protection while the page is still up, and a banner left
+           carrying "do not clear site data" would then be advice about
+           data that no longer exists — and the wrong advice for the
+           blocked-storage case, which is the only reason it could
+           reappear. */
+        if (title) title.textContent = 'Nothing is being saved.';
+        if (why) why.textContent = 'This browser is not letting SleepSphere store anything, so tonight’s entries will disappear when you close this tab.';
+        if (fix) fix.textContent = 'Try opening the link in its own browser tab rather than inside another app, or add it to your Home Screen. If you are in Private Browsing, use a normal window.';
+        if (button) button.textContent = 'Save what I have now';
       }
     }
 
@@ -7878,7 +7889,16 @@
          protection. */
       if (window.SSMotherhood && typeof window.SSMotherhood.lock === 'function') window.SSMotherhood.lock();
       ['ss_plan','ss_thoughts','ss_mornings','ss_feedback',STORAGE_KEY,MOTHERHOOD_KEY].forEach(key => store.remove(key));
-      state = clone(defaults); demoMode = false; selectedExperiment = null; resetScan(); clearMorningForm(); saveState(); populateForms(); renderAll();
+      /* The save guard exists to stop this build writing over data it
+         could not read. The owner of that data has just deliberately
+         erased it, so there is nothing left to protect and the flags
+         are stale — left set, they would refuse the write, keep the
+         protected-data banner up and toast about it on a device the
+         person has just emptied on purpose. */
+      loadState.corrupt = false; loadState.futureVersion = 0;
+      loadState.unsupportedVersion = ''; loadState.protectedRaw = null;
+      saveState.warned = false;
+      state = clone(defaults); demoMode = false; selectedExperiment = null; resetScan(); clearMorningForm(); saveState(); renderStorageWarning(); populateForms(); renderAll();
       // Back to a blank device, which means onboarding again — the only way a
       // second participant can be enrolled on the same phone without
       // inheriting the first one's code.
