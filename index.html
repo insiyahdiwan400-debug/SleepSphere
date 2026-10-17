@@ -5096,20 +5096,37 @@
         verified: sleepUnknown ? 'times-only'
                 : (state.lazyNight && state.lazyNight.date === date ? 'corrected' : 'entered')
       };
-      /* Archive first, then replace. The order matters only for clarity:
-         archiveMorning copies the record, so nothing depends on it still
-         being in the array. */
+      /* Keep the pre-write objects until storage confirms the new record.
+         A failed write must not erase an unfinished night, archive a
+         correction, or silently rewrite experiment baseline references. */
+      const previousMornings = state.mornings;
+      const previousRevisions = state.morningRevisions;
+      const previousLazyNight = state.lazyNight;
+      const baselineSnapshots = [state.activeExperiment, ...(state.experimentHistory || [])]
+        .filter(experiment => experiment && Array.isArray(experiment.baselineIds))
+        .map(experiment => ({ experiment, baselineIds: experiment.baselineIds }));
       if (existing) archiveMorning(existing, record.id);
       state.mornings = state.mornings.filter(item => item.id !== existing?.id);
       state.mornings.push(record);
       state.mornings.sort((a,b) => String(a.date).localeCompare(String(b.date)));
-      /* A corrected night is a closed night. Without this the provisional
-         lazyNight would still be open and the morning card would come back
-         tomorrow offering the times the participant has just rejected. */
+      /* A corrected night is a closed night only after it is saved. */
       if (state.lazyNight && state.lazyNight.date === date && !finishingLazyNight) {
         state.lazyNight = null;
       }
-      saveState(); clearMorningForm(); renderAll();
+      let saved = false;
+      try { saved = saveState(); }
+      catch (error) { console.error('SleepSphere morning save failed', error); }
+      if (!saved) {
+        state.mornings = previousMornings;
+        state.morningRevisions = previousRevisions;
+        state.lazyNight = previousLazyNight;
+        baselineSnapshots.forEach(({ experiment, baselineIds }) => {
+          experiment.baselineIds = baselineIds;
+        });
+        toast('Could not save this morning. Your answers are still here; please try again.');
+        return;
+      }
+      clearMorningForm(); renderAll();
       /* Says what changed and what did not, in the participant's terms. The
          word "supersede" appears nowhere a participant can see it. */
       toast(existing
