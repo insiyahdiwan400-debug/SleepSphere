@@ -125,9 +125,15 @@
 
   async function persist() {
     if (!isUnlocked()) throw new Error('locked');
+    const generation = sessionGeneration;
     const key = session.key;
     const vault = session.vault;
     const cipher = await sealVault(vault, key);
+    /* Identity and generation both, because they catch different things:
+       identity catches a different vault being swapped in, the counter
+       catches a lock-then-unlock that happened to land on the same
+       objects. Either one means these ciphertext bytes are stale. */
+    if (generation !== sessionGeneration) throw new Error('locked');
     if (session.key !== key || session.vault !== vault) throw new Error('locked');
     const existing = record();
     if (!existing || !existing.kdf) throw new Error('vault erased');
@@ -140,8 +146,10 @@
   }
 
   async function createVault(passcode) {
+    const generation = sessionGeneration;
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const key = await deriveKey(passcode, salt, KDF_ITERATIONS);
+    if (generation !== sessionGeneration || document.hidden) throw new Error('locked');
     /* Prepare the vault locally. A failed encryption or storage write must
        never leave a new, unsaved vault marked as unlocked in memory — the
        screen would then show an empty, working module whose contents are
@@ -149,6 +157,9 @@
        without any error the person could see. */
     const vault = blankVault();
     const cipher = await sealVault(vault, key);
+    /* Checked again, and before the write: a vault locked while it was
+       being encrypted must not land on the device as an enabled one. */
+    if (generation !== sessionGeneration || document.hidden) throw new Error('locked');
     MH.set({
       enabled: true,
       v: VAULT_VERSION,
@@ -162,16 +173,52 @@
   async function unlock(passcode) {
     const rec = record();
     if (!rec || !rec.kdf || !rec.cipher) throw new Error('no vault');
+    const generation = sessionGeneration;
     const key = await deriveKey(passcode, unb64(rec.kdf.salt), rec.kdf.iter || KDF_ITERATIONS);
+    if (generation !== sessionGeneration || document.hidden) throw new Error('locked');
     const vault = await openVault(rec.cipher, key);   // throws on a wrong passcode
+    if (generation !== sessionGeneration || document.hidden) throw new Error('locked');
     session.key = key;
     session.vault = vault;
     return vault;
   }
 
+  /* A vault that opens AFTER it was locked is not locked.
+
+     Key derivation is 250,000 PBKDF2 iterations, which on a phone is a
+     visible pause, and the app locks this vault when it is backgrounded
+     or the page is hidden. Both unlock() and createVault() awaited
+     across that pause and then assigned the session unconditionally, so
+     taking a call or switching apps while the passcode was being checked
+     left the vault open on return — no second passcode asked for, the
+     decrypted records sitting in memory. The lock was real and the
+     unlock simply outlived it.
+
+     This counter is what lock() owns, which is why it is declared here
+     rather than with the session: incrementing it invalidates every
+     authentication already in flight, and each await is followed by a
+     check before anything is assigned or written. A hidden page counts
+     as locked, because hiding the page is what triggers the lock. */
+  let sessionGeneration = 0;
+
   function lock() {
     session.key = null;
     session.vault = null;
+    sessionGeneration += 1;
+  }
+
+  /* True while an unlock or a vault creation is awaiting the key. The
+     interface needs this to cancel authentication on backgrounding:
+     isUnlocked() is still false at that point, so a handler that only
+     checked isUnlocked() let the pending unlock through. */
+  let authInFlight = 0;
+  function isAuthenticating() { return authInFlight > 0; }
+  function tracked(fn) {
+    return async function (...args) {
+      authInFlight += 1;
+      try { return await fn.apply(null, args); }
+      finally { authInFlight -= 1; }
+    };
   }
 
   /* ==================================================================
@@ -527,8 +574,11 @@
      ================================================================== */
   window.SSMotherhood = {
     VAULT_VERSION,
-    isEnabled, isUnlocked,
-    createVault, unlock, lock, persist,
+    isEnabled, isUnlocked, isAuthenticating,
+    /* Wrapped so the interface can tell that a passcode is being checked
+       and cancel it on backgrounding. The functions themselves are
+       unchanged; tracked() only counts them in and out. */
+    createVault: tracked(createVault), unlock: tracked(unlock), lock, persist,
     vault: () => session.vault,
     addEntry, removeEntry, setStage, liveEntries,
     pregnancyProgress, postpartumProgress, summarise,

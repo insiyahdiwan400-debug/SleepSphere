@@ -212,9 +212,17 @@ html.ex-open, html.ex-open body { overflow: hidden; }
 .ex-sound:focus-visible, .ex-link:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 
 /* The player. Above the tab bar, never over it. It exists only while
-   something is playing, so it costs nothing when the app is silent. */
+   something is playing, so it costs nothing when the app is silent.
+
+   It also has to sit above the full-screen layers, which is why this is
+   72 and not 6. Flight Mode is 60 and the bedtime veils are 66-70, so
+   the one control that stops a sound was being painted behind exactly
+   the screens people are on while a soundscape plays — start rain, open
+   Flight Mode, and there was no way to stop it without leaving. Sound
+   must never outlive the means to stop it. It stays below the mixer
+   dialog (92), which has fuller controls of its own. */
 .ss-player {
-  position: fixed; z-index: 6;
+  position: fixed; z-index: 72;
   left: max(8px, env(safe-area-inset-left, 0px));
   right: max(8px, env(safe-area-inset-right, 0px));
   bottom: calc(env(safe-area-inset-bottom, 0px) + 78px);

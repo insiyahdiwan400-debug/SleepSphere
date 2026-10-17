@@ -481,7 +481,18 @@
     .feedback-row { padding: 14px 0; border-bottom: 1px solid var(--line); }
     .feedback-row:last-child { border-bottom: 0; }
     .feedback-row .scale { margin-top: 8px; }
-    .toast { position: fixed; right: 22px; bottom: 22px; z-index: 40; max-width: min(360px,calc(100vw - 44px)); padding: 12px 15px; border-radius: 13px; color: white; background: var(--night); box-shadow: var(--shadow); opacity: 0; transform: translateY(10px); pointer-events: none; transition: .2s ease; }
+    /* The toast is the topmost thing in the document, deliberately.
+       At z-index 40 it sat UNDER every overlay the app has — the welcome
+       screen and fieldwork (60), Flight Mode (60), the night, early and
+       dua veils (66-70), the install sheet (70) and the sound mixer (92).
+       So every message the app tried to give while any of those was open
+       was painted behind it: a sound that could not start, a save that
+       did not reach the disk, a protected vault, an onboarding field that
+       needed fixing. The app was explaining itself to a layer nobody can
+       see, which from the outside is indistinguishable from an app that
+       says nothing and does nothing. It carries pointer-events: none, so
+       being on top costs no tap. */
+    .toast { position: fixed; right: 22px; bottom: 22px; z-index: 100; max-width: min(360px,calc(100vw - 44px)); padding: 12px 15px; border-radius: 13px; color: white; background: var(--night); box-shadow: var(--shadow); opacity: 0; transform: translateY(10px); pointer-events: none; transition: .2s ease; }
     .toast.show { opacity: 1; transform: none; }
     .modal { position: fixed; inset: 0; z-index: 25; display: none; place-items: center; padding: 20px; background: rgba(3,14,18,.64); backdrop-filter: blur(7px); }
     .modal.active { display: grid; }
@@ -7451,6 +7462,26 @@
       bridge: { name:'Fajr Bridge', action:'Use the Fajr Bridge to protect total sleep opportunity and record both the plan and morning function.' }
     };
 
+    /* What the research CSV is allowed to say about an experiment.
+       `#customExperimentName` is a free-text box the participant types
+       into, and its contents were being written straight into the
+       study export's experiment_name column — so anything someone had
+       typed there, including their own name or address, left the device
+       in the researcher's dataset. Nobody consented to that: the
+       consent covers sleep timings and the ratings, not free text.
+
+       A known experiment exports the catalogue's own wording, which the
+       app wrote and the researcher already has. A custom one exports
+       the word "custom" and nothing else; the participant still sees
+       their own title everywhere on screen. An experiment whose key is
+       not in the catalogue exports nothing rather than guessing. */
+    function researchExperimentName(experiment) {
+      if (!experiment) return '';
+      if (experiment.catalogKey === 'custom') return 'custom';
+      const known = experimentCatalog[experiment.catalogKey];
+      return known ? known.name : '';
+    }
+
     function metricValue(record, metric) {
       if (!record) return null;
       if (['rest','energy','focus','calm'].includes(metric)) {
@@ -7699,7 +7730,7 @@
       ['bio_body',             'Physical comfort, 0 to 100',                                  'entered'],
       ['bio_environment',      'Sleep environment, 0 to 100',                                 'entered'],
       ['experiment_id',        'Identifier of the personal experiment running, if any',       'calculated'],
-      ['experiment_name',      'Name of that experiment',                                     'calculated'],
+      ['experiment_name',      'The catalogue name of that experiment, or "custom" for one the participant titled themselves. Participant-typed titles are never exported.', 'calculated'],
       ['adherence',            'yes, no or not_applicable for the experiment that night',     'entered'],
       ['exported_at',          'ISO timestamp the file was produced',                         'calculated']
     ];
@@ -7784,7 +7815,7 @@
           bio ? 1 : 0,
           cell(inputs.light), cell(inputs.caffeine), cell(inputs.movement), cell(inputs.meal),
           cell(inputs.stress), cell(inputs.body), cell(inputs.environment),
-          cell(record?.experimentId), cell(experiment?.name), cell(record?.adherence),
+          cell(record?.experimentId), cell(researchExperimentName(experiment)), cell(record?.adherence),
           exportedAt
         ]);
       }
