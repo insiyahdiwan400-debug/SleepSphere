@@ -5101,6 +5101,11 @@
         verified: sleepUnknown ? 'times-only'
                 : (state.lazyNight && state.lazyNight.date === date ? 'corrected' : 'entered')
       };
+      if (finishingQuickWake) Object.assign(record, {
+        calm: null, quick: true,
+        measured: [],
+        estimated: ['bedTime', 'sleepTime', 'wakeTime', 'awakeMinutes']
+      });
       if (lazyCompletion) Object.assign(record, {
         lazy: true,
         energy: null, focus: null, calm: null,
@@ -5381,6 +5386,8 @@
        participant is answering a card, not overwriting a record they came
        looking for. */
     let supersedeWithoutAsking = false;
+    /* Quick wake answers must be annotated BEFORE the single durable write. */
+    let finishingQuickWake = false;
 
     /* Said in the participant's own terms, never with the word "flag". */
     const FLAG_TEXT = Object.freeze({
@@ -8747,18 +8754,11 @@
          immediately tell the truth about what was actually asked. The
          placeholder below never survives this function. */
       flowPicks.calm = flowPicks.calm || '3';
-      finishMorning();
-      const date = $('#logDate').value;
-      const saved = state.mornings.find(item => !item.demo && item.date === date);
-      if (!saved) return;
-      // Calm was not asked. An unasked question is null, not yesterday's answer.
-      saved.calm = null;
-      saved.quick = true;
-      /* The times came from the night plan, not from the person. Naming them
-         keeps `value_basis` in the research export truthful. */
-      saved.measured = [];
-      saved.estimated = ['bedTime', 'sleepTime', 'wakeTime', 'awakeMinutes'];
-      saveState();
+      finishingQuickWake = true;
+      try { finishMorning(); }
+      finally { finishingQuickWake = false; }
+      /* The shared save handler writes quick provenance and ratings in one
+         atomic transaction. A failed write leaves the prior night intact. */
     }
 
     /* One acknowledgement. Never a score, never a diagnosis, and never a
@@ -9548,8 +9548,11 @@
               factors: answers.factors || [],
               morningNote: answers.morningNote || ''
             });
+            const beforeIds = new Set(realMornings().map(item => item.id));
             if (opts.quick) finishWake(); else finishMorning();
-            return realMornings().at(-1) || null;
+            /* A rejected or failed write leaves the old list in place. Never
+               report yesterday's record as a newly saved check-in. */
+            return realMornings().find(item => !beforeIds.has(item.id)) || null;
           },
 
           /* The journal, as the one write path a second interface may use.
