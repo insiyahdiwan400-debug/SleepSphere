@@ -47,4 +47,4 @@ state.descending = true;
 clock.updateFlightFootage();
 assert.equal(clock.scene(), null, 'Descent removes video layer');
 assert.ok(calls.includes('remove:src'), 'canvas fallback receives the scene');
-console.log('Flight clock scenes: 14 assertions passed (source-level; no device video verification)');
+console.log('Flight clock scenes: 17 assertions passed (source-level; no device video verification)');
