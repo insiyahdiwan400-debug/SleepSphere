@@ -9916,26 +9916,21 @@
       }
       const now = new Date();
       state.lazyNight = { startedAt: now.toISOString(), bedTime: clockString(now), bedSource: source };
-      if (!saveState()) {
-        // The storage wrapper also caches failed writes in memory.
-        // Restore the previous state in both representations.
-        state.lazyNight = previousNight;
-        if (!loadState.corrupt && !loadState.futureVersion && !loadState.unsupportedVersion) {
-          store.set(STORAGE_KEY, JSON.stringify(state));
-        }
-        toast('Bedtime was not saved. Check the storage warning.');
-        return false;
-      }
+      // Storage can fail in embedded or private browsers. The session should
+      // remain usable in memory, but never be described as saved to disk.
+      const persisted = saveState();
       const wake = state.plan?.wakeTime || $('#continuousWake')?.value || '';
-      $('#lazyNote').textContent = wake
-        ? `Bed time noted as ${formatTime(toMinutes(clockString(now)))}. Wake anchor ${formatTime(toMinutes(wake))}. Nothing else to do.`
-        : `Bed time noted as ${formatTime(toMinutes(clockString(now)))}. Nothing else to do — open the app when you wake.`;
+      $('#lazyNote').textContent = !persisted
+        ? 'Bedtime is held only in this open session — NOT saved to this device. Check the storage warning before leaving.'
+        : wake
+          ? `Bed time noted as ${formatTime(toMinutes(clockString(now)))}. Wake anchor ${formatTime(toMinutes(wake))}. Nothing else to do.`
+          : `Bed time noted as ${formatTime(toMinutes(clockString(now)))}. Nothing else to do — open the app when you wake.`;
       $('#lazyVeil').hidden = false;
       // The screen closes itself. Requiring a tap to leave a screen whose
       // whole point is that you have nothing left would be a joke.
       window.setTimeout(() => { $('#lazyVeil').hidden = true; }, 6500);
       renderAll();
-      return true;
+      return persisted;
     }
 
     /** Offer the one-tap morning if a lazy night is open and enough of one
