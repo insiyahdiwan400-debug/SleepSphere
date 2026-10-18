@@ -83,4 +83,4 @@ assert.ok(handler.indexOf('if (finishingQuickWake) Object.assign(record') <
   'quick annotation occurs before durable save');
 assert.ok(!wakeBody.includes('saveState()'),
   'quick wake does not make a second unprotected write');
-console.log('PASS morning API and quick atomic write: 22 assertions');
+console.log('PASS morning API and quick atomic write: 27 assertions');
