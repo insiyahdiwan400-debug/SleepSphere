@@ -9908,9 +9908,24 @@
        it was — so the October 8 audit could not establish how 18:17 was
        stamped, only that it had been. */
     function startLazyNight(source = 'goodnight') {
+      // An open night belongs to the participant; repeated taps must not replace it.
+      const previousNight = state.lazyNight;
+      if (previousNight?.startedAt) {
+        toast('A night is already open. Finish it when you wake.');
+        return false;
+      }
       const now = new Date();
       state.lazyNight = { startedAt: now.toISOString(), bedTime: clockString(now), bedSource: source };
-      saveState();
+      if (!saveState()) {
+        // The storage wrapper also caches failed writes in memory.
+        // Restore the previous state in both representations.
+        state.lazyNight = previousNight;
+        if (!loadState.corrupt && !loadState.futureVersion && !loadState.unsupportedVersion) {
+          store.set(STORAGE_KEY, JSON.stringify(state));
+        }
+        toast('Bedtime was not saved. Check the storage warning.');
+        return false;
+      }
       const wake = state.plan?.wakeTime || $('#continuousWake')?.value || '';
       $('#lazyNote').textContent = wake
         ? `Bed time noted as ${formatTime(toMinutes(clockString(now)))}. Wake anchor ${formatTime(toMinutes(wake))}. Nothing else to do.`
@@ -9920,6 +9935,7 @@
       // whole point is that you have nothing left would be a joke.
       window.setTimeout(() => { $('#lazyVeil').hidden = true; }, 6500);
       renderAll();
+      return true;
     }
 
     /** Offer the one-tap morning if a lazy night is open and enough of one
