@@ -635,15 +635,24 @@
     card.appendChild(t('p', 'fl-kick', 'Good morning'));
     card.appendChild(t('p', 'fl-head2', 'How did last night leave you?'));
     var seg = el('div', { class: 'fl-seg', role: 'group', 'aria-label': 'Rested, 1 to 5' });
+    var saveError = el('p', { class: 'fl-save-error', role: 'alert', 'aria-live': 'polite' });
     for (var i = 1; i <= 5; i++) (function (v) {
       seg.appendChild(el('button', { type: 'button', text: String(v), 'data-v': v,
         'aria-label': 'Rested ' + v + ' of 5',
         onclick: function () {
-          A.record({ rest: v, energy: v, focus: v });
-          W.refresh();
+          saveError.textContent = '';
+          var saved = null;
+          try { saved = A.record({ rest: v, energy: v, focus: v }); }
+          catch (e) { saved = null; }
+          if (saved) {
+            W.refresh();
+          } else {
+            saveError.textContent = 'Could not save your check-in. Please try again.';
+          }
         } }));
     })(i);
     card.appendChild(seg);
+    card.appendChild(saveError);
     return card;
   }
 
