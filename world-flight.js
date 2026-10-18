@@ -176,6 +176,7 @@
     state.skyFrom = null; state.skySpan = null;
     delete document.documentElement.dataset.descending;
     if (sky) sky.set(restingSky({}));
+    updateFlightFootage();
   }
 
   function finish(overlay) {
@@ -213,7 +214,8 @@
   }
 
   function startDescent(overlay) {
-    state.descending = true; state.progress = 0; state.phase = 0; state.finishing = false;
+    state.descending = true;
+    updateFlightFootage(); state.progress = 0; state.phase = 0; state.finishing = false;
     /* Capture where the sky is now, and how far forward night is. A
        Descent begun in daylight crosses evening and dusk to get there; one
        begun at dusk has only the last of it left. Either way it only ever
@@ -240,6 +242,40 @@
     setProgress(0.001, overlay);
   }
 
+  /* Optional real flight footage. These files are never synthesized stills.
+     Each clock window has its own clip; missing media falls back to SSSky.
+     No participant state or storage is read or changed. */
+  var flightVideo = null, flightScene = null;
+  var FLIGHT_FOOTAGE = {
+    daylight: 'assets/flight/daylight.mp4',
+    golden: 'assets/flight/golden-hour.mp4',
+    sunset: 'assets/flight/sunset.mp4',
+    dusk: 'assets/flight/dusk.mp4'
+  };
+  function flightSceneForTime(now) {
+    var h = now.getHours() + now.getMinutes() / 60;
+    if (h >= 7 && h < 16) return 'daylight';
+    if (h >= 16 && h < 18) return 'golden';
+    if (h >= 18 && h < 19.5) return 'sunset';
+    if (h >= 19.5 && h < 21) return 'dusk';
+    return null; // Night and early morning keep the live sky.
+  }
+  function updateFlightFootage() {
+    if (!flightVideo) return;
+    var key = state.descending ? null : flightSceneForTime(new Date());
+    if (key === flightScene) return;
+    flightScene = key;
+    flightVideo.pause();
+    flightVideo.style.display = 'none';
+    if (!key) { flightVideo.removeAttribute('src'); flightVideo.load(); return; }
+    flightVideo.src = FLIGHT_FOOTAGE[key];
+    flightVideo.load();
+    var pending = flightVideo.play();
+    if (pending && pending.catch) pending.catch(function () {
+      flightVideo.style.display = 'none'; // Safari blocked playback: keep canvas.
+    });
+  }
+
   /* ── world ───────────────────────────────────────────────────────── */
   W.register({
     id: 'flight',
@@ -257,14 +293,25 @@
       host = el('div', { class: 'fl-sky', 'aria-hidden': 'true' });
       var canvas = el('canvas', { class: 'fl-canvas' });
       host.appendChild(canvas);
+      flightVideo = el('video', { class: 'fl-real-video', muted: '', autoplay: '', loop: '', playsinline: '', 'webkit-playsinline': '', preload: 'metadata', 'aria-hidden': 'true' });
+      flightVideo.muted = true;
+      flightVideo.defaultMuted = true;
+      flightVideo.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;pointer-events:none;';
+      flightVideo.addEventListener('playing', function () {
+        if (flightScene && !state.descending) flightVideo.style.display = 'block';
+      });
+      flightVideo.addEventListener('error', function () { flightVideo.style.display = 'none'; });
+      host.appendChild(flightVideo);
       root.insertBefore(host, root.firstChild);
       sky = new window.SSSky(canvas, { t: 0.42 });
       sky.start();
+      updateFlightFootage();
     },
 
     sync: function (model) {
       if (!sky || state.descending) return;
       sky.set(restingSky(model));
+      updateFlightFootage();
     },
 
     scene: function (model, journey, api) {
