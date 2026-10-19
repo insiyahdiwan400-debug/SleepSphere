@@ -246,12 +246,28 @@
      Each clock window has its own clip; missing media falls back to SSSky.
      No participant state or storage is read or changed. */
   var flightVideo = null, flightScene = null;
-  var FLIGHT_FOOTAGE = {
-    daylight: 'assets/flight/daylight.mp4',
-    golden: 'assets/flight/golden-hour.mp4',
-    sunset: 'assets/flight/sunset.mp4',
-    dusk: 'assets/flight/dusk.mp4'
-  };
+  /* Clips this session has already proved are not on the server. Reset
+     on reload, so adding the files and refreshing is all it takes. */
+  var FOOTAGE_MISSING = Object.create(null);
+  /* Empty, because none of these clips has ever existed.
+
+     This listed assets/flight/daylight.mp4, golden-hour.mp4, sunset.mp4
+     and dusk.mp4. There is no assets/flight directory and never has
+     been, so opening this world in the afternoon fetched a 404, fell
+     back to the drawn sky — correctly — and logged an error; then the
+     clock timer asked again a minute later, and every revisit asked
+     again from scratch. What people saw was always right. The noise was
+     not, and it cost nine checks across worlds.js, flight-cabin.js and
+     explore.js that exist to prove the app opens without console
+     errors.
+
+     The two clips this project has actually licensed are in assets/sky
+     and are credited in CREDITS.md; they are not daylight, golden hour
+     or dusk, and pointing these keys at them would be labelling footage
+     as something it is not. So this stays empty until real clips for
+     these dayparts are licensed, at which point they go here and the
+     fallback below stops being the only path. */
+  var FLIGHT_FOOTAGE = {};
   function flightSceneForTime(now) {
     var h = now.getHours() + now.getMinutes() / 60;
     if (h >= 7 && h < 16) return 'daylight';
@@ -263,6 +279,8 @@
   function updateFlightFootage() {
     if (!flightVideo) return;
     var key = state.descending ? null : flightSceneForTime(new Date());
+    /* Not licensed, or already proved absent this session: drawn sky. */
+    if (key && (!FLIGHT_FOOTAGE[key] || FOOTAGE_MISSING[key])) key = null;
     // Retry a missing/failed source when the scene is revisited; do not loop through dayparts.
     if (key === flightScene && (!key || (flightVideo.readyState >= 2 && !flightVideo.error))) return;
     flightScene = key;
@@ -301,7 +319,21 @@
       flightVideo.addEventListener('playing', function () {
         if (flightScene && !state.descending) flightVideo.style.display = 'block';
       });
-      flightVideo.addEventListener('error', function () { flightVideo.style.display = 'none'; });
+      flightVideo.addEventListener('error', function () {
+        flightVideo.style.display = 'none';
+        /* A clip that is not there is not a clip that failed to arrive.
+           MEDIA_ERR_SRC_NOT_SUPPORTED is what a 404 produces, and no
+           number of retries will conjure the file — so remember it and
+           stop asking. A network error (code 2) is left retryable,
+           because that one really can come good on the next visit.
+
+           Without this the clock timer below re-requested the same
+           missing file every minute, and every revisit to the world
+           logged another 404. The fallback to the drawn sky was always
+           correct; the noise was not. */
+        var err = flightVideo.error;
+        if (flightScene && err && err.code === 4) FOOTAGE_MISSING[flightScene] = true;
+      });
       host.appendChild(flightVideo);
       root.insertBefore(host, root.firstChild);
       sky = new window.SSSky(canvas, { t: 0.42 });
