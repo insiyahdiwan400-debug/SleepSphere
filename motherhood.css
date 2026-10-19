@@ -510,18 +510,27 @@ html.mh-open, html.mh-open body { overflow: hidden; }
   box-shadow: 0 0 0 2px #d6e9e1;
 }
 .mh-scene-choice:focus-visible { outline-color: #327a77; }
+/* The four thumbnails are their own files, not the full scenes scaled
+   down in the browser. The selector shows all four at about 108px tall;
+   pointing it at the backgrounds would have pulled 611KB of photography
+   to draw four postage stamps, on a screen someone opens once. The
+   thumbs are 56KB for the set.
+
+   Each keeps a background-color sampled from its own photograph, so a
+   tile that has not decoded yet is the right colour rather than a grey
+   hole — and so the selector still reads as four distinct places if the
+   images never arrive at all. */
 .mh-scene-preview {
   height: 108px;
   border-radius: 10px;
-  background-image: url("./media/motherhood/aurora.webp");
-  background-color: #6b8485;
+  background-color: #2c3c4b;
   background-position: center;
   background-size: cover;
 }
-.mh-preview-aurora { background-image: url("./media/motherhood/aurora.webp"); }
-.mh-preview-starlake { background-image: url("./media/motherhood/starlake.webp"); background-color: #5d7885; }
-.mh-preview-firstlight { background-image: url("./media/motherhood/firstlight.webp"); background-color: #b5b9ae; }
-.mh-preview-moonmeadow { background-image: url("./media/motherhood/moonmeadow.webp"); background-color: #818b8b; }
+.mh-preview-aurora { background-image: url("./media/motherhood/aurora-thumb.webp"); background-color: #15313a; }
+.mh-preview-starlake { background-image: url("./media/motherhood/starlake-thumb.webp"); background-color: #19405e; }
+.mh-preview-firstlight { background-image: url("./media/motherhood/firstlight-thumb.webp"); background-color: #7d8f73; }
+.mh-preview-moonmeadow { background-image: url("./media/motherhood/moonmeadow-thumb.webp"); background-color: #15295c; }
 .mh-primary { background: #326b6a; color: #fff; }
 .mh-primary:hover:not(:disabled) { background: #275657; }
 .mh-tile,.mh-opt,.mh-dot,.mh-chip { background: #f6f9f7; border-color: #dbe5df; }
@@ -548,9 +557,21 @@ html.mh-open, html.mh-open body { overflow: hidden; }
   --mh-landscape-overlay: linear-gradient(180deg,rgba(18,38,57,.06),rgba(20,43,59,.58));
   background: var(--mh-mist);
 }
+/* Glass, so the landscape runs up under the bar instead of stopping at
+   a hard grey edge. The fallback matters more than the blur: where
+   backdrop-filter is unsupported the bar stays a solid near-ivory and
+   the title keeps its contrast, rather than becoming dark text on a
+   transparent strip over a photograph. */
 .mh-bar {
   background: #f4f7f5;
-  border-bottom-color: #d9e3e1;
+  border-bottom-color: rgba(217, 227, 225, .7);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .mh-bar {
+    background: rgba(246, 249, 247, .74);
+    -webkit-backdrop-filter: saturate(135%) blur(16px);
+    backdrop-filter: saturate(135%) blur(16px);
+  }
 }
 .mh-bar-title {
   color: var(--mh-night);
@@ -565,9 +586,45 @@ html.mh-open, html.mh-open body { overflow: hidden; }
   font-size: .88em;
   margin-right: .48em;
 }
+/* The chosen landscape, as the screen's own atmosphere rather than a
+   picture on one card.
+
+   background-attachment: local is the important word. The default would
+   pin the photograph to the scroller's box, so the landscape would hold
+   still while the cards slid over it — a parallax that reads as the
+   scene drifting. These are stills, and nothing here may suggest
+   otherwise; `local` makes the photograph scroll with the content, the
+   way a header image does, so there is no relative motion at all.
+
+   The scrim is a single vertical gradient: nearly clear at the top where
+   the sky is, opaque ivory by the time the first card arrives. That is
+   what keeps #29434C text at full contrast over four very different
+   photographs — a bright dawn valley and a near-black meadow included —
+   without dimming the part of the picture anyone actually looks at. */
 .mh-body {
-  background: linear-gradient(180deg,#edf3f1 0%,#f8faf8 310px,#f9faf8 100%);
+  background-color: var(--mh-mist);
+  background-image:
+    linear-gradient(180deg,
+      rgba(20, 43, 59, .22) 0,
+      rgba(20, 43, 59, .10) 16%,
+      rgba(245, 244, 239, .72) 34%,
+      rgba(245, 244, 239, .94) 48%,
+      var(--mh-mist) 64%),
+    var(--mh-landscape);
+  background-repeat: no-repeat, no-repeat;
+  background-size: 100% 760px, 100% 760px;
+  background-position: top center, top center;
+  background-attachment: local, local;
 }
+
+/* A photograph that never decodes leaves the gradient and the colour
+   below it, which is a calm ivory page with readable text — not a broken
+   image and not a black screen. Each scene names a colour sampled from
+   its own photograph so the top of the page is still the right mood. */
+.mh-layer[data-scene="aurora"] .mh-body { background-color: #eef2f1; }
+.mh-layer[data-scene="starlake"] .mh-body { background-color: #eceff3; }
+.mh-layer[data-scene="firstlight"] .mh-body { background-color: #eff2ec; }
+.mh-layer[data-scene="moonmeadow"] .mh-body { background-color: #ecedf3; }
 .mh-stagecard {
   min-height: 268px;
   background-image: var(--mh-landscape-overlay),var(--mh-landscape);

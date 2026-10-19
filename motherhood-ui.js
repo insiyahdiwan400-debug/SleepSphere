@@ -364,7 +364,15 @@
             feeding: (detail._feeding && detail._feeding.value) || '' };
       await M.setStage(picked, d);
       toast('Saved.');
-      screenHome();
+      /* Choosing where you are is the last question of setting the module
+         up, so the scenery choice follows it — once, as the final step,
+         and only for someone who has just been through setup. Anyone
+         with a vault from before scenery existed goes straight to their
+         records; a full-screen wallpaper chooser standing between them
+         and what they came to read would be an interruption, not a
+         welcome. They can change it in Settings whenever they like. */
+      if (!M.vault().sceneChosen) screenScenery(true);
+      else screenHome();
     });
     c.appendChild(save);
     if (v.stage) c.appendChild(btn('Cancel', 'mh-quiet', screenHome));
@@ -374,45 +382,100 @@
   /* ==================================================================
      5 · HOME.
      ================================================================== */
-  function screenHome() {
-    const v = M.vault();
-    const b = screen('Motherhood', true);
-    const stage = v.stage;
-    layer.dataset.scene = M.SCENES.includes(v.scene) ? v.scene : 'aurora';
-    const dream = card(b, 'mh-dream-picker');
-    dream.appendChild(el('span', 'mh-eyebrow', 'Your peaceful place'));
-    dream.appendChild(el('h2', null, 'Choose your dreamscape'));
-    dream.appendChild(el('p', 'mh-hint',
-      'Choose a landscape to make this space yours. Your choice stays encrypted and can be changed anytime.'));
-    const sceneChoices = el('div', 'mh-scenes');
-    const choices = [
-      ['aurora', 'Aurora Sanctuary', 'Northern lights'],
-      ['starlake', 'Celestial Lake', 'Stars & water'],
-      ['firstlight', 'First Light', 'Morning skies'],
-      ['moonmeadow', 'Moonlit Meadow', 'Quiet evening']
-    ];
-    choices.forEach(([id, title, detail]) => {
+  /* The four landscapes, with what each one actually shows. The detail
+     line is not decoration: at 108px a thumbnail of a dark lake and a
+     thumbnail of a dark meadow are hard to tell apart, and someone
+     choosing with the screen dimmed at night should not have to squint. */
+  const SCENE_CHOICES = [
+    ['aurora', 'Aurora Sanctuary', 'Northern lights over a still lake'],
+    ['starlake', 'Celestial Lake', 'Stars and distant mountains'],
+    ['firstlight', 'First Light', 'A valley above the cloud at dawn'],
+    ['moonmeadow', 'Moonlit Meadow', 'A quiet meadow under blue night']
+  ];
+
+  /* Applying the chosen scene. One place, because the layer's attribute
+     is what every background in the stylesheet keys off, and a screen
+     that forgot to set it would silently show someone else's landscape. */
+  function applyScene(scene) {
+    if (!layer) return 'aurora';
+    const safe = M.SCENES.includes(scene) ? scene : 'aurora';
+    layer.dataset.scene = safe;
+    return safe;
+  }
+
+  /* The picker itself, built once and used in both places it belongs:
+     the first-run setup, and Settings. It is deliberately NOT on the
+     home screen — the home screen is for how you and the baby slept,
+     and a wallpaper chooser permanently above that is the kind of thing
+     that makes an app feel like a settings panel with a diary attached. */
+  function sceneryPicker(host, current, onPicked) {
+    const choices = el('div', 'mh-scenes');
+    SCENE_CHOICES.forEach(([id, title, detail]) => {
       const button = btn('', 'mh-scene-choice', async () => {
         if (button.disabled) return;
         button.disabled = true;
         try {
           await M.setScene(id);
-          layer.dataset.scene = id;
-          sceneChoices.querySelectorAll('.mh-scene-choice').forEach(n => {
+          applyScene(id);
+          choices.querySelectorAll('.mh-scene-choice').forEach(n => {
             n.setAttribute('aria-pressed', String(n.dataset.id === id));
           });
-          toast('Dreamscape saved');
-        } catch (err) { toast('Could not save scenery. Please try again.'); }
-        finally { button.disabled = false; }
+          toast('Scenery saved');
+          if (onPicked) onPicked(id);
+        } catch (err) {
+          toast(cancelled(err)
+            ? 'Locked before that saved. Unlock and try again.'
+            : 'Could not save scenery. Please try again.');
+        } finally { button.disabled = false; }
       });
       button.dataset.id = id;
-      button.setAttribute('aria-pressed', String((v.scene || 'aurora') === id));
+      button.setAttribute('aria-pressed', String((current || 'aurora') === id));
       button.appendChild(el('span', 'mh-scene-preview mh-preview-' + id));
       button.appendChild(el('strong', null, title));
       button.appendChild(el('small', null, detail));
-      sceneChoices.appendChild(button);
+      choices.appendChild(button);
     });
-    dream.appendChild(sceneChoices);
+    host.appendChild(choices);
+    return choices;
+  }
+
+  /* ==================================================================
+     SCENERY. Shown once during setup, and from Settings after that.
+     ================================================================== */
+  function screenScenery(firstRun) {
+    const v = M.vault();
+    const b = screen(firstRun ? 'Your place' : 'Scenery', !firstRun);
+    const c = card(b, 'mh-dream-picker');
+    c.appendChild(el('span', 'mh-eyebrow', 'Your peaceful place'));
+    c.appendChild(el('h2', null, firstRun ? 'Choose your place' : 'Change your scenery'));
+    c.appendChild(el('p', 'mh-hint',
+      'Pick the landscape you would like behind this part of the app. ' +
+      'Your choice is kept inside your locked records, and you can change ' +
+      'it whenever you like without affecting anything you have written.'));
+    sceneryPicker(c, v.scene, firstRun ? null : null);
+    if (firstRun) {
+      const go = btn('Continue', 'mh-primary', async () => {
+        /* Continuing without touching a tile is still a choice: it means
+           the default. Recording it stops this screen reappearing every
+           time they come back, without pretending they picked it. */
+        go.disabled = true;
+        try { if (!M.vault().sceneChosen) await M.setScene(M.vault().scene || 'aurora'); }
+        catch (err) { /* Home still works; the screen will offer again. */ }
+        finally { go.disabled = false; }
+        route();
+      });
+      c.appendChild(go);
+    } else {
+      c.appendChild(btn('Done', 'mh-primary', () => screenPrivacy()));
+    }
+    return b;
+  }
+
+  function screenHome() {
+    const v = M.vault();
+    const b = screen('Motherhood', true);
+    const stage = v.stage;
+    applyScene(v.scene);
 
     /* Where you are — derived from a date the participant typed, and
        silent when they did not type one. */
@@ -875,7 +938,17 @@
   }
 
   function screenPrivacy() {
-    const b = screen('Privacy', true);
+    const b = screen('Settings', true);
+
+    /* Appearance first, because it is the one thing on this screen
+       someone opens it to change. Everything below it is reference. */
+    const look = card(b);
+    look.appendChild(el('h2', null, 'Your scenery'));
+    const now = SCENE_CHOICES.find(c => c[0] === (M.vault().scene || 'aurora'));
+    look.appendChild(el('p', 'mh-hint',
+      now ? now[1] + ' — ' + now[2].toLowerCase() + '.' : 'Choose a landscape for this part of the app.'));
+    look.appendChild(btn('Change scenery', 'mh-quiet', () => screenScenery(false)));
+
     const c = card(b);
     c.appendChild(el('h2', null, 'Where your Motherhood records are'));
     [

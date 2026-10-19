@@ -92,3 +92,38 @@ format it *can* decode.
 
 It is a moving gradient. It is not sky footage, it is not shipped with the
 app, and it is not presented as a recording of anything.
+
+---
+
+## Motherhood scenery photographs
+
+Four photographs, one per scene, in `media/motherhood/`. Each ships as a
+background (1600px on its long edge) and a separate thumbnail for the
+selector (480px). All four are from Pexels and are used under the
+[Pexels License](https://www.pexels.com/license/), which permits free use
+and modification, including commercially, without attribution. They are
+credited here anyway, because a photograph someone else made should carry
+their name whether or not a licence compels it.
+
+| File | Scene | Source | Photographer |
+|---|---|---|---|
+| `aurora.webp` | Aurora Sanctuary | [pexels.com/photo/3307194](https://www.pexels.com/photo/aurora-borealis-during-night-time-3307194/) | Tobias Bjørkli |
+| `starlake.webp` | Celestial Lake | [pexels.com/photo/14478408](https://www.pexels.com/photo/starry-sky-over-a-lake-14478408/) | JackerKun |
+| `firstlight.webp` | First Light | [pexels.com/photo/14024556](https://www.pexels.com/photo/fog-in-valley-at-sunrise-14024556/) | Quang Nguyen Vinh |
+| `moonmeadow.webp` | Moonlit Meadow | [pexels.com/photo/17401937](https://www.pexels.com/photo/stars-on-clear-sky-over-meadow-in-evening-17401937/) | Dave Love |
+
+Each was downloaded as a JPEG, resized and re-encoded to WebP by this
+project. Nothing was composited, relit, or added: the aurora, the stars
+and the cloud are as photographed. They are not video, and the app does
+not pan or animate them to suggest that they are.
+
+### Photographs that were supplied but not used
+
+An asset patch dated 19 October 2026 supplied `aurora.webp` and
+`firstlight.webp` cropped from the project owner's own photographs
+(IMG_5769 and IMG_5767). Both were taken through an aircraft cabin
+window: the first keeps the window's vignette and an aircraft wing and
+winglet in the lower right, the second is a full cabin window frame with
+a wing across the centre. The approved Motherhood design excludes
+aircraft imagery of any kind, so neither was installed. They are not in
+this repository.
