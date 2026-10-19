@@ -537,3 +537,78 @@ html.mh-open, html.mh-open body { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .mh-card { animation: none; transition: none; }
 }
+
+
+/* SLEEPSPHERE CELESTIAL CALM — photographic skies, restrained star identity.
+   No simulated footage, animated star fields or distracting sparkle effects. */
+.mh-layer {
+  --mh-night: #233f53;
+  --mh-starlight: #d7c9a6;
+  --mh-mist: #eef3f1;
+  --mh-landscape-overlay: linear-gradient(180deg,rgba(18,38,57,.06),rgba(20,43,59,.58));
+  background: var(--mh-mist);
+}
+.mh-bar {
+  background: #f4f7f5;
+  border-bottom-color: #d9e3e1;
+}
+.mh-bar-title {
+  color: var(--mh-night);
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  letter-spacing: .025em;
+}
+.mh-bar-title::before {
+  content: "✧";
+  display: inline-block;
+  color: #a38e66;
+  font-size: .88em;
+  margin-right: .48em;
+  aria-hidden: true;
+}
+.mh-body {
+  background: linear-gradient(180deg,#edf3f1 0%,#f8faf8 310px,#f9faf8 100%);
+}
+.mh-stagecard {
+  min-height: 268px;
+  background-image: var(--mh-landscape-overlay),var(--mh-landscape);
+  background-color: #466577;
+  background-position: center;
+  border-radius: 23px;
+  box-shadow: 0 12px 28px rgba(27,53,64,.12);
+}
+.mh-stagecard h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.75rem,6vw,2.35rem);
+  letter-spacing: -.018em;
+  line-height: 1.15;
+  text-shadow: 0 1px 10px rgba(0,0,0,.14);
+}
+.mh-stagecard .mh-eyebrow {
+  color: #f1e7cd;
+  font-size: .76rem;
+  letter-spacing: .13em;
+}
+.mh-card {
+  border-color: #e3eae7;
+  box-shadow: 0 3px 14px rgba(26,58,68,.035);
+}
+.mh-dream-picker h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  color: #304a56;
+  font-size: 1.45rem;
+}
+.mh-scene-choice[aria-pressed="true"] {
+  border-color: #557d83;
+  box-shadow: 0 0 0 2px #e4eeec;
+}
+.mh-primary {
+  background: #3f6b76;
+  border-radius: 100px;
+}
+.mh-primary:hover:not(:disabled) { background: #305760; }
+.mh-eyebrow { letter-spacing: .085em; }
+@media (prefers-reduced-motion: reduce) {
+  .mh-card,.mh-scene-choice,.mh-stagecard { animation: none; transition: none; }
+}
