@@ -564,7 +564,6 @@ html.mh-open, html.mh-open body { overflow: hidden; }
   color: #a38e66;
   font-size: .88em;
   margin-right: .48em;
-  aria-hidden: true;
 }
 .mh-body {
   background: linear-gradient(180deg,#edf3f1 0%,#f8faf8 310px,#f9faf8 100%);
