@@ -26,16 +26,21 @@ Licences, sources and photographers are in [`../../CREDITS.md`](../../CREDITS.md
   at a file that is not one of these.
 - **Photographs, not effects.** No CSS gradient, drawn star field or
   illustrated aurora may be presented as one of these scenes.
-- **Stills stay still.** No pan, zoom, parallax or cross-fade that would
-  suggest the landscape is moving. Motion would have to come from a real
-  video asset, and there is none.
+- **Stills stay still.** The landscape never pans, zooms, cross-fades or
+  animates. It is painted on the fixed full-screen layer, so it holds
+  position while the content scrolls in front of it — the photograph
+  itself does not move at any point. Motion would have to come from a
+  real video asset, and there is none.
 - **Same-origin only.** Private records must never cause a third-party
   image request. The CSP in `_headers` is `img-src 'self' data:`, which
   enforces this, but the paths are written to respect it regardless.
-- **The interface works without them.** Every scene carries a sampled
-  background colour and a readable scrim, so a scene whose photograph
-  fails to decode is a plain coloured background with legible text — never
-  a broken-image icon and never an empty black screen.
+- **The interface works without them.** The module is ivory text on a
+  dark scrim over the photograph, and the floor beneath every scene is
+  deep celestial blue, so a scene whose photograph never decodes is a
+  plain dark screen with legible text at 14.8:1 — never a broken-image
+  icon, never an unreadable one. Text contrast over each of the four
+  photographs is measured from rendered pixels, not judged by eye:
+  `test/motherhood-scenery.js` section 7 holds every panel to 4.5:1.
 
 ## Photographs supplied but not used
 

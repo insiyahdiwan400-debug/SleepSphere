@@ -696,3 +696,207 @@ html.mh-open, html.mh-open body { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .mh-card,.mh-scene-choice,.mh-stagecard { animation: none; transition: none; }
 }
+
+/* ==================================================================
+   FULL-BLEED SCENERY
+
+   The landscape was a strip at the top of an ivory page: a white screen
+   with one picture on it, which is not the sanctuary the design asks
+   for. It is now the whole screen.
+
+   .mh-layer is already position: fixed; inset: 0, so the photograph
+   covers the viewport and the scrolling body moves over it. The
+   landscape itself never moves, scales or cross-fades — the stillness
+   rule holds; what scrolls is the content in front of it.
+
+   Everything below follows from one decision: light text on a dark
+   scrim, rather than dark text on light cards. That is what makes a
+   single treatment work across four very different photographs. The
+   dawn valley is bright and the meadow is nearly black, and no
+   light-card scheme survives both — a scrim dark enough to read white
+   text on is the only thing that behaves the same on all four. It also
+   makes the failure case correct rather than lucky: if no photograph
+   ever loads, the floor underneath is deep celestial blue and the text
+   on it is ivory, which is still a legible screen.
+   ================================================================== */
+
+.mh-layer {
+  background-color: #0d2230;
+  background-image: var(--mh-landscape);
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  color: #f5f4ef;
+}
+
+/* The scrim. One gradient over the whole screen, weakest at the top
+   where the sky usually is and strongest at the foot where the cards
+   stack up. It sits under the content (.mh-body is z-index 1) and takes
+   no taps. */
+.mh-layer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg,
+    rgba(10, 26, 38, .38) 0%,
+    rgba(10, 26, 38, .52) 38%,
+    rgba(10, 26, 38, .72) 100%);
+}
+
+/* The bright one needs more help than the dark ones; the near-black
+   meadow needs less, or the photograph disappears into the scrim. */
+.mh-layer[data-scene="firstlight"]::before {
+  background: linear-gradient(180deg,
+    rgba(10, 26, 38, .50) 0%,
+    rgba(10, 26, 38, .62) 38%,
+    rgba(10, 26, 38, .80) 100%);
+}
+.mh-layer[data-scene="moonmeadow"]::before {
+  background: linear-gradient(180deg,
+    rgba(10, 26, 38, .26) 0%,
+    rgba(10, 26, 38, .44) 38%,
+    rgba(10, 26, 38, .68) 100%);
+}
+
+/* The page itself is now the photograph, so the body carries nothing. */
+.mh-layer .mh-body,
+.mh-layer[data-scene="aurora"] .mh-body,
+.mh-layer[data-scene="starlake"] .mh-body,
+.mh-layer[data-scene="firstlight"] .mh-body,
+.mh-layer[data-scene="moonmeadow"] .mh-body {
+  background: none;
+  background-color: transparent;
+}
+
+/* Glass panels. The solid fallback comes first and is what renders
+   without backdrop-filter — translucent-but-unblurred over photography
+   is where text goes to die, so the unsupported path stays opaque. */
+.mh-layer .mh-card {
+  background: rgba(14, 34, 48, .88);
+  border: 1px solid rgba(245, 244, 239, .16);
+  box-shadow: 0 20px 44px -26px rgba(0, 0, 0, .95);
+  color: #f5f4ef;
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .mh-layer .mh-card {
+    background: rgba(14, 34, 48, .55);
+    -webkit-backdrop-filter: blur(22px) saturate(130%);
+    backdrop-filter: blur(22px) saturate(130%);
+  }
+}
+
+.mh-layer .mh-card h2,
+.mh-layer .mh-card h3,
+.mh-layer .mh-dream-picker h2 { color: #f5f4ef; }
+.mh-layer .mh-card p,
+.mh-layer .mh-hint,
+.mh-layer .mh-list li { color: rgba(245, 244, 239, .82); }
+.mh-layer .mh-eyebrow { color: #e8d8b5; }
+
+/* The hero. With the photograph behind everything, a card showing the
+   same photograph again is a picture of the wall, hung on the wall. The
+   stage block keeps its words and gives up its frame. */
+.mh-layer .mh-stagecard {
+  background: none;
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+  min-height: 200px;
+  padding: 30px 6px 18px;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.mh-layer .mh-stagecard h2 { text-shadow: 0 2px 18px rgba(5, 16, 24, .72); }
+.mh-layer .mh-stagecard p { color: rgba(245, 244, 239, .9); text-shadow: 0 1px 12px rgba(5, 16, 24, .7); }
+
+/* Controls on glass. */
+.mh-layer .mh-tile,
+.mh-layer .mh-opt,
+.mh-layer .mh-dot,
+.mh-layer .mh-chip,
+.mh-layer .mh-scene-choice {
+  background: rgba(245, 244, 239, .10);
+  border-color: rgba(245, 244, 239, .22);
+  color: #f5f4ef;
+}
+.mh-layer .mh-tile:hover,
+.mh-layer .mh-opt:hover,
+.mh-layer .mh-chip:hover { background: rgba(245, 244, 239, .17); }
+.mh-layer .mh-opt.on,
+.mh-layer .mh-dot.on,
+.mh-layer .mh-chip.on {
+  background: #e8d8b5;
+  color: #14283a;
+  border-color: #e8d8b5;
+  box-shadow: none;
+}
+.mh-layer .mh-scene-choice strong { color: #f5f4ef; }
+.mh-layer .mh-scene-choice small { color: rgba(245, 244, 239, .74); }
+.mh-layer .mh-scene-choice[aria-pressed="true"] {
+  background: rgba(232, 216, 181, .16);
+  border: 2px solid #e8d8b5;
+  outline: 2px solid rgba(232, 216, 181, .34);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+/* Figures. These are the only numbers in the module and they have to
+   stay the most legible thing on the screen. */
+.mh-layer .mh-stats { background: rgba(245, 244, 239, .16); }
+.mh-layer .mh-stat { background: rgba(10, 26, 38, .62); }
+.mh-layer .mh-stat-k,
+.mh-layer .mh-stat-n { color: rgba(245, 244, 239, .72); }
+.mh-layer .mh-stat-v { color: #f5f4ef; }
+.mh-layer .mh-stat-v.mh-none { color: rgba(245, 244, 239, .66); }
+.mh-layer .mh-entry { background: rgba(10, 26, 38, .55); border-color: rgba(245, 244, 239, .14); }
+
+/* Fields. */
+.mh-layer input[type="text"],
+.mh-layer input[type="password"],
+.mh-layer input[type="date"],
+.mh-layer input[type="time"],
+.mh-layer input[type="number"],
+.mh-layer select,
+.mh-layer textarea {
+  background: rgba(7, 20, 30, .62);
+  border-color: rgba(245, 244, 239, .26);
+  color: #f5f4ef;
+}
+.mh-layer input::placeholder,
+.mh-layer textarea::placeholder { color: rgba(245, 244, 239, .5); }
+.mh-layer label { color: rgba(245, 244, 239, .86); }
+
+/* Chrome and buttons. Champagne carries the primary action: it is the
+   one warm colour in the palette and the only thing on screen that
+   should pull the eye before the photograph does. */
+.mh-layer .mh-bar {
+  background: rgba(8, 22, 33, .72);
+  border-bottom-color: rgba(245, 244, 239, .14);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .mh-layer .mh-bar { background: rgba(8, 22, 33, .46); }
+}
+.mh-layer .mh-bar-title,
+.mh-layer .mh-bar button { color: #f5f4ef; }
+.mh-layer .mh-bar button { border-color: rgba(245, 244, 239, .3); }
+.mh-layer .mh-bar-title::before { color: #e8d8b5; }
+
+.mh-layer .mh-primary { background: #e8d8b5; color: #14283a; }
+.mh-layer .mh-primary:hover:not(:disabled) { background: #f0e4c8; }
+.mh-layer .mh-quiet {
+  background: rgba(245, 244, 239, .09);
+  border-color: rgba(245, 244, 239, .3);
+  color: #f5f4ef;
+}
+.mh-layer .mh-caution { color: #f3dcc4; }
+.mh-layer a { color: #e8d8b5; }
+
+/* Focus has to be visible against a photograph, not just against a
+   card, so it is the champagne ring with a dark halo behind it. */
+.mh-layer :focus-visible {
+  outline: 3px solid #e8d8b5;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px rgba(8, 22, 33, .65);
+}

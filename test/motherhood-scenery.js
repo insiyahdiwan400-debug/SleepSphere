@@ -297,11 +297,20 @@ const hashOf = file =>
       window.__mhUI.open();
       await new Promise(r => setTimeout(r, 900));
       const panel = document.querySelector('.mh-layer');
-      const body = panel.querySelector('.mh-body');
-      const bg = getComputedStyle(body).backgroundColor;
-      const rgb = bg.match(/\d+/g).map(Number);
+      /* The body is transparent now, so the ground is the layer's own
+         background colour — what shows when no photograph loads. */
+      const bg = getComputedStyle(panel).backgroundColor;
+      const rgb = bg.match(/\d+/g).map(Number).slice(0, 3);
       const heading = panel.querySelector('h2');
+      const ink = getComputedStyle(heading || panel).color.match(/\d+/g).map(Number).slice(0, 3);
+      const lum = c => {
+        const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+        return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+      };
+      const l1 = lum(ink), l2 = lum(rgb);
+      const contrast = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
       return {
+        contrast,
         /* No <img> means no broken-image icon is even possible: the
            scenery is painted as a background, which simply does not
            appear when it cannot load. */
@@ -315,12 +324,99 @@ const hashOf = file =>
       };
     });
     check('6 · No broken image is shown', blind.brokenImages === 0);
-    check('6 · The page is still light, not black',
-      blind.light === true, 'rgb(' + blind.bodyBackground.join(',') + ')');
+    /* This used to assert the page stayed LIGHT. That was right when the
+       scenery was a strip above an ivory page; the module is now
+       full-bleed photography with ivory text on a dark scrim, so a light
+       fallback would be the unreadable outcome, not the safe one. What
+       has to hold either way is contrast, so that is what is measured —
+       the floor under a photograph that never loads is deep celestial
+       blue, and ivory on it is still a legible screen. */
+    check('6 · The fallback ground keeps the text readable',
+      blind.contrast >= 4.5, blind.contrast.toFixed(2) + ':1 on rgb(' + blind.bodyBackground.join(',') + ')');
     check('6 · The heading is still readable', blind.headingVisible === true);
     check('6 · And the records are still reachable', blind.tiles > 0, String(blind.tiles));
     check('6 · Nothing threw when the media failed', e3.length === 0, e3.join(' | '));
     await c3.close();
+  }
+
+  /* ================================================================
+     7. Text over photography, measured rather than judged.
+
+        The module is now full-bleed: every word sits on a translucent
+        panel over a photograph, so a card's effective background is
+        whatever is behind it. Reading the CSS cannot tell you what that
+        composites to — a dawn valley and a near-black meadow behind the
+        same panel are two different backgrounds. So this screenshots
+        each scene and samples the pixels actually drawn inside each
+        panel, in a band with no glyphs in it, then computes the WCAG
+        ratio against the real text colour.
+
+        4.5:1 is the AA floor for body text. The hero is large serif and
+        would only need 3:1, but it is held to the same line rather than
+        given an exemption that would quietly licence a weaker scrim.
+     ================================================================ */
+  {
+    const c4 = await browser.newContext({
+      viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true
+    });
+    const p4 = await c4.newPage();
+    await p4.goto(BASE, { waitUntil: 'networkidle' });
+    await p4.waitForTimeout(1700);
+    await p4.evaluate(() => { const b = document.getElementById('fwSkip'); if (b) b.click(); });
+    await p4.waitForTimeout(600);
+    await p4.evaluate(async () => {
+      await window.SSMotherhood.createVault('a passcode for the test');
+      await window.SSMotherhood.setStage('postpartum', { birthDate: '', feeding: '' });
+      await window.SSMotherhood.addEntry({ kind: 'night', from: '22:40', to: '06:10', wakes: 2 });
+      window.__mhUI.open();
+    });
+    await p4.waitForTimeout(900);
+
+    for (const scene of SCENES) {
+      await p4.evaluate(async s => { await window.SSMotherhood.setScene(s); window.__mhUI.route(); }, scene);
+      await p4.waitForTimeout(1100);
+      const boxes = await p4.evaluate(() => {
+        const out = [];
+        const push = (node, label, inset) => {
+          if (!node) return;
+          const r = node.getBoundingClientRect();
+          if (r.width < 40 || r.height < 30 || r.bottom < 0 || r.top > innerHeight) return;
+          out.push({ label, x: Math.round(r.left + inset), y: Math.round(r.top + inset),
+                     w: Math.min(60, Math.round(r.width - inset * 2)), h: 10 });
+        };
+        document.querySelectorAll('.mh-layer .mh-card').forEach((c, i) => push(c, 'card' + i, 10));
+        push(document.querySelector('.mh-layer .mh-stagecard'), 'hero', 6);
+        document.querySelectorAll('.mh-layer .mh-tile').forEach((t, i) => { if (i < 2) push(t, 'tile' + i, 6); });
+        return out;
+      });
+      const shot = await p4.screenshot({ type: 'png' });
+      const worst = await p4.evaluate(async ([b64, boxes]) => {
+        const img = new Image();
+        await new Promise(r => { img.onload = r; img.src = 'data:image/png;base64,' + b64; });
+        const c = document.createElement('canvas');
+        c.width = img.width; c.height = img.height;
+        const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+        const lum = v => {
+          const f = x => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); };
+          return 0.2126 * f(v[0]) + 0.7152 * f(v[1]) + 0.0722 * f(v[2]);
+        };
+        const ink = [245, 244, 239];
+        let low = 99, where = '';
+        for (const bx of boxes) {
+          const d = g.getImageData(bx.x, bx.y, Math.max(1, bx.w), Math.max(1, bx.h)).data;
+          let r = 0, gg = 0, bb = 0, n = 0;
+          for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; bb += d[i + 2]; n++; }
+          const avg = [r / n, gg / n, bb / n];
+          const l1 = lum(ink), l2 = lum(avg);
+          const cr = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+          if (cr < low) { low = cr; where = bx.label + ' rgb(' + avg.map(Math.round).join(',') + ')'; }
+        }
+        return { low, where };
+      }, [shot.toString('base64'), boxes]);
+      check(`7 · ${scene}: text stays readable over the photograph`,
+        worst.low >= 4.5, worst.low.toFixed(2) + ':1 worst at ' + worst.where);
+    }
+    await c4.close();
   }
 
   await browser.close();
