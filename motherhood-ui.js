@@ -1058,7 +1058,22 @@
     });
     b.id = 'mhEntry';
     section.appendChild(b);
-    host.appendChild(section);
+
+    /* Above the study grid, not after it.
+
+       Appended to the end of the Me tab this landed 3312px down — about
+       four screens on a phone, past every export and dictionary card.
+       It was reported, accurately, as not being in the app at all.
+
+       Discretion was never supposed to cost findability. What protects
+       whoever is holding the phone is that this card is byte-identical
+       on every device, on or off, so finding it discloses nothing about
+       its owner. That property is untouched by where it sits — the card
+       says the same words in the same place for everyone. Being four
+       screens down bought no privacy and lost the feature. */
+    const studyGrid = host.querySelector('.grid');
+    if (studyGrid) host.insertBefore(section, studyGrid);
+    else host.appendChild(section);
   }
 
   function refreshEntry() { /* the entry point never changes; kept for clarity */ }

@@ -203,6 +203,66 @@ const hashOf = file =>
   await ctx.close();
 
   /* ================================================================
+     4b. The way in.
+
+         Motherhood is off until you turn it on, and off means absent —
+         no element, no label, nothing in the document. The one thing
+         that is always present is the entry card, identical on every
+         device, which is what lets it exist without disclosing anything
+         about whoever is holding the phone.
+
+         Identical does not mean buried. Appended to the end of the Me
+         tab it sat 3312px down, four screens past every export card,
+         and was reported as the feature not being in the app. Being far
+         down bought no privacy — the card says the same words in the
+         same place for everyone either way — it just lost the feature.
+     ================================================================ */
+  {
+    const cE = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const pE = await cE.newPage();
+    await pE.goto(BASE, { waitUntil: 'networkidle' });
+    await pE.waitForTimeout(1700);
+    await pE.evaluate(() => { const b = document.getElementById('fwSkip'); if (b) b.click(); });
+    await pE.waitForTimeout(600);
+    const entry = await pE.evaluate(() => {
+      document.querySelector('.nav button[data-view="data"]').click();
+      const btn = document.getElementById('mhEntry');
+      if (!btn) return { missing: true };
+      const top = btn.getBoundingClientRect().top + window.scrollY;
+      const card = btn.closest('.card');
+      return {
+        top: Math.round(top),
+        screens: Number((top / window.innerHeight).toFixed(2)),
+        label: btn.textContent.trim(),
+        heading: card ? (card.querySelector('h3') || {}).textContent : '',
+        tap: Math.round(btn.getBoundingClientRect().height)
+      };
+    });
+    check('4b · The way in is on the Me tab', entry.missing !== true);
+    check('4b · Within one screen of the top, not four',
+      entry.screens <= 1.2, entry.top + 'px, ' + entry.screens + ' screens');
+    check('4b · Under a heading that says what it is',
+      /private modules/i.test(entry.heading || ''), entry.heading);
+    check('4b · And worded for the person, not the module',
+      /pregnancy/i.test(entry.label || ''), entry.label);
+    check('4b · Big enough to tap', entry.tap >= 44, entry.tap + 'px');
+
+    /* And still absent everywhere else: the point of opt-in. */
+    const elsewhere = await pE.evaluate(() => {
+      const hits = [];
+      for (const view of ['today', 'twin', 'learn']) {
+        document.querySelector('.nav button[data-view="' + view + '"]').click();
+        const host = document.getElementById(view);
+        if (host && /motherhood|pregnancy|postpartum/i.test(host.textContent)) hits.push(view);
+      }
+      return hits;
+    });
+    check('4b · And mentioned nowhere else in the app',
+      elsewhere.length === 0, elsewhere.join(', ') || 'absent from today, twin, learn');
+    await cE.close();
+  }
+
+  /* ================================================================
      5. Where the choice is offered.
 
         Asked once, at the end of setting the module up, and available
