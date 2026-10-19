@@ -257,3 +257,91 @@ html.mh-open, html.mh-open body { overflow: hidden; }
   .mh-grid { grid-template-columns: repeat(3, 1fr); }
   .mh-actions { grid-template-columns: repeat(2, 1fr); }
 }
+
+
+/* Motherhood sanctuary: visual-only theme. Vault and consent remain unchanged. */
+.mh-layer {
+  --mh-cream: #fffaf3;
+  --mh-peach: #f8e6db;
+  --mh-sage: #dfe9dc;
+  --mh-rose: #f4dcd9;
+  --mh-ink: #453c37;
+  --mh-muted: #756a63;
+  --mh-accent: #98694f;
+  --ink: var(--mh-ink);
+  --muted: var(--mh-muted);
+  --paper: var(--mh-cream);
+  --card: #fffdf9;
+  --line: #e8dcd0;
+  --accent: var(--mh-accent);
+  background: radial-gradient(ellipse at 90% 3%, #f7ded8 0, transparent 38%),
+              radial-gradient(ellipse at 4% 56%, #e5eddf 0, transparent 46%),
+              var(--mh-cream);
+  color: var(--mh-ink);
+}
+.mh-bar {
+  background: rgba(255,250,243,.94);
+  border-bottom-color: #eadfd4;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.mh-bar-title { color: #624d41; letter-spacing: .01em; }
+.mh-body { gap: 18px; }
+.mh-card {
+  background: rgba(255,253,249,.94);
+  border-color: #eadfd4;
+  border-radius: 23px;
+  box-shadow: 0 10px 30px rgba(108,75,57,.055);
+}
+.mh-card h2 { color: #604839; }
+.mh-card h3 { color: #5f584a; }
+.mh-eyebrow { color: #a36f60; font-weight: 700; }
+.mh-stagecard {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(130deg, #fff0e5 0%, #f9e5e1 48%, #e7eee3 100%);
+  border-color: #efdcd1;
+  padding: 26px 22px;
+}
+.mh-stagecard::before {
+  content: '';
+  position: absolute;
+  width: 150px; height: 150px;
+  top: -70px; right: -45px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.4);
+  pointer-events: none;
+}
+.mh-stagecard h2 { color: #694d45; font-weight: 650; }
+.mh-primary { background: #966a53; color: #fffaf5; }
+.mh-primary:hover:not(:disabled) { background: #805540; }
+.mh-quiet { background: #fffaf4; }
+.mh-tile, .mh-opt, .mh-dot, .mh-chip {
+  background: #fffaf5;
+  border-color: #e7d9cd;
+}
+.mh-tile:hover, .mh-opt:hover, .mh-chip:hover { background: #f9ede5; }
+.mh-opt.on, .mh-dot.on, .mh-chip.on {
+  border-color: #a67b65;
+  box-shadow: inset 0 0 0 1px #a67b65;
+}
+.mh-dot.on, .mh-chip.on { background: #956c55; color: #fff; }
+.mh-stat, .mh-entry { background: #fffcf8; }
+.mh-careline { border-color: #d5dfd0; background: #f4f8f0; }
+.mh-danger-card { border-color: #cb8e87; }
+.mh-layer input[type="text"], .mh-layer input[type="password"],
+.mh-layer input[type="date"], .mh-layer input[type="time"],
+.mh-layer input[type="number"], .mh-layer select, .mh-layer textarea {
+  background: #fffdfa;
+  border-color: #dfd0c4;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mh-card { animation: mh-arrive .42s ease-out both; }
+  @keyframes mh-arrive {
+    from { opacity: .7; transform: translateY(7px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mh-card { animation: none; }
+}
