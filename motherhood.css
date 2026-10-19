@@ -521,11 +521,13 @@ html.mh-open, html.mh-open body { overflow: hidden; }
    hole — and so the selector still reads as four distinct places if the
    images never arrive at all. */
 .mh-scene-preview {
-  height: 108px;
-  border-radius: 10px;
+  display: block;
+  height: 110px;
+  border-radius: 12px;
   background-color: #2c3c4b;
   background-position: center;
   background-size: cover;
+  background-repeat: no-repeat;
 }
 .mh-preview-aurora { background-image: url("./media/motherhood/aurora-thumb.webp"); background-color: #15313a; }
 .mh-preview-starlake { background-image: url("./media/motherhood/starlake-thumb.webp"); background-color: #19405e; }
@@ -554,7 +556,11 @@ html.mh-open, html.mh-open body { overflow: hidden; }
   --mh-night: #233f53;
   --mh-starlight: #d7c9a6;
   --mh-mist: #eef3f1;
-  --mh-landscape-overlay: linear-gradient(180deg,rgba(18,38,57,.06),rgba(20,43,59,.58));
+  /* Darker at the foot than it was (.58 → .72). The stage card carries
+     white serif text over whichever of the four photographs is chosen,
+     and the dawn valley is bright enough along its lower edge that the
+     weaker scrim left "After birth" sitting on sunlit grass. */
+  --mh-landscape-overlay: linear-gradient(180deg,rgba(13,34,48,.08),rgba(13,34,48,.72));
   background: var(--mh-mist);
 }
 /* Glass, so the landscape runs up under the bar instead of stopping at
@@ -626,11 +632,14 @@ html.mh-open, html.mh-open body { overflow: hidden; }
 .mh-layer[data-scene="firstlight"] .mh-body { background-color: #eff2ec; }
 .mh-layer[data-scene="moonmeadow"] .mh-body { background-color: #ecedf3; }
 .mh-stagecard {
-  min-height: 268px;
+  min-height: 270px;
   background-image: var(--mh-landscape-overlay),var(--mh-landscape);
-  background-color: #466577;
+  background-color: #476675;
   background-position: center;
-  border-radius: 23px;
+  background-size: cover;
+  background-repeat: no-repeat;
+  border-radius: 24px;
+  overflow: hidden;
   box-shadow: 0 12px 28px rgba(27,53,64,.12);
 }
 .mh-stagecard h2 {
@@ -655,10 +664,29 @@ html.mh-open, html.mh-open body { overflow: hidden; }
   color: #304a56;
   font-size: 1.45rem;
 }
+/* Two rings rather than one. A single 2px border is the whole selected
+   state here, and on four dark thumbnails sitting edge to edge it is
+   easy to miss which one is yours — the outline gives it a second,
+   lighter edge that reads at a glance and survives a dimmed screen. */
 .mh-scene-choice[aria-pressed="true"] {
-  border-color: #557d83;
+  border: 2px solid #557d83;
+  outline: 2px solid #e4eeec;
+  outline-offset: 2px;
   box-shadow: 0 0 0 2px #e4eeec;
 }
+
+/* Nothing in the scenery animates — the landscapes are stills and stay
+   stills. This is here so that if a transition is ever added to a tile
+   or the stage card, it is already excluded for anyone who has asked
+   for less movement, rather than shipping and being noticed later. */
+@media (prefers-reduced-motion: reduce) {
+  .mh-stagecard,
+  .mh-scene-choice {
+    animation: none;
+    transition: none;
+  }
+}
+
 .mh-primary {
   background: #3f6b76;
   border-radius: 100px;
