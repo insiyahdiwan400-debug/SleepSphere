@@ -900,3 +900,131 @@ html.mh-open, html.mh-open body { overflow: hidden; }
   outline-offset: 2px;
   box-shadow: 0 0 0 6px rgba(8, 22, 33, .65);
 }
+
+/* ==================================================================
+   MOTION
+
+   What moves here is the interface. The landscape does not.
+
+   That line comes from the brief itself — "use authentic motion footage
+   only when an actual video asset exists", "do not fake moving nature
+   by panning still photographs" — and there is no video asset, so there
+   is no drifting aurora, no Ken Burns creep across the meadow, and no
+   drawn stars twinkling over a photograph of real ones. Those would all
+   be the app claiming to show something it did not record.
+
+   Everything below is transform and opacity only, so it stays on the
+   compositor and off the main thread; every animation is finite, so
+   nothing loops in the background draining a phone at 3am. All of it
+   stops dead under prefers-reduced-motion.
+   ================================================================== */
+
+/* The two scenery plates. The photograph lives here rather than on the
+   layer, so one can fade out while the other fades in. */
+.mh-scene-plate {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  transition: opacity .85s cubic-bezier(.4, 0, .2, 1);
+  will-change: opacity;
+}
+.mh-scene-plate.on { opacity: 1; }
+.mh-scene-plate.scene-aurora { background-image: url("./media/motherhood/aurora.webp"); }
+.mh-scene-plate.scene-starlake { background-image: url("./media/motherhood/starlake.webp"); }
+.mh-scene-plate.scene-firstlight { background-image: url("./media/motherhood/firstlight.webp"); }
+.mh-scene-plate.scene-moonmeadow { background-image: url("./media/motherhood/moonmeadow.webp"); }
+
+/* The layer keeps the colour floor only; the plates carry the picture.
+   The scrim and the content both move up one, over the plates. */
+.mh-layer { background-image: none; }
+.mh-layer::before { z-index: 1; }
+.mh-layer .mh-body { position: relative; z-index: 2; }
+.mh-layer .mh-bar { position: relative; z-index: 3; }
+.mh-layer .mh-toast { z-index: 4; }
+
+/* Arriving. Cards rise a little and fade in, each a beat after the one
+   above it, so a screen assembles rather than appears. Capped at six so
+   a long screen does not have a card still arriving a second later. */
+@keyframes mh-rise {
+  from { opacity: 0; transform: translate3d(0, 14px, 0); }
+  to { opacity: 1; transform: none; }
+}
+.mh-layer .mh-card,
+.mh-layer .mh-stagecard {
+  animation: mh-rise .52s cubic-bezier(.22, 1, .36, 1) both;
+}
+.mh-layer .mh-body > *:nth-child(1) { animation-delay: 0ms; }
+.mh-layer .mh-body > *:nth-child(2) { animation-delay: 70ms; }
+.mh-layer .mh-body > *:nth-child(3) { animation-delay: 140ms; }
+.mh-layer .mh-body > *:nth-child(4) { animation-delay: 210ms; }
+.mh-layer .mh-body > *:nth-child(5) { animation-delay: 280ms; }
+.mh-layer .mh-body > *:nth-child(n+6) { animation-delay: 340ms; }
+
+/* The module opening at all. */
+@keyframes mh-layer-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.mh-layer { animation: mh-layer-in .42s ease both; }
+
+/* Touch feedback. A tile that answers the finger is the difference
+   between an app that feels built and one that feels like a page. */
+.mh-layer .mh-tile,
+.mh-layer .mh-opt,
+.mh-layer .mh-chip,
+.mh-layer .mh-dot,
+.mh-layer .mh-scene-choice,
+.mh-layer .mh-primary,
+.mh-layer .mh-quiet {
+  transition: transform .18s cubic-bezier(.22, 1, .36, 1),
+              background-color .22s ease,
+              border-color .22s ease,
+              box-shadow .22s ease;
+}
+.mh-layer .mh-tile:active,
+.mh-layer .mh-opt:active,
+.mh-layer .mh-chip:active,
+.mh-layer .mh-scene-choice:active,
+.mh-layer .mh-primary:active:not(:disabled),
+.mh-layer .mh-quiet:active { transform: scale(.972); }
+
+/* Choosing a scene. The tile settles rather than snapping, which reads
+   as the choice being taken rather than a radio button flipping. */
+@keyframes mh-chosen {
+  0% { transform: scale(1); }
+  42% { transform: scale(1.035); }
+  100% { transform: scale(1); }
+}
+.mh-layer .mh-scene-choice[aria-pressed="true"] {
+  animation: mh-chosen .42s cubic-bezier(.22, 1, .36, 1);
+}
+
+/* The toast. */
+.mh-layer .mh-toast {
+  transition: opacity .26s ease, transform .26s cubic-bezier(.22, 1, .36, 1);
+  transform: translate3d(0, 8px, 0);
+}
+.mh-layer .mh-toast.on { transform: none; }
+
+/* Everything above, withdrawn. Not reduced — off. Someone who has asked
+   their phone for less movement has asked once and should not have to
+   trust each app's idea of "subtle". The cross-fade becomes a cut and
+   the cards simply are where they are. */
+@media (prefers-reduced-motion: reduce) {
+  .mh-layer,
+  .mh-layer *,
+  .mh-layer *::before,
+  .mh-layer *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .mh-scene-plate { transition: none !important; }
+  .mh-layer .mh-card,
+  .mh-layer .mh-stagecard { opacity: 1; transform: none; }
+  .mh-layer .mh-toast { transform: none; }
+}

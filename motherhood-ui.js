@@ -64,7 +64,14 @@
     layer.setAttribute('role', 'dialog');
     layer.setAttribute('aria-modal', 'true');
     layer.setAttribute('aria-label', 'Private records');
+    /* Two plates, so changing scenery can cross-fade between the
+       outgoing photograph and the incoming one instead of cutting. They
+       sit under the scrim and under the body; which one is showing is a
+       class, and the paths stay in the stylesheet so there is still one
+       place that says where the photographs live. */
     layer.innerHTML =
+      '<div class="mh-scene-plate" data-plate="a"></div>' +
+      '<div class="mh-scene-plate" data-plate="b"></div>' +
       '<div class="mh-bar">' +
         '<button type="button" class="mh-close" aria-label="Close">Close</button>' +
         '<span class="mh-bar-title"></span>' +
@@ -400,6 +407,26 @@
     if (!layer) return 'aurora';
     const safe = M.SCENES.includes(scene) ? scene : 'aurora';
     layer.dataset.scene = safe;
+
+    /* Cross-fade, but only between two different photographs and only
+       when the person has just changed their mind. This is a transition
+       between two stills on a deliberate action — it is not the
+       landscape moving, and nothing fades while you sit on one scene. */
+    const plates = layer.querySelectorAll('.mh-scene-plate');
+    if (plates.length === 2) {
+      const showing = layer.querySelector('.mh-scene-plate.on');
+      if (showing && showing.dataset.sceneName === safe) return safe;
+      const incoming = showing === plates[0] ? plates[1] : plates[0];
+      incoming.className = 'mh-scene-plate scene-' + safe;
+      incoming.dataset.sceneName = safe;
+      /* Let the new background-image land before the opacity changes,
+         or the browser batches both and the fade has nothing to fade
+         from. Two frames is enough and costs nothing. */
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        incoming.classList.add('on');
+        if (showing) showing.classList.remove('on');
+      }));
+    }
     return safe;
   }
 

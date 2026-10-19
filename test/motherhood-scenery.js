@@ -419,6 +419,140 @@ const hashOf = file =>
     await c4.close();
   }
 
+  /* ================================================================
+     8. Motion.
+
+        The interface moves. The landscape does not, and that is not a
+        stylistic preference — "use authentic motion footage only when
+        an actual video asset exists" and "do not fake moving nature by
+        panning still photographs". There is no video asset. So this
+        checks both halves: that the animation is really there, and that
+        none of it is applied to the photograph.
+     ================================================================ */
+  {
+    const c5 = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const p5 = await c5.newPage();
+    await p5.goto(BASE, { waitUntil: 'networkidle' });
+    await p5.waitForTimeout(1700);
+    await p5.evaluate(() => { const b = document.getElementById('fwSkip'); if (b) b.click(); });
+    await p5.waitForTimeout(600);
+    await p5.evaluate(async () => {
+      await window.SSMotherhood.createVault('a passcode for the test');
+      await window.SSMotherhood.setStage('postpartum', { birthDate: '', feeding: '' });
+      await window.SSMotherhood.setScene('aurora');
+      window.__mhUI.open();
+    });
+    await p5.waitForTimeout(1200);
+
+    /* The cards really animate in. Caught by re-rendering the screen and
+       reading the running animations in the same frame. */
+    const entrance = await p5.evaluate(async () => {
+      window.__mhUI.route();
+      await new Promise(r => requestAnimationFrame(r));
+      const running = document.querySelectorAll('.mh-layer .mh-card')[0];
+      const anims = running ? running.getAnimations().map(a => a.animationName || '') : [];
+      return { names: anims.join(','), count: anims.length };
+    });
+    check('8 · Cards animate in', entrance.count > 0 && /mh-rise/.test(entrance.names), entrance.names);
+
+    /* Nothing loops. An animation with infinite iterations is a phone
+       being drained by a screen someone fell asleep looking at. */
+    const infinite = await p5.evaluate(() => {
+      const out = [];
+      document.querySelectorAll('.mh-layer, .mh-layer *').forEach(n => {
+        n.getAnimations().forEach(a => {
+          const it = a.effect && a.effect.getTiming ? a.effect.getTiming().iterations : 1;
+          if (it === Infinity) out.push((n.className || n.tagName) + ':' + (a.animationName || '?'));
+        });
+      });
+      return out;
+    });
+    check('8 · Nothing animates forever', infinite.length === 0, infinite.join(', ') || 'none');
+
+    /* Changing scenery cross-fades: two plates, the incoming one rising
+       in opacity while the outgoing one falls. */
+    const fade = await p5.evaluate(async () => {
+      const plates = () => [...document.querySelectorAll('.mh-scene-plate')]
+        .map(p => ({ scene: p.dataset.sceneName || '', o: Number(getComputedStyle(p).opacity).toFixed(2) }));
+      const before = plates();
+      await window.SSMotherhood.setScene('moonmeadow');
+      window.__mhUI.route();
+      await new Promise(r => setTimeout(r, 300));
+      const during = plates();
+      await new Promise(r => setTimeout(r, 1400));
+      const after = plates();
+      return { before, during, after, plateCount: document.querySelectorAll('.mh-scene-plate').length };
+    });
+    check('8 · There are two scenery plates to fade between', fade.plateCount === 2);
+    check('8 · Mid-change both plates are partly visible',
+      fade.during.filter(p => Number(p.o) > 0.02 && Number(p.o) < 0.98).length >= 1,
+      JSON.stringify(fade.during));
+    check('8 · The change settles on the chosen scene',
+      fade.after.some(p => p.scene === 'moonmeadow' && Number(p.o) > 0.98),
+      JSON.stringify(fade.after));
+
+    /* And the photograph itself holds still. Sampled over a second and a
+       half on one scene: no transform, no background-position drift, no
+       size change. This is the check that would catch a Ken Burns creep
+       being added later. */
+    const still = await p5.evaluate(async () => {
+      const read = () => {
+        const p = document.querySelector('.mh-scene-plate.on');
+        if (!p) return 'none';
+        const s = getComputedStyle(p);
+        const r = p.getBoundingClientRect();
+        return [s.transform, s.backgroundPosition, s.backgroundSize, s.scale || '',
+                Math.round(r.width), Math.round(r.height), Math.round(r.top), Math.round(r.left)].join('|');
+      };
+      const first = read();
+      await new Promise(r => setTimeout(r, 750));
+      const mid = read();
+      await new Promise(r => setTimeout(r, 750));
+      const last = read();
+      return { first, mid, last, same: first === mid && mid === last };
+    });
+    check('8 · The landscape never moves while you sit on it',
+      still.same === true, still.first + '  vs  ' + still.last);
+    await c5.close();
+  }
+
+  /* Reduced motion means off, not merely gentler. */
+  {
+    const c6 = await browser.newContext({
+      viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true,
+      reducedMotion: 'reduce'
+    });
+    const p6 = await c6.newPage();
+    await p6.goto(BASE, { waitUntil: 'networkidle' });
+    await p6.waitForTimeout(1700);
+    await p6.evaluate(() => { const b = document.getElementById('fwSkip'); if (b) b.click(); });
+    await p6.waitForTimeout(600);
+    const quiet = await p6.evaluate(async () => {
+      await window.SSMotherhood.createVault('a passcode for the test');
+      await window.SSMotherhood.setStage('postpartum', { birthDate: '', feeding: '' });
+      window.__mhUI.open();
+      await new Promise(r => setTimeout(r, 900));
+      window.__mhUI.route();
+      await new Promise(r => requestAnimationFrame(r));
+      const nodes = [...document.querySelectorAll('.mh-layer, .mh-layer .mh-card, .mh-scene-plate, .mh-layer .mh-tile')];
+      const moving = nodes.filter(n => n.getAnimations().length > 0)
+        .map(n => (n.className || n.tagName).toString().slice(0, 30));
+      const card = document.querySelector('.mh-layer .mh-card');
+      const s = card ? getComputedStyle(card) : null;
+      return {
+        moving,
+        opacity: s ? s.opacity : '',
+        transitionDuration: s ? s.transitionDuration : '',
+        visible: Boolean(card && card.getBoundingClientRect().height > 10)
+      };
+    });
+    check('8 · Reduced motion stops every animation',
+      quiet.moving.length === 0, quiet.moving.join(', ') || 'none running');
+    check('8 · And the cards are simply there, fully opaque',
+      quiet.opacity === '1' && quiet.visible === true, 'opacity ' + quiet.opacity);
+    await c6.close();
+  }
+
   await browser.close();
   console.log('\n' + pass + ' passed, ' + fail + ' failed');
   if (fail === 0) console.log('ALL CHECKS PASSED');

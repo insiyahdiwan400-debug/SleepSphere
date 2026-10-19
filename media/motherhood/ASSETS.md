@@ -26,11 +26,20 @@ Licences, sources and photographers are in [`../../CREDITS.md`](../../CREDITS.md
   at a file that is not one of these.
 - **Photographs, not effects.** No CSS gradient, drawn star field or
   illustrated aurora may be presented as one of these scenes.
-- **Stills stay still.** The landscape never pans, zooms, cross-fades or
-  animates. It is painted on the fixed full-screen layer, so it holds
-  position while the content scrolls in front of it — the photograph
-  itself does not move at any point. Motion would have to come from a
-  real video asset, and there is none.
+- **Stills stay still.** The landscape never pans, zooms or drifts. It
+  holds position while the content scrolls in front of it, and sitting
+  on a scene shows a photograph doing nothing at all — checked by
+  sampling its transform, position and size over a second and a half.
+  The one exception is deliberate: changing scenery cross-fades between
+  the outgoing photograph and the incoming one, which is a transition
+  between two stills on an action the person took, not the landscape
+  moving. Motion *within* a scene would have to come from a real video
+  asset, and there is none.
+- **The interface may move; the photograph may not.** Cards rise in,
+  tiles answer a press, the module fades open. All of it is transform
+  and opacity only, all of it finite — nothing loops in the background
+  draining a phone — and all of it stops under prefers-reduced-motion,
+  which is treated as off rather than gentler.
 - **Same-origin only.** Private records must never cause a third-party
   image request. The CSP in `_headers` is `img-src 'self' data:`, which
   enforces this, but the paths are written to respect it regardless.
