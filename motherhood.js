@@ -114,6 +114,7 @@
     return {
       v: VAULT_VERSION,
       stage: '',                 // 'pregnancy' | 'postpartum' | ''
+      scene: 'aurora',            // Encrypted preference; never stored outside vault
       pregnancy: { dueDate: '' },
       postpartum: { birthDate: '', feeding: '' },
       entries: [],
@@ -253,7 +254,7 @@
      `state.morningRevisions`. Editing supersedes; it does not overwrite.
      ================================================================== */
 
-  const KINDS = ['night', 'day', 'feed', 'weight', 'appointment'];
+  const KINDS = ['night', 'day', 'feed', 'weight', 'appointment', 'babySleep', 'diaper'];
 
   /* Serialise entry writes. Two saves started close together each sealed a
      snapshot of the vault as it was when they began, and whichever finished
@@ -388,6 +389,25 @@
       const existing = record() || {};
       MH.set({ enabled: true, v: VAULT_VERSION, kdf: existing.kdf, cipher });
       session.vault = next;
+    });
+  }
+
+  /* Appearance is private: scene selection is encrypted alongside the vault,
+     never exposed as a separate browser preference or research field. */
+  const SCENES = ['aurora', 'starlake', 'firstlight', 'moonmeadow'];
+  function setScene(scene) {
+    if (!SCENES.includes(scene)) return Promise.reject(new Error('unknown scene'));
+    return queueVaultWrite(async () => {
+      if (!isUnlocked()) throw new Error('locked');
+      const key = session.key, current = session.vault;
+      const next = { ...current, scene };
+      const cipher = await sealVault(next, key);
+      if (session.key !== key || session.vault !== current) throw new Error('locked');
+      const existing = record();
+      if (!existing || !existing.kdf) throw new Error('vault erased');
+      MH.set({ enabled: true, v: VAULT_VERSION, kdf: existing.kdf, cipher });
+      session.vault = next;
+      return scene;
     });
   }
 
@@ -580,7 +600,7 @@
        unchanged; tracked() only counts them in and out. */
     createVault: tracked(createVault), unlock: tracked(unlock), lock, persist,
     vault: () => session.vault,
-    addEntry, removeEntry, setStage, liveEntries,
+    addEntry, removeEntry, setStage, setScene, SCENES, liveEntries,
     pregnancyProgress, postpartumProgress, summarise,
     buildExport,
     KINDS, SYMPTOMS, LESSONS, SEEK_CARE,
