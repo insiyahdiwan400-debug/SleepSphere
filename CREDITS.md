@@ -95,35 +95,46 @@ app, and it is not presented as a recording of anything.
 
 ---
 
-## Motherhood scenery photographs
+## Motherhood scenery
 
-Four photographs, one per scene, in `media/motherhood/`. Each ships as a
-background (1600px on its long edge) and a separate thumbnail for the
-selector (480px). All four are from Pexels and are used under the
-[Pexels License](https://www.pexels.com/license/), which permits free use
-and modification, including commercially, without attribution. They are
-credited here anyway, because a photograph someone else made should carry
-their name whether or not a licence compels it.
+Four scenes in `media/motherhood/`. Each is a short clip of real
+footage plus a still, and the still is that clip own first frame — so
+the scene you see before the video decodes is the same scene, not a
+different photograph standing in for it.
 
-| File | Scene | Source | Photographer |
-|---|---|---|---|
-| `aurora.webp` | Aurora Sanctuary | [pexels.com/photo/3307194](https://www.pexels.com/photo/aurora-borealis-during-night-time-3307194/) | Tobias Bjørkli |
-| `starlake.webp` | Celestial Lake | [pexels.com/photo/14478408](https://www.pexels.com/photo/starry-sky-over-a-lake-14478408/) | JackerKun |
-| `firstlight.webp` | First Light | [pexels.com/photo/14024556](https://www.pexels.com/photo/fog-in-valley-at-sunrise-14024556/) | Quang Nguyen Vinh |
-| `moonmeadow.webp` | Moonlit Meadow | [pexels.com/photo/17401937](https://www.pexels.com/photo/stars-on-clear-sky-over-meadow-in-evening-17401937/) | Dave Love |
+All four are from Pexels under the [Pexels License](https://www.pexels.com/license/),
+which permits free use and modification, including commercially,
+without attribution. They are credited anyway, because footage someone
+else shot should carry their name whether or not a licence compels it.
 
-Each was downloaded as a JPEG, resized and re-encoded to WebP by this
-project. Nothing was composited, relit, or added: the aurora, the stars
-and the cloud are as photographed. They are not video, and the app does
-not pan or animate them to suggest that they are.
+| Scene | Source | Photographer |
+|---|---|---|
+| Aurora Sanctuary | [pexels.com/video/11860943](https://www.pexels.com/video/mountain-and-aurora-borealis-11860943/) | Cristian Manieri |
+| Celestial Lake | [pexels.com/video/13423306](https://www.pexels.com/video/stars-in-night-sky-over-mountain-lake-13423306/) | Dmitry Varennikov |
+| First Light | [pexels.com/video/4046335](https://www.pexels.com/video/the-sun-rising-behind-the-mountains-4046335/) | Taryn Elliott |
+| Moonlit Meadow | [pexels.com/video/12902487](https://www.pexels.com/video/low-angle-view-of-tall-wild-grass-and-the-moon-12902487/) | Camille Brodard |
+
+Each was trimmed to eight or ten seconds, cropped to 9:16 and
+re-encoded by this project as H.264 and VP9. Nothing was composited,
+relit, reversed or speed-ramped. What moves in them is what the camera
+recorded moving.
+
+### Photographs sourced earlier, now superseded
+
+Four Pexels stills were used before the footage existed: an aurora over
+a lake by Tobias Bjorkli, a star-filled lake by JackerKun, a valley
+above the cloud by Quang Nguyen Vinh, and a meadow under blue night by
+Dave Love. They are no longer in the repository — each scene now
+derives its still from its own clip, so that the still and the motion
+can never disagree.
 
 ### Photographs that were supplied but not used
 
 An asset patch dated 19 October 2026 supplied `aurora.webp` and
-`firstlight.webp` cropped from the project owner's own photographs
+`firstlight.webp` cropped from the project owner own photographs
 (IMG_5769 and IMG_5767). Both were taken through an aircraft cabin
-window: the first keeps the window's vignette and an aircraft wing and
-winglet in the lower right, the second is a full cabin window frame with
-a wing across the centre. The approved Motherhood design excludes
+window: the first keeps the window vignette and an aircraft wing and
+winglet in the lower right, the second is a full cabin window frame
+with a wing across the centre. The approved Motherhood design excludes
 aircraft imagery of any kind, so neither was installed. They are not in
 this repository.

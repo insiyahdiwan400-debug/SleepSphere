@@ -403,6 +403,64 @@
   /* Applying the chosen scene. One place, because the layer's attribute
      is what every background in the stylesheet keys off, and a screen
      that forgot to set it would silently show someone else's landscape. */
+  /* Whether this device should be shown moving footage at all.
+
+     Three reasons not to, and none of them is a preference we get to
+     override: the person asked their system for less movement; the
+     person asked their browser to save data; or the connection is slow
+     enough that a megabyte of video would cost them more than it gives.
+     In every case the still is the scene, and it is the first frame of
+     the same footage, so nothing is lost but the motion. */
+  function motionWanted() {
+    try {
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+      const net = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      if (net) {
+        if (net.saveData) return false;
+        if (/^(slow-2g|2g)$/.test(net.effectiveType || '')) return false;
+      }
+    } catch (e) {}
+    return true;
+  }
+
+  /* The moving scene. Authentic footage of the place the still shows —
+     the still is literally this clip's first frame — so the video is
+     the scene arriving, not a different one replacing it.
+
+     Loaded only for the scene actually showing, and only once it is
+     chosen: four clips eagerly fetched would be three wasted. */
+  function mountMotion(plate, scene) {
+    if (!plate || !motionWanted()) return;
+    if (plate.querySelector('video')) return;
+    const v = document.createElement('video');
+    v.className = 'mh-scene-motion';
+    v.muted = true; v.defaultMuted = true;
+    v.loop = true; v.autoplay = true;
+    v.setAttribute('muted', '');
+    v.setAttribute('loop', '');
+    v.setAttribute('autoplay', '');
+    v.setAttribute('playsinline', '');
+    v.setAttribute('webkit-playsinline', '');
+    v.setAttribute('aria-hidden', 'true');
+    v.preload = 'auto';
+    /* WebM first for engines that have it, H.264 for iOS. The poster is
+       the still underneath, so nothing flashes while this decodes. */
+    [['webm', 'video/webm'], ['mp4', 'video/mp4']].forEach(([ext, type]) => {
+      const s = document.createElement('source');
+      s.src = './media/motherhood/motion/' + scene + '.' + ext;
+      s.type = type;
+      v.appendChild(s);
+    });
+    /* Only reveal it once frames are actually running. A video that
+       never decodes — no codec, blocked autoplay, a 404 — simply stays
+       invisible and the still remains the scene. */
+    v.addEventListener('playing', () => { v.classList.add('on'); });
+    v.addEventListener('error', () => { v.remove(); });
+    plate.appendChild(v);
+    const play = v.play();
+    if (play && play.catch) play.catch(() => { /* still stands in */ });
+  }
+
   function applyScene(scene) {
     if (!layer) return 'aurora';
     const safe = M.SCENES.includes(scene) ? scene : 'aurora';
@@ -415,10 +473,22 @@
     const plates = layer.querySelectorAll('.mh-scene-plate');
     if (plates.length === 2) {
       const showing = layer.querySelector('.mh-scene-plate.on');
-      if (showing && showing.dataset.sceneName === safe) return safe;
+      /* Already on this scene: nothing to fade, but the clip may still
+         be missing — the first render of a screen gets here before any
+         video has been mounted. */
+      if (showing && showing.dataset.sceneName === safe) { mountMotion(showing, safe); return safe; }
       const incoming = showing === plates[0] ? plates[1] : plates[0];
       incoming.className = 'mh-scene-plate scene-' + safe;
       incoming.dataset.sceneName = safe;
+      /* The outgoing plate stops costing anything the moment it is no
+         longer the scene — a paused clip still decodes on some engines,
+         and two running at once on a phone is exactly the battery
+         complaint the brief warns about. */
+      if (showing) {
+        const old = showing.querySelector('video');
+        if (old) { try { old.pause(); } catch (e) {} old.remove(); }
+      }
+      mountMotion(incoming, safe);
       /* Let the new background-image land before the opacity changes,
          or the browser batches both and the fade has nothing to fade
          from. Two frames is enough and costs nothing. */

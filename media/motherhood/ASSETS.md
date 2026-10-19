@@ -9,12 +9,15 @@ the encrypted Motherhood vault, never as a separate browser preference.
 All four scenes are present, same-origin, and each has a thumbnail so the
 selector does not pull full-size backgrounds to draw four small tiles.
 
-| Scene | Background | Thumbnail | Depicts |
-|---|---|---|---|
-| Aurora Sanctuary | `aurora.webp` 1149×1600 · 70KB | `aurora-thumb.webp` 7KB | Aurora over a still lake, reflected, trees on the far shore |
-| Celestial Lake | `starlake.webp` 1600×850 · 47KB | `starlake-thumb.webp` 7KB | Calm lake under a star-filled blue sky, distant mountains |
-| First Light | `firstlight.webp` 1600×1067 · 330KB | `firstlight-thumb.webp` 28KB | Mountain valley above a sea of cloud at sunrise |
-| Moonlit Meadow | `moonmeadow.webp` 1600×1067 · 164KB | `moonmeadow-thumb.webp` 14KB | Meadow and wildflowers under a deep blue starry sky |
+| Scene | Still | Thumb | Footage | Depicts |
+|---|---|---|---|---|
+| Aurora Sanctuary | `aurora.webp` 18KB | 5KB | `motion/aurora.{mp4,webm}` 254/224KB | Aurora over a mountain lake |
+| Celestial Lake | `starlake.webp` 35KB | 7KB | `motion/starlake.{mp4,webm}` 482/739KB | Milky Way reflected in a mountain lake |
+| First Light | `firstlight.webp` 12KB | 4KB | `motion/firstlight.{mp4,webm}` 223/66KB | Sun rising behind mountains over a valley |
+| Moonlit Meadow | `moonmeadow.webp` 29KB | 10KB | `motion/moonmeadow.{mp4,webm}` 514/447KB | Tall grass and the moon |
+
+All stills and footage are 9:16, 720x1280. Total 3.1MB, of which only
+one scene footage is ever fetched.
 
 Licences, sources and photographers are in [`../../CREDITS.md`](../../CREDITS.md).
 
@@ -26,20 +29,27 @@ Licences, sources and photographers are in [`../../CREDITS.md`](../../CREDITS.md
   at a file that is not one of these.
 - **Photographs, not effects.** No CSS gradient, drawn star field or
   illustrated aurora may be presented as one of these scenes.
-- **Stills stay still.** The landscape never pans, zooms or drifts. It
-  holds position while the content scrolls in front of it, and sitting
-  on a scene shows a photograph doing nothing at all — checked by
-  sampling its transform, position and size over a second and a half.
-  The one exception is deliberate: changing scenery cross-fades between
-  the outgoing photograph and the incoming one, which is a transition
-  between two stills on an action the person took, not the landscape
-  moving. Motion *within* a scene would have to come from a real video
-  asset, and there is none.
-- **The interface may move; the photograph may not.** Cards rise in,
-  tiles answer a press, the module fades open. All of it is transform
-  and opacity only, all of it finite — nothing loops in the background
-  draining a phone — and all of it stops under prefers-reduced-motion,
-  which is treated as off rather than gentler.
+- **Motion is footage, never an effect.** The scene moves because the
+  camera recorded it moving — an aurora, stars wheeling, cloud in a
+  valley, grass in wind. The plate carrying it is never panned, zoomed
+  or drifted, and that is checked by sampling its transform, position
+  and size over a second and a half: a creeping transform would be the
+  faked version whether or not a video sat on top of it. No CSS
+  gradient, drawn star field or illustrated aurora may stand in for a
+  scene.
+- **The still is the clip first frame.** Not a different photograph of
+  a similar place. The scene before the video decodes and the scene
+  after it are the same scene.
+- **One clip at a time.** Only the chosen scene footage is fetched, and
+  the outgoing clip is torn down on a change rather than left paused
+  and decoding. Changing scenery cross-fades between the two, which is
+  a transition on an action the person took.
+- **Motion is refused where it is not wanted.** prefers-reduced-motion,
+  Save-Data, and 2g connections fetch no footage at all — not hidden
+  after downloading, never requested. The still remains the scene.
+- **The interface may move; the photograph may not be faked.** Cards
+  rise in, tiles answer a press, the module fades open: transform and
+  opacity only, all finite, all off under reduced motion.
 - **Same-origin only.** Private records must never cause a third-party
   image request. The CSP in `_headers` is `img-src 'self' data:`, which
   enforces this, but the paths are written to respect it regardless.
