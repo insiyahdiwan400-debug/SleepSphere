@@ -345,3 +345,79 @@ html.mh-open, html.mh-open body { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .mh-card { animation: none; }
 }
+
+
+/* Dreamscape selection: atmospheric CSS previews, not simulated footage.
+   Swap in the user's licensed original nature assets once accessible. */
+.mh-layer {
+  --dream-top: #101b37;
+  --dream-mid: #314967;
+  --dream-glow: rgba(101,211,171,.38);
+  --dream-text: #f9f6ef;
+  background: linear-gradient(180deg,var(--dream-top),var(--dream-mid) 48%,#f8f4ee 92%);
+}
+.mh-layer[data-scene="starlake"] {
+  --dream-top: #071528; --dream-mid: #1d4162; --dream-glow: rgba(122,171,232,.3);
+}
+.mh-layer[data-scene="firstlight"] {
+  --dream-top: #34446e; --dream-mid: #c28eaa; --dream-glow: rgba(255,208,155,.45);
+}
+.mh-layer[data-scene="moonmeadow"] {
+  --dream-top: #151c38; --dream-mid: #4c5278; --dream-glow: rgba(180,163,226,.4);
+}
+.mh-layer::before {
+  content: ""; position: absolute; inset: 0 0 auto; height: 58%;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 70% 26%, var(--dream-glow), transparent 48%),
+    radial-gradient(1px 1px at 9% 13%, #fff 99%, transparent),
+    radial-gradient(2px 2px at 29% 23%, #fff 99%, transparent),
+    radial-gradient(1px 1px at 46% 9%, #fff 99%, transparent),
+    radial-gradient(2px 2px at 62% 31%, #fff 99%, transparent),
+    radial-gradient(1px 1px at 84% 18%, #fff 99%, transparent),
+    radial-gradient(1px 1px at 92% 39%, #fff 99%, transparent);
+  opacity: .9;
+}
+.mh-layer[data-scene="firstlight"]::before { opacity: .55; }
+.mh-bar { position: relative; z-index: 1; background: rgba(12,25,45,.24);
+  border-bottom: 1px solid rgba(255,255,255,.22); }
+.mh-bar-title,.mh-bar button { color: #fffaf5; }
+.mh-bar button { border-color: rgba(255,255,255,.45); }
+.mh-body { position: relative; z-index: 1; }
+.mh-dream-picker {
+  background: rgba(13,28,49,.32); border: 1px solid rgba(255,255,255,.34);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.mh-dream-picker h2,.mh-dream-picker .mh-eyebrow,.mh-dream-picker .mh-hint { color: #fffaf5; }
+.mh-dream-picker .mh-hint { opacity: .88; }
+.mh-scenes { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+.mh-scene-choice {
+  appearance: none; min-width: 0; display: grid; gap: 5px; padding: 7px;
+  text-align: left; color: #fefaf6; background: rgba(11,23,42,.45);
+  border: 1px solid rgba(255,255,255,.4); border-radius: 17px;
+  font: inherit; cursor: pointer; min-height: 130px;
+}
+.mh-scene-choice strong { font-size: .86rem; padding: 0 5px; }
+.mh-scene-choice small { font-size: .75rem; padding: 0 5px 5px; color: #e6e9f3; }
+.mh-scene-choice[aria-pressed="true"] { border: 2px solid #f7e2bc; background: rgba(39,60,75,.75); }
+.mh-scene-choice:focus-visible { outline: 3px solid #ffe5ad; outline-offset: 3px; }
+.mh-scene-preview { height: 78px; border-radius: 12px; display: block;
+  background-image:
+    radial-gradient(1px 1px at 12% 18%,#fff 99%,transparent),
+    radial-gradient(2px 2px at 65% 26%,#fff 99%,transparent),
+    radial-gradient(1px 1px at 84% 44%,#fff 99%,transparent),
+    linear-gradient(145deg,#0c2242,#33745d 60%,#101c38);
+}
+.mh-preview-starlake { background-image:
+  radial-gradient(1px 1px at 20% 15%,#fff 99%,transparent),
+  radial-gradient(2px 2px at 76% 32%,#fff 99%,transparent),
+  linear-gradient(175deg,#0b1533 0%,#29547c 55%,#0a223f 56%,#203f5c); }
+.mh-preview-firstlight { background: linear-gradient(175deg,#586c9d,#dbb5b5 52%,#f5d4a2 72%,#9aa3a3); }
+.mh-preview-moonmeadow { background-image:
+  radial-gradient(circle at 72% 23%,#fff4d2 0 8px,transparent 9px),
+  linear-gradient(170deg,#151c38,#5e638a 65%,#425c4c 66%); }
+.mh-stagecard { background: linear-gradient(125deg,rgba(255,241,231,.97),rgba(236,239,239,.94)); }
+@media (max-width: 360px) {
+  .mh-scenes { gap: 6px; }
+  .mh-scene-choice strong { font-size: .78rem; }
+}
