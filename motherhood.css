@@ -421,3 +421,119 @@ html.mh-open, html.mh-open body { overflow: hidden; }
   .mh-scenes { gap: 6px; }
   .mh-scene-choice strong { font-size: .78rem; }
 }
+
+
+/* PHOTO-FIRST REFINEMENT
+   Genuine landscape photography only. All paths are same-origin so private
+   records never trigger third-party image requests. Until assets are added,
+   show a quiet neutral fallback rather than illustrated stars/auroras.
+   Expected local files:
+     media/motherhood/aurora.webp
+     media/motherhood/starlake.webp
+     media/motherhood/firstlight.webp
+     media/motherhood/moonmeadow.webp
+*/
+.mh-layer {
+  --mh-landscape: url("./media/motherhood/aurora.webp");
+  background: #edf0ee;
+  color: #243a43;
+  --paper: #f8faf8;
+  --card: #ffffff;
+  --ink: #243a43;
+  --muted: #5b6b70;
+  --line: #dbe3df;
+  --accent: #326b6a;
+}
+.mh-layer[data-scene="starlake"] { --mh-landscape: url("./media/motherhood/starlake.webp"); }
+.mh-layer[data-scene="firstlight"] { --mh-landscape: url("./media/motherhood/firstlight.webp"); }
+.mh-layer[data-scene="moonmeadow"] { --mh-landscape: url("./media/motherhood/moonmeadow.webp"); }
+.mh-layer::before { content: none; }
+.mh-bar {
+  background: #f8faf8;
+  border-bottom: 1px solid #dbe3df;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.mh-bar-title,.mh-bar button { color: #29434c; }
+.mh-bar button { border-color: #cbd7d3; }
+.mh-body {
+  gap: 14px;
+  padding-top: 16px;
+  background: linear-gradient(180deg,#edf3f0,#f9faf7 350px);
+}
+.mh-card {
+  background: #fff;
+  border: 1px solid #e1e8e3;
+  box-shadow: 0 3px 16px rgba(20,51,55,.045);
+  border-radius: 19px;
+}
+.mh-card h2,.mh-card h3 { color: #29434c; }
+.mh-eyebrow { color: #487575; }
+.mh-stagecard {
+  min-height: 235px;
+  justify-content: flex-end;
+  background-image:
+    linear-gradient(180deg,rgba(8,29,40,.04),rgba(9,31,42,.79)),
+    var(--mh-landscape);
+  background-color: #45646b;
+  background-size: cover;
+  background-position: center;
+  border: none;
+  padding: 26px;
+  box-shadow: 0 10px 25px rgba(23,49,58,.14);
+}
+.mh-stagecard::before { content: none; }
+.mh-stagecard h2 { color: #fff; font-size: 2.1rem; }
+.mh-stagecard .mh-eyebrow { color: #e8f3ee; }
+.mh-stagecard p,.mh-stagecard .mh-sub { color: #f5f8f6 !important; }
+.mh-dream-picker {
+  background: #fff;
+  border-color: #e1e8e3;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.mh-dream-picker h2 { color: #29434c; font-size: 1.22rem; }
+.mh-dream-picker .mh-eyebrow { color: #487575; }
+.mh-dream-picker .mh-hint { color: #5b6b70; opacity: 1; }
+.mh-scenes { gap: 10px; }
+.mh-scene-choice {
+  background: #f8faf8;
+  border: 1px solid #dfe7e2;
+  color: #2c474b;
+  padding: 7px;
+  min-height: 146px;
+  border-radius: 15px;
+}
+.mh-scene-choice strong { color: #29434c; font-size: .84rem; }
+.mh-scene-choice small { color: #657674; }
+.mh-scene-choice[aria-pressed="true"] {
+  border: 2px solid #4b817e;
+  background: #f2f8f5;
+  box-shadow: 0 0 0 2px #d6e9e1;
+}
+.mh-scene-choice:focus-visible { outline-color: #327a77; }
+.mh-scene-preview {
+  height: 108px;
+  border-radius: 10px;
+  background-image: url("./media/motherhood/aurora.webp");
+  background-color: #6b8485;
+  background-position: center;
+  background-size: cover;
+}
+.mh-preview-aurora { background-image: url("./media/motherhood/aurora.webp"); }
+.mh-preview-starlake { background-image: url("./media/motherhood/starlake.webp"); background-color: #5d7885; }
+.mh-preview-firstlight { background-image: url("./media/motherhood/firstlight.webp"); background-color: #b5b9ae; }
+.mh-preview-moonmeadow { background-image: url("./media/motherhood/moonmeadow.webp"); background-color: #818b8b; }
+.mh-primary { background: #326b6a; color: #fff; }
+.mh-primary:hover:not(:disabled) { background: #275657; }
+.mh-tile,.mh-opt,.mh-dot,.mh-chip { background: #f6f9f7; border-color: #dbe5df; }
+.mh-tile:hover,.mh-opt:hover,.mh-chip:hover { background: #eaf4ef; }
+.mh-opt.on,.mh-dot.on,.mh-chip.on { border-color: #326b6a; box-shadow: inset 0 0 0 1px #326b6a; }
+.mh-dot.on,.mh-chip.on { background: #326b6a; color: #fff; }
+.mh-layer input[type="text"],.mh-layer input[type="password"],
+.mh-layer input[type="date"],.mh-layer input[type="time"],
+.mh-layer input[type="number"],.mh-layer select,.mh-layer textarea {
+  background: #fff;
+  border-color: #cfddd5;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mh-card { animation: none; transition: none; }
+}
