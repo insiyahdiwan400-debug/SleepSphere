@@ -96,7 +96,7 @@ async function open(browser, hour, opts) {
     check('0 · No credit line, because nothing is being shown', off.credit === false);
     check('0 · No scrim over the drawn sky', off.scrim === '0' || off.scrim === '');
     check('0 · The drawn sky is present and visible', off.starfield && off.starsVisible);
-    check('0 · All four destinations present', off.tabs === 4, String(off.tabs));
+    check('0 · All four destinations present', off.tabs === 5, String(off.tabs));
     check('0 · The sleep engine is untouched', off.engine);
     check('0 · No console errors with footage off', errs.length === 0, errs.join(' | '));
 
@@ -291,7 +291,7 @@ async function open(browser, hour, opts) {
       engine: typeof window.SS.engine.mornings === 'function',
       phase: Boolean(window.SS.engine.phase())
     }));
-    check('13 · All four destinations still present', app.tabs === 4, String(app.tabs));
+    check('13 · All four destinations still present', app.tabs === 5, String(app.tabs));
     check('13 · The sleep engine is untouched', app.engine && app.phase);
     check('13 · No console errors', errs.length === 0, errs.join(' | '));
     await ctx.close();

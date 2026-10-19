@@ -152,7 +152,7 @@ const DAYPARTS = [
     }
     check(`${part.name} · no horizontal scroll`, v.scrollW <= 390, `${v.scrollW}px`);
     check(`${part.name} · exactly four tabs, unchanged`,
-          v.tabs.join(',') === 'today,twin,learn,data', v.tabs.join(','));
+          v.tabs.join(',') === 'today,twin,learn,data,private', v.tabs.join(','));
     Object.entries(contrast).forEach(([id, value]) => {
       // 4.5:1 for body text; the ask is large-scale type, where AA is 3:1.
       const floor = id === 'momentAsk' ? 3 : 4.5;

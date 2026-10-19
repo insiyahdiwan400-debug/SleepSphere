@@ -225,32 +225,45 @@ const hashOf = file =>
     await pE.evaluate(() => { const b = document.getElementById('fwSkip'); if (b) b.click(); });
     await pE.waitForTimeout(600);
     const entry = await pE.evaluate(() => {
-      document.querySelector('.nav button[data-view="data"]').click();
+      const tab = document.querySelector('.nav button[data-view="private"]');
+      if (!tab) return { noTab: true };
+      tab.click();
       const btn = document.getElementById('mhEntry');
       if (!btn) return { missing: true };
       const top = btn.getBoundingClientRect().top + window.scrollY;
       const card = btn.closest('.card');
       return {
+        tabLabel: tab.textContent.replace(/[^\w\s]/g, '').trim(),
+        tabs: [...document.querySelectorAll('.nav button[data-view]')].map(b => b.dataset.view).join(','),
         top: Math.round(top),
         screens: Number((top / window.innerHeight).toFixed(2)),
         label: btn.textContent.trim(),
         heading: card ? (card.querySelector('h3') || {}).textContent : '',
+        viewHeading: (document.querySelector('#private h2') || {}).textContent || '',
         tap: Math.round(btn.getBoundingClientRect().height)
       };
     });
-    check('4b · The way in is on the Me tab', entry.missing !== true);
+    check('4b · There is a Private destination', entry.noTab !== true && entry.missing !== true);
+    check('4b · Five destinations now, with Private last',
+      entry.tabs === 'today,twin,learn,data,private', entry.tabs);
+    /* The tab's own name must give nothing away. It is on every device,
+       so a label naming pregnancy would put it in everyone's navigation
+       and tell a bystander what the owner is tracking the moment they
+       did turn it on. "Private" says only that something is kept apart. */
+    check('4b · The tab name discloses nothing',
+      /^private$/i.test(entry.tabLabel || '') && !/pregnan|mother|baby|birth/i.test(entry.tabLabel || ''),
+      entry.tabLabel);
     check('4b · Within one screen of the top, not four',
       entry.screens <= 1.2, entry.top + 'px, ' + entry.screens + ' screens');
-    check('4b · Under a heading that says what it is',
-      /private modules/i.test(entry.heading || ''), entry.heading);
-    check('4b · And worded for the person, not the module',
-      /pregnancy/i.test(entry.label || ''), entry.label);
+    check('4b · The card says what it is',
+      /pregnancy/i.test(entry.heading || ''), entry.heading);
     check('4b · Big enough to tap', entry.tap >= 44, entry.tap + 'px');
 
-    /* And still absent everywhere else: the point of opt-in. */
+    /* Still absent everywhere else, including the Me tab it used to be
+       buried in: the point of opt-in. */
     const elsewhere = await pE.evaluate(() => {
       const hits = [];
-      for (const view of ['today', 'twin', 'learn']) {
+      for (const view of ['today', 'twin', 'learn', 'data']) {
         document.querySelector('.nav button[data-view="' + view + '"]').click();
         const host = document.getElementById(view);
         if (host && /motherhood|pregnancy|postpartum/i.test(host.textContent)) hits.push(view);
@@ -258,7 +271,7 @@ const hashOf = file =>
       return hits;
     });
     check('4b · And mentioned nowhere else in the app',
-      elsewhere.length === 0, elsewhere.join(', ') || 'absent from today, twin, learn');
+      elsewhere.length === 0, elsewhere.join(', ') || 'absent from today, twin, learn, data');
     await cE.close();
   }
 

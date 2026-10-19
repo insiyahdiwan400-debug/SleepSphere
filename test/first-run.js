@@ -86,7 +86,7 @@ async function coldOpen(browser, w, h, hour) {
       };
     });
     check('1 · ' + name + ': one tap clears it', !after.enrolment && !after.welcome);
-    check('1 · ' + name + ': the app is there underneath', after.tabs === 4, String(after.tabs));
+    check('1 · ' + name + ': the app is there underneath', after.tabs === 5, String(after.tabs));
 
     /* The thing that must NOT happen: inventing a research subject. */
     check('1 · ' + name + ': no participant code is invented',

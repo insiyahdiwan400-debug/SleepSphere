@@ -1044,35 +1044,38 @@
      disclosing anything about whoever is holding the phone.
      ================================================================== */
   function mountEntry() {
-    const host = document.getElementById('data');
+    /* The Private destination, which exists on every device. Falls back
+       to the Me tab if that section is ever absent, so an older shell
+       served from the service-worker cache still has a way in rather
+       than losing the module entirely. */
+    const host = document.getElementById('private') || document.getElementById('data');
     if (!host || document.getElementById('mhEntry')) return;
 
     const section = el('section', 'card mh-entrycard');
-    section.appendChild(el('h3', null, 'Private modules'));
+    section.appendChild(el('h3', null, 'Pregnancy and after birth'));
     section.appendChild(el('p', null,
-      'Optional parts of SleepSphere that keep their records separately from ' +
-      'your study data, encrypted on this device.'));
-    const b = btn('Pregnancy and after birth', 'mh-entry-btn', () => {
+      'Rest, feeding, appointments and how you are doing, through pregnancy ' +
+      'and the months after. Off until you turn it on, and kept behind its ' +
+      'own passcode.'));
+    const b = btn('Open', 'mh-entry-btn', () => {
       openLayer();
       route();
     });
     b.id = 'mhEntry';
     section.appendChild(b);
 
-    /* Above the study grid, not after it.
+    /* Above any grid the host already has, so it is the first thing on
+       the destination rather than the last.
 
-       Appended to the end of the Me tab this landed 3312px down — about
-       four screens on a phone, past every export and dictionary card.
-       It was reported, accurately, as not being in the app at all.
-
-       Discretion was never supposed to cost findability. What protects
-       whoever is holding the phone is that this card is byte-identical
-       on every device, on or off, so finding it discloses nothing about
-       its owner. That property is untouched by where it sits — the card
-       says the same words in the same place for everyone. Being four
-       screens down bought no privacy and lost the feature. */
-    const studyGrid = host.querySelector('.grid');
-    if (studyGrid) host.insertBefore(section, studyGrid);
+       Appended to the end of the Me tab this used to land 3312px down —
+       four screens past every export and dictionary card — and was
+       reported, accurately, as the feature not being in the app.
+       Discretion was never supposed to cost findability: what protects
+       whoever holds the phone is that this card is byte-identical on
+       every device, on or off, and that has nothing to do with how far
+       down it sits. */
+    const grid = host.querySelector('.grid');
+    if (grid) host.insertBefore(section, grid);
     else host.appendChild(section);
   }
 

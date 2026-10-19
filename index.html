@@ -2797,6 +2797,16 @@
         <button data-view="twin"><span class="nav-icon">◎</span><span>My pattern</span></button>
         <button data-view="learn"><span class="nav-icon">◌</span><span>Explore</span></button>
         <button data-view="data"><span class="nav-icon">◍</span><span>Me</span></button>
+        <!-- A fifth destination, and the only one whose name is doing a
+             job. "Private" says nothing about pregnancy, and the button
+             is here on every device whether or not anyone has turned
+             anything on — which is the whole point. A tab that appeared
+             when Motherhood was enabled would tell anyone glancing at
+             the phone that its owner tracks a pregnancy or a postpartum
+             recovery, and that is precisely what the passcode, the
+             separate vault and B4 exist to prevent. Identical
+             everywhere discloses nothing. -->
+        <button data-view="private"><span class="nav-icon">◉</span><span>Private</span></button>
       </nav>
       <div class="side-note"><strong>Private by design.</strong><br />Your entries stay in this browser unless you export them. SleepSphere supports reflection; it does not diagnose.</div>
     </aside>
@@ -3545,6 +3555,15 @@
               </div>
             </article>
           </div>
+        </section>
+
+        <!-- The Private destination. Empty in the markup on purpose:
+             motherhood-ui.js mounts its entry card here at load, on
+             every device, and anything else private-by-design goes here
+             later. The section and its heading are byte-identical
+             whether or not the person has ever enabled a thing. -->
+        <section class="view" id="private">
+          <div class="section-head"><div><div class="eyebrow">Kept separately</div><h2>Private modules</h2></div><p>Optional parts of SleepSphere that keep their records apart from your study data, encrypted on this device with a passcode only you have. Nothing here is included in a research export.</p></div>
         </section>
 
         <section class="view" id="data">
@@ -4729,6 +4748,7 @@
       experiment: ['Try one change', 'Test one small action.', 'Choose what success means first, then compare cautiously.'],
       learn: ['Sleep guide', 'Understand sleep without fear or guilt.', 'Clear research, faith-aware context and safety boundaries.'],
       data: ['My records', 'Your entries belong to you.', 'Export, print, back up, import or erase them.'],
+      private: ['Private modules', 'Kept apart from the study.', 'Encrypted on this device, behind a passcode only you have.'],
       test: ['Give feedback', 'Tell me what deserves to stay.', 'Your honest experience will shape the next version.']
     };
 

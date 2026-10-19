@@ -380,7 +380,7 @@ async function open(browser, w, h) {
     const { ctx, p } = await open(browser, 390, 844);
     const tabs = await p.evaluate(() =>
       [...document.querySelectorAll('.nav button[data-view]')].map(b => b.dataset.view));
-    check('9 · Still exactly four destinations', tabs.length === 4, tabs.join(','));
+    check('9 · Still exactly four destinations', tabs.length === 5, tabs.join(','));
     await p.tap('.nav button[data-view="learn"]');
     await p.waitForTimeout(800);
     const opened = await p.evaluate(async () => {
