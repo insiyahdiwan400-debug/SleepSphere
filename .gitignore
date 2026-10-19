@@ -14,3 +14,6 @@ preview-shots/
 # Netlify by hand.
 SleepSphere-*.zip
 !SleepSphere-website.zip
+
+# Explainer recording output: regenerate with tools/explainer.js.
+explainer/*.webm
