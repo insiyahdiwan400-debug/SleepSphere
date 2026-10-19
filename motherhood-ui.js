@@ -383,7 +383,7 @@
     dream.appendChild(el('span', 'mh-eyebrow', 'Your peaceful place'));
     dream.appendChild(el('h2', null, 'Choose your dreamscape'));
     dream.appendChild(el('p', 'mh-hint',
-      'Your choice is private and saved with your encrypted records. These are atmospheric previews, not nature footage.'));
+      'Choose a landscape to make this space yours. Your choice stays encrypted and can be changed anytime.'));
     const sceneChoices = el('div', 'mh-scenes');
     const choices = [
       ['aurora', 'Aurora Sanctuary', 'Northern lights'],
