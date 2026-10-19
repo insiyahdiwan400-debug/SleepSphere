@@ -263,7 +263,8 @@
   function updateFlightFootage() {
     if (!flightVideo) return;
     var key = state.descending ? null : flightSceneForTime(new Date());
-    if (key === flightScene) return;
+    // Retry a missing/failed source when the scene is revisited; do not loop through dayparts.
+    if (key === flightScene && (!key || (flightVideo.readyState >= 2 && !flightVideo.error))) return;
     flightScene = key;
     flightVideo.pause();
     flightVideo.style.display = 'none';
@@ -306,6 +307,12 @@
       sky = new window.SSSky(canvas, { t: 0.42 });
       sky.start();
       updateFlightFootage();
+      // Re-evaluate the clock without waiting for the user to navigate.
+      if (host._flightClock) clearInterval(host._flightClock);
+      host._flightClock = setInterval(function () {
+        if (host && host.isConnected) updateFlightFootage();
+        else if (host && host._flightClock) { clearInterval(host._flightClock); host._flightClock = null; }
+      }, 60000);
     },
 
     sync: function (model) {
