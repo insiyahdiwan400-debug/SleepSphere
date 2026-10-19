@@ -276,6 +276,87 @@ const hashOf = file =>
   }
 
   /* ================================================================
+     4c. Changing it afterwards.
+
+         The first version put the chooser only behind a button
+         labelled "Privacy", at the foot of the last card on the home
+         screen. Nobody looking to change a picture taps Privacy, so in
+         practice the four scenes were a one-time setup question and
+         then permanent. There has to be a way to change the background
+         on the screen the background is on.
+     ================================================================ */
+  {
+    const cC = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const pC = await cC.newPage();
+    await pC.goto(BASE, { waitUntil: 'networkidle' });
+    await pC.waitForTimeout(2000);
+    await pC.evaluate(() => { const b = document.getElementById('fwSkip'); if (b) b.click(); });
+    await pC.waitForTimeout(600);
+    await pC.evaluate(async () => {
+      await window.SSMotherhood.createVault('a passcode for the test');
+      await window.SSMotherhood.setStage('postpartum', { birthDate: '', feeding: '' });
+      await window.SSMotherhood.setScene('moonmeadow');
+      window.__mhUI.open();
+    });
+    await pC.waitForTimeout(1300);
+    const link = await pC.evaluate(() => {
+      const l = document.querySelector('.mh-scenery-link');
+      if (!l) return { missing: true };
+      const top = l.getBoundingClientRect().top + window.scrollY;
+      return {
+        label: l.textContent.trim(),
+        aria: l.getAttribute('aria-label') || '',
+        screens: Number((top / window.innerHeight).toFixed(2)),
+        tap: Math.round(l.getBoundingClientRect().height)
+      };
+    });
+    check('4c · The home screen offers a way to change the background',
+      link.missing !== true);
+    check('4c · On the first screen, under the photograph',
+      link.screens <= 1, link.screens + ' screens down');
+    check('4c · It names the scene currently showing',
+      /moonlit meadow/i.test(link.label || ''), link.label);
+    check('4c · And says so to a screen reader',
+      /change scenery/i.test(link.aria || ''), link.aria);
+    check('4c · Big enough to tap', link.tap >= 44, link.tap + 'px');
+
+    const opens = await pC.evaluate(async () => {
+      document.querySelector('.mh-scenery-link').click();
+      await new Promise(r => setTimeout(r, 900));
+      return {
+        title: (document.querySelector('.mh-bar-title') || {}).textContent || '',
+        tiles: document.querySelectorAll('.mh-scene-choice').length
+      };
+    });
+    check('4c · And opens the chooser with all four',
+      /scenery/i.test(opens.title) && opens.tiles === 4, opens.title + ', ' + opens.tiles);
+
+    /* Changing it from here actually takes, and the entry survives. */
+    const changed = await pC.evaluate(async () => {
+      const tile = [...document.querySelectorAll('.mh-scene-choice')].find(t => t.dataset.id === 'starlake');
+      tile.click();
+      await new Promise(r => setTimeout(r, 1400));
+      return {
+        scene: window.SSMotherhood.vault().scene,
+        plate: (document.querySelector('.mh-scene-plate.on') || {}).dataset?.sceneName
+      };
+    });
+    check('4c · Picking a different one changes it', changed.scene === 'starlake', changed.scene);
+    check('4c · And the background follows', changed.plate === 'starlake', String(changed.plate));
+
+    /* Settings is still reachable, and no longer hides behind "Privacy". */
+    const settings = await pC.evaluate(async () => {
+      window.__mhUI.route();
+      await new Promise(r => setTimeout(r, 800));
+      const labels = [...document.querySelectorAll('.mh-actions button')].map(b => b.textContent.trim());
+      return labels;
+    });
+    check('4c · The settings route is named for what it holds',
+      settings.includes('Settings') && !settings.includes('Privacy'), settings.join(', '));
+    await cC.close();
+  }
+
+  /* ================================================================
      5. Where the choice is offered.
 
         Asked once, at the end of setting the module up, and available

@@ -531,6 +531,22 @@
       }
     }
 
+    /* Changing the background, on the screen the background is on.
+       It was reachable only from a button labelled "Privacy", at the
+       foot of the last card — which is a fair place for the privacy
+       explanation and no place at all for a wallpaper. Nobody looking
+       to change a picture taps Privacy.
+
+       It sits under the photograph rather than in a menu because the
+       thing it changes is right there, and quiet rather than primary
+       because recording the night is what this screen is for. */
+    const sceneNow = SCENE_CHOICES.find(c => c[0] === (v.scene || 'aurora'));
+    const look = btn(sceneNow ? 'Scenery · ' + sceneNow[1] : 'Change scenery',
+      'mh-quiet mh-scenery-link', () => screenScenery(false));
+    look.setAttribute('aria-label',
+      'Change scenery. Currently ' + (sceneNow ? sceneNow[1] : 'Aurora Sanctuary') + '.');
+    b.appendChild(look);
+
     /* Record. The actions, in the order they are actually wanted. */
     const rec = card(b);
     rec.appendChild(el('h3', null, 'Record'));
@@ -625,7 +641,10 @@
       downloadJson(name, payload);
       toast('Saved to your downloads.');
     }));
-    actions.appendChild(btn('Privacy', 'mh-quiet', screenPrivacy));
+    /* That screen is Settings now — scenery, then the privacy
+       explanation, then the data controls. Labelling it "Privacy" hid
+       the other two behind a word people only tap when worried. */
+    actions.appendChild(btn('Settings', 'mh-quiet', screenPrivacy));
     actions.appendChild(btn('Delete everything', 'mh-danger', screenDelete));
     data.appendChild(actions);
     return b;

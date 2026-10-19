@@ -1028,3 +1028,23 @@ html.mh-open, html.mh-open body { overflow: hidden; }
   .mh-layer .mh-stagecard { opacity: 1; transform: none; }
   .mh-layer .mh-toast { transform: none; }
 }
+
+/* The scenery link under the hero. Full width so it reads as part of
+   the photograph above it rather than a stray control, and quiet enough
+   that it never competes with Record. */
+.mh-layer .mh-scenery-link {
+  width: 100%;
+  margin-top: -4px;
+  justify-content: center;
+  font-size: .88rem;
+  letter-spacing: .01em;
+  background: rgba(245, 244, 239, .09);
+  border-color: rgba(245, 244, 239, .24);
+  color: rgba(245, 244, 239, .92);
+}
+.mh-layer .mh-scenery-link::before {
+  content: "◉";
+  margin-right: .5em;
+  color: #e8d8b5;
+  font-size: .9em;
+}
