@@ -17,3 +17,4 @@ SleepSphere-*.zip
 
 # Explainer recording output: regenerate with tools/explainer.js.
 explainer/*.webm
+explainer/*.mp4

@@ -219,4 +219,34 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   fs.renameSync(raw, final);
   await browser.close();
   console.log(final + '  (' + (fs.statSync(final).size / 1024).toFixed(0) + ' KB)');
+
+  /* Playwright only writes VP8 in a .webm, and that is the file people
+     cannot open: QuickTime and Photos refuse it outright, and it is the
+     reason the first copy of this had to be played in VLC. The thing to
+     actually send anyone is the mp4 — H.264 High, yuv420p, faststart —
+     which plays in iOS Photos, Safari, QuickTime, PowerPoint and
+     Windows without anything installed.
+
+     yuv420p and the even-dimension scale are not optional padding:
+     QuickTime will not decode 4:2:0 at an odd width, and 390x844 is
+     even today only by luck of the viewport. */
+  const mp4 = path.join(OUT, 'sleepsphere-explainer.mp4');
+  const { spawnSync } = require('node:child_process');
+  const probe = spawnSync('ffmpeg', ['-version'], { encoding: 'utf8' });
+  if (probe.error) {
+    console.log('no mp4 — ffmpeg not on this machine; the webm above is the recording');
+    console.log('  to convert elsewhere:  ffmpeg -i ' + path.basename(final) +
+                ' -c:v libx264 -profile:v high -pix_fmt yuv420p -crf 20 -movflags +faststart -an ' +
+                path.basename(mp4));
+    return;
+  }
+  const run = spawnSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', final,
+    '-c:v', 'libx264', '-profile:v', 'high', '-level', '4.0', '-pix_fmt', 'yuv420p',
+    '-preset', 'slow', '-crf', '20', '-movflags', '+faststart', '-an',
+    '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', mp4], { encoding: 'utf8' });
+  if (run.status !== 0) {
+    console.log('mp4 conversion failed: ' + (run.stderr || '').trim().split('\n').slice(-1)[0]);
+    return;
+  }
+  console.log(mp4 + '  (' + (fs.statSync(mp4).size / 1024).toFixed(0) + ' KB)  <- send this one');
 })();
