@@ -44,7 +44,15 @@ function run({ existing = false, storageWorks = false } = {}) {
       : (fields[selector] || { value: '' }),
     ratings: { rest: 3, energy: 3, focus: 3, calm: 3 },
     state, selectedFactors: new Set(), supersedeWithoutAsking: false,
-    finishingLazyNight: false, window: { confirm: () => true },
+    /* finishingQuickWake joined finishingLazyNight in index.html after
+       this harness was written, and `with(ctx)` has no fallback for a
+       name the context does not carry — so the handler threw on its
+       first reference and all three cases failed without ever reaching
+       what they were written to check. The app defines it correctly
+       (index.html, `let finishingQuickWake = false`); it was only
+       missing from the scope this test builds around the handler. */
+    finishingLazyNight: false, finishingQuickWake: false,
+    window: { confirm: () => true },
     toast: message => events.push('toast:' + message),
     morningEstimate: () => ({ opportunityMinutes: 480, awakeMinutes: 0, sleepMinutes: 450, efficiency: 94 }),
     toMinutes: t => Number(t.slice(0, 2)) * 60 + Number(t.slice(3)),

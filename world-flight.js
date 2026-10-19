@@ -246,9 +246,6 @@
      Each clock window has its own clip; missing media falls back to SSSky.
      No participant state or storage is read or changed. */
   var flightVideo = null, flightScene = null;
-  /* Clips this session has already proved are not on the server. Reset
-     on reload, so adding the files and refreshing is all it takes. */
-  var FOOTAGE_MISSING = Object.create(null);
   /* Empty, because none of these clips has ever existed.
 
      This listed assets/flight/daylight.mp4, golden-hour.mp4, sunset.mp4
@@ -276,6 +273,17 @@
     if (h >= 19.5 && h < 21) return 'dusk';
     return null; // Night and early morning keep the live sky.
   }
+
+  /* Clips this session has already proved are not on the server. Reset
+     on reload, so adding the files and refreshing is all it takes.
+
+     Declared here, between the two functions, rather than up with the
+     other state: tests/flight-clock-scenes.test.cjs lifts this block out
+     of the source by slicing from flightSceneForTime, and anything above
+     that line is not in scope when it runs. Same reason sessionGeneration
+     sits where it does in motherhood.js. */
+  var FOOTAGE_MISSING = Object.create(null);
+
   function updateFlightFootage() {
     if (!flightVideo) return;
     var key = state.descending ? null : flightSceneForTime(new Date());
