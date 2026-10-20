@@ -420,9 +420,14 @@
     const nights = liveEntries(vault, 'night');
     const days = liveEntries(vault, 'day');
     const feeds = liveEntries(vault, 'feed');
-    const since = todayIso(new Date(now.getTime() - 7 * 86400000));
-    const recentNights = nights.filter(n => n.date >= since);
-    const recentDays = days.filter(d => d.date >= since);
+    /* Seven local calendar dates including today; exclude future records. */
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    start.setDate(start.getDate() - 6);
+    const since = todayIso(start);
+    const through = todayIso(now);
+    const inWindow = entry => entry.date >= since && entry.date <= through;
+    const recentNights = nights.filter(inWindow);
+    const recentDays = days.filter(inWindow);
 
     /* Rest held, not "sleep". These are intervals the participant typed,
        so the honest name for the total is the time they said they rested —
@@ -447,7 +452,7 @@
       meanFatigue: mean(num(recentDays, d => d.fatigue)),
       meanEnergy: mean(num(recentDays, d => d.energy)),
       daysRecorded: recentDays.length,
-      feedsRecorded: feeds.filter(f => f.date >= since).length,
+      feedsRecorded: feeds.filter(inWindow).length,
       totalEntries: liveEntries(vault).length
     };
   }
