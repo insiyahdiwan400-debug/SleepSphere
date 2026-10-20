@@ -76,7 +76,7 @@ self.addEventListener('notificationclick', event => {
   const target = new URL('./?go=' + destination, self.registration.scope).href;
   event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
     const existing = clients.find(client => new URL(client.url).origin === self.location.origin);
-    if (existing) return existing.navigate(target).then(client => client && client.focus());
+    if (existing) return existing.navigate(target).then(client => client ? client.focus() : self.clients.openWindow(target)).catch(() => self.clients.openWindow(target));
     return self.clients.openWindow(target);
   }));
 });
