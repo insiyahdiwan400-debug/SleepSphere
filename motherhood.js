@@ -147,6 +147,8 @@
   }
 
   async function createVault(passcode) {
+    /* Never replace an existing encrypted vault during setup or overlapping requests. */
+    if (isEnabled() || record()) throw new Error('vault already exists');
     const generation = sessionGeneration;
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const key = await deriveKey(passcode, salt, KDF_ITERATIONS);
@@ -161,6 +163,8 @@
     /* Checked again, and before the write: a vault locked while it was
        being encrypted must not land on the device as an enabled one. */
     if (generation !== sessionGeneration || document.hidden) throw new Error('locked');
+    /* Recheck after PBKDF2/encryption: another setup may have completed. */
+    if (isEnabled() || record()) throw new Error('vault already exists');
     MH.set({
       enabled: true,
       v: VAULT_VERSION,
