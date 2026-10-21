@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#07171d">
+  <title>SleepSphere — Reporting consent preview</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, -apple-system, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; color: #f3f5f1; background: radial-gradient(ellipse at 75% 12%, #234653 0, #0d2630 45%, #07171d 90%); }
+    main { width: min(100% - 2rem, 620px); margin: 0 auto; padding: clamp(2rem, 8vw, 5rem) 0; }
+    .eyebrow { font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; color: #a8d7d0; }
+    h1 { font-weight: 550; font-size: clamp(2rem, 5vw, 2.9rem); margin: .5rem 0 1.5rem; }
+    .card { background: rgba(9, 33, 41, .92); border: 1px solid #44626a; border-radius: 20px; padding: clamp(1.25rem, 4vw, 2rem); box-shadow: 0 14px 45px #0005; }
+    .card h2 { font-size: 1.35rem; font-weight: 550; margin: 0 0 1rem; }
+    .card p { line-height: 1.6; color: #d1e2df; }
+    button { display: block; width: 100%; min-height: 48px; margin: .75rem 0; border-radius: 12px; border: 1px solid #6eb5aa; padding: .8rem 1rem; background: #1f706b; color: #fff; font: inherit; cursor: pointer; }
+    button:hover { background: #28867f; }
+    button:focus-visible, a:focus-visible { outline: 3px solid #f2e3ad; outline-offset: 3px; }
+    button[hidden] { display: none; }
+    [role="status"] { font-weight: 600; color: #f2e3ad !important; }
+    [role="alert"]:empty { display: none; }
+    [role="alert"] { color: #ffb9b9 !important; }
+    .note { font-size: .86rem; color: #bad0cd; margin-top: 1.5rem; line-height: 1.6; }
+    a { color: #bce7df; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="eyebrow">SleepSphere · Development only</p>
+    <h1>Prototype reporting controls</h1>
+    <div id="consent-root" class="card" aria-live="off"></div>
+    <p class="note">This page previews consent controls only. It does not collect or send analytics, enable a founder dashboard, or change sleep records. The main app and Motherhood vault are not loaded here.</p>
+    <p><a href="./">Return to SleepSphere</a></p>
+  </main>
+  <script src="./prototype-reporting-consent.js"></script>
+  <script src="./prototype-reporting-consent-ui.js"></script>
+  <script>
+    (function () {
+      'use strict';
+      const host = document.getElementById('consent-root');
+      try {
+        const storage = window.localStorage;
+        const reporting = window.SleepSpherePrototypeReporting.create(storage);
+        window.SleepSpherePrototypeConsentUI.mount(host, reporting);
+      } catch (_) {
+        // Fail closed: storage or scripts unavailable means no consent or telemetry.
+        host.textContent = 'Consent controls are unavailable on this browser. Reporting remains off.';
+      }
+    })();
+  </script>
+</body>
+</html>
