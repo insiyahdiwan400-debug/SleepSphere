@@ -3658,6 +3658,7 @@
         <section class="view" id="test">
           <div class="section-head"><div><div class="eyebrow">Prototype validation</div><h2>Tell me what deserves to stay</h2></div><div><p>Try the three-step pathway, then give honest feedback. You are testing the product—not being tested.</p><button class="share-button" type="button" data-share-prototype style="margin-top:10px">Invite another tester</button></div></div>
           <div class="grid">
+            <article class="card span-12 no-print" id="ss-prototype-consent-root" aria-label="Optional prototype reporting controls"></article>
             <article class="card span-5">
               <div class="card-label">Three things to test</div>
               <div class="loop">
@@ -11496,5 +11497,14 @@
        daypart; the drawn sky stays and shows wherever one does not. -->
   <script src="living-sky.js"></script>
   <script src="flight-cabin.js"></script>
+  <!-- Prototype consent UI only; no telemetry endpoint is connected. -->
+  <script src="prototype-reporting-consent.js"></script>
+  <script src="prototype-reporting-consent-ui.js"></script>
+  <script src="prototype-reporting-embed.js"></script>
+  <script>
+    try {
+      window.SleepSpherePrototypeReportingEmbed.mount(document, window.localStorage, window.SleepSpherePrototypeReporting, window.SleepSpherePrototypeConsentUI);
+    } catch (_) { /* Reporting UI must never block sleep tracking. */ }
+  </script>
 </body>
 </html>
