@@ -4041,10 +4041,15 @@
         set(key, value) {
           memory.set(key, value);
           if (!backing) return false;
-          try { backing.setItem(key, value); return true; }
-          catch {
-            // Quota, or storage revoked mid-session. Keep the session alive
-            // in memory and stop claiming the disk is working.
+          try {
+            backing.setItem(key, value);
+            // Some browsers silently discard writes. Verify each save, not
+            // only the startup probe, before telling someone it was saved.
+            if (backing.getItem(key) !== value) throw new Error('Storage write did not persist');
+            return true;
+          } catch {
+            // Quota, revoked storage, or a silently discarded write.
+            // Keep this session alive in memory, but warn that disk failed.
             backing = null;
             document.documentElement.dataset.storage = 'unavailable';
             return false;
