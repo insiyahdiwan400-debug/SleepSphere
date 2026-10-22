@@ -1,0 +1,1 @@
+Release-gate test status (development branch only): the existing asset check does not validate visual approval, licensing, or SHA-256. Do not publish the four Motherhood scenes until the images and approval manifest have been reviewed. This note is not an approval.

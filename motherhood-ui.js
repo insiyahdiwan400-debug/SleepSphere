@@ -60,6 +60,7 @@
   function openLayer() {
     if (layer) return layer;
     layer = el('div', 'mh-layer');
+    layer.dataset.scene = 'aurora';
     layer.setAttribute('role', 'dialog');
     layer.setAttribute('aria-modal', 'true');
     layer.setAttribute('aria-label', 'Private records');
@@ -377,6 +378,41 @@
     const v = M.vault();
     const b = screen('Motherhood', true);
     const stage = v.stage;
+    layer.dataset.scene = M.SCENES.includes(v.scene) ? v.scene : 'aurora';
+    const dream = card(b, 'mh-dream-picker');
+    dream.appendChild(el('span', 'mh-eyebrow', 'Your peaceful place'));
+    dream.appendChild(el('h2', null, 'Choose your dreamscape'));
+    dream.appendChild(el('p', 'mh-hint',
+      'Choose a landscape to make this space yours. Your choice stays encrypted and can be changed anytime.'));
+    const sceneChoices = el('div', 'mh-scenes');
+    const choices = [
+      ['aurora', 'Aurora Sanctuary', 'Northern lights'],
+      ['starlake', 'Celestial Lake', 'Stars & water'],
+      ['firstlight', 'First Light', 'Morning skies'],
+      ['moonmeadow', 'Moonlit Meadow', 'Quiet evening']
+    ];
+    choices.forEach(([id, title, detail]) => {
+      const button = btn('', 'mh-scene-choice', async () => {
+        if (button.disabled) return;
+        button.disabled = true;
+        try {
+          await M.setScene(id);
+          layer.dataset.scene = id;
+          sceneChoices.querySelectorAll('.mh-scene-choice').forEach(n => {
+            n.setAttribute('aria-pressed', String(n.dataset.id === id));
+          });
+          toast('Dreamscape saved');
+        } catch (err) { toast('Could not save scenery. Please try again.'); }
+        finally { button.disabled = false; }
+      });
+      button.dataset.id = id;
+      button.setAttribute('aria-pressed', String((v.scene || 'aurora') === id));
+      button.appendChild(el('span', 'mh-scene-preview mh-preview-' + id));
+      button.appendChild(el('strong', null, title));
+      button.appendChild(el('small', null, detail));
+      sceneChoices.appendChild(button);
+    });
+    dream.appendChild(sceneChoices);
 
     /* Where you are — derived from a date the participant typed, and
        silent when they did not type one. */
@@ -412,7 +448,11 @@
     const add = (label, kind) => grid.appendChild(btn(label, 'mh-tile', () => screenEntry(kind)));
     add(stage === 'postpartum' ? 'Last night’s rest' : 'Last night', 'night');
     add('How today is', 'day');
-    if (stage === 'postpartum') add('A feed', 'feed');
+    if (stage === 'postpartum') {
+      add('A feed', 'feed');
+      add('Baby’s sleep', 'babySleep');
+      add('Diaper change', 'diaper');
+    }
     add('Weight', 'weight');
     add('Appointment', 'appointment');
     rec.appendChild(grid);
@@ -553,6 +593,8 @@
       if ((e.symptoms || []).length) parts.push(e.symptoms.join(', '));
       return parts.length ? parts.join(' · ') : 'Day recorded';
     }
+    if (e.kind === 'babySleep') return 'Baby rested ' + (e.from || '?') + '–' + (e.to || '?');
+    if (e.kind === 'diaper') return 'Diaper: ' + (e.type || 'change') + (e.at ? ' · ' + e.at : '');
     if (e.kind === 'feed') {
       const parts = [e.at || '', e.method || ''].filter(Boolean);
       if (e.minutes) parts.push(e.minutes + ' min');
@@ -570,6 +612,7 @@
   function screenEntry(kind) {
     const v = M.vault();
     const titles = { night: 'Last night', day: 'Today', feed: 'A feed',
+                     babySleep: 'Baby’s sleep', diaper: 'Diaper change',
                      weight: 'Weight', appointment: 'Appointment' };
     const b = screen(titles[kind] || 'Record', true);
     const c = card(b);
@@ -581,6 +624,8 @@
     if (kind === 'night') buildNight(c, draft, v);
     if (kind === 'day') buildDay(c, draft, v);
     if (kind === 'feed') buildFeed(c, draft, v);
+    if (kind === 'babySleep') buildBabySleep(c, draft);
+    if (kind === 'diaper') buildDiaper(c, draft);
     if (kind === 'weight') buildWeight(c, draft, v);
     if (kind === 'appointment') buildAppointment(c, draft);
 
@@ -588,9 +633,14 @@
       const problem = validate(kind, draft);
       if (problem) { toast(problem); return; }
       save.disabled = true;
-      await M.addEntry(draft);
-      toast('Saved.');
-      screenHome();
+      try {
+        await M.addEntry(draft);
+        toast('Saved.');
+        screenHome();
+      } catch (err) {
+        save.disabled = false;
+        toast('Could not save. Your answers are still here.');
+      }
     });
     c.appendChild(save);
     c.appendChild(btn('Cancel', 'mh-quiet', screenHome));
@@ -600,6 +650,7 @@
   function validate(kind, d) {
     if (kind === 'weight' && !(d.value > 0)) return 'Enter a weight, or cancel.';
     if (kind === 'appointment' && !d.title) return 'Give the appointment a name.';
+    if (kind === 'babySleep' && (!d.from || !d.to)) return 'Enter the start and end times.';
     if (kind === 'night' && (d.restIntervals || []).some(iv => !iv.from || !iv.to))
       return 'Each rest interval needs a start and an end.';
     return null;
@@ -682,6 +733,33 @@
     notes.placeholder = 'In your own words…';
     field(c, 'Notes (optional)', notes)
       .addEventListener('input', e => { draft.notes = e.target.value; });
+  }
+
+  function buildBabySleep(c, draft) {
+    c.appendChild(el('p', 'mh-hint',
+      'Record only the times you observed. No automatic sleep estimates.'));
+    field(c, 'Started resting', input('time'))
+      .addEventListener('change', e => { draft.from = e.target.value; });
+    field(c, 'Woke up', input('time'))
+      .addEventListener('change', e => { draft.to = e.target.value; });
+    const notes = el('textarea');
+    notes.rows = 2;
+    notes.placeholder = 'Optional notes…';
+    field(c, 'Notes', notes).addEventListener('input', e => { draft.note = e.target.value; });
+  }
+
+  function buildDiaper(c, draft) {
+    const sel = el('select');
+    [['wet', 'Wet'], ['dirty', 'Dirty'], ['both', 'Both']].forEach(([id, title]) => {
+      const o = el('option', null, title); o.value = id; sel.appendChild(o);
+    });
+    draft.type = 'wet';
+    field(c, 'Change type', sel).addEventListener('change', e => { draft.type = e.target.value; });
+    const t = input('time', { value: new Date().toTimeString().slice(0, 5) });
+    draft.at = t.value;
+    field(c, 'Time', t).addEventListener('change', e => { draft.at = e.target.value; });
+    const notes = el('textarea'); notes.rows = 2;
+    field(c, 'Notes (optional)', notes).addEventListener('input', e => { draft.note = e.target.value; });
   }
 
   function buildFeed(c, draft, v) {

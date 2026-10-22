@@ -47,3 +47,36 @@ self.addEventListener('fetch', event => {
     return Response.error();
   })));
 });
+
+/* Push delivery requires a separately configured subscription and push sender.
+   This handler never schedules messages or reads private Motherhood records. */
+self.addEventListener('push', event => {
+  let payload = {};
+  try { payload = event.data ? event.data.json() : {}; } catch { payload = {}; }
+  const allowed = new Set(['bedtime', 'morning', 'gentle']);
+  const type = allowed.has(payload && payload.type) ? payload.type : 'gentle';
+  const copy = {
+    bedtime: ['SleepSphere', 'Your wind-down time is approaching.'],
+    morning: ['SleepSphere', 'Ready for your morning check-in?'],
+    gentle: ['SleepSphere', 'A gentle reminder from SleepSphere.']
+  }[type];
+  event.waitUntil(self.registration.showNotification(copy[0], {
+    body: copy[1],
+    icon: './sleepsphere-icon-192.png',
+    badge: './sleepsphere-icon-192.png',
+    tag: 'sleepsphere-' + type,
+    data: { destination: type === 'morning' ? 'morningFlow' : 'flow' }
+  }));
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const destination = event.notification.data && event.notification.data.destination === 'morningFlow'
+    ? 'morningFlow' : 'flow';
+  const target = new URL('./?go=' + destination, self.registration.scope).href;
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+    const existing = clients.find(client => new URL(client.url).origin === self.location.origin);
+    if (existing) return existing.navigate(target).then(client => client ? client.focus() : self.clients.openWindow(target)).catch(() => self.clients.openWindow(target));
+    return self.clients.openWindow(target);
+  }));
+});

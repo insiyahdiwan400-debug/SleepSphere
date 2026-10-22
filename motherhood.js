@@ -114,6 +114,7 @@
     return {
       v: VAULT_VERSION,
       stage: '',                 // 'pregnancy' | 'postpartum' | ''
+      scene: 'aurora',            // Encrypted preference; never stored outside vault
       pregnancy: { dueDate: '' },
       postpartum: { birthDate: '', feeding: '' },
       entries: [],
@@ -146,6 +147,8 @@
   }
 
   async function createVault(passcode) {
+    /* Never replace an existing encrypted vault during setup or overlapping requests. */
+    if (isEnabled() || record()) throw new Error('vault already exists');
     const generation = sessionGeneration;
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const key = await deriveKey(passcode, salt, KDF_ITERATIONS);
@@ -160,6 +163,8 @@
     /* Checked again, and before the write: a vault locked while it was
        being encrypted must not land on the device as an enabled one. */
     if (generation !== sessionGeneration || document.hidden) throw new Error('locked');
+    /* Recheck after PBKDF2/encryption: another setup may have completed. */
+    if (isEnabled() || record()) throw new Error('vault already exists');
     MH.set({
       enabled: true,
       v: VAULT_VERSION,
@@ -253,7 +258,7 @@
      `state.morningRevisions`. Editing supersedes; it does not overwrite.
      ================================================================== */
 
-  const KINDS = ['night', 'day', 'feed', 'weight', 'appointment'];
+  const KINDS = ['night', 'day', 'feed', 'weight', 'appointment', 'babySleep', 'diaper'];
 
   /* Serialise entry writes. Two saves started close together each sealed a
      snapshot of the vault as it was when they began, and whichever finished
@@ -391,6 +396,25 @@
     });
   }
 
+  /* Appearance is private: scene selection is encrypted alongside the vault,
+     never exposed as a separate browser preference or research field. */
+  const SCENES = ['aurora', 'starlake', 'firstlight', 'moonmeadow'];
+  function setScene(scene) {
+    if (!SCENES.includes(scene)) return Promise.reject(new Error('unknown scene'));
+    return queueVaultWrite(async () => {
+      if (!isUnlocked()) throw new Error('locked');
+      const key = session.key, current = session.vault;
+      const next = { ...current, scene };
+      const cipher = await sealVault(next, key);
+      if (session.key !== key || session.vault !== current) throw new Error('locked');
+      const existing = record();
+      if (!existing || !existing.kdf) throw new Error('vault erased');
+      MH.set({ enabled: true, v: VAULT_VERSION, kdf: existing.kdf, cipher });
+      session.vault = next;
+      return scene;
+    });
+  }
+
   /* ==================================================================
      INSIGHTS. Only from what is actually in the vault, and silent when
      there is not enough. No scores, no judgements, no projections.
@@ -400,9 +424,14 @@
     const nights = liveEntries(vault, 'night');
     const days = liveEntries(vault, 'day');
     const feeds = liveEntries(vault, 'feed');
-    const since = todayIso(new Date(now.getTime() - 7 * 86400000));
-    const recentNights = nights.filter(n => n.date >= since);
-    const recentDays = days.filter(d => d.date >= since);
+    /* Seven local calendar dates including today; exclude future records. */
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    start.setDate(start.getDate() - 6);
+    const since = todayIso(start);
+    const through = todayIso(now);
+    const inWindow = entry => entry.date >= since && entry.date <= through;
+    const recentNights = nights.filter(inWindow);
+    const recentDays = days.filter(inWindow);
 
     /* Rest held, not "sleep". These are intervals the participant typed,
        so the honest name for the total is the time they said they rested —
@@ -427,7 +456,7 @@
       meanFatigue: mean(num(recentDays, d => d.fatigue)),
       meanEnergy: mean(num(recentDays, d => d.energy)),
       daysRecorded: recentDays.length,
-      feedsRecorded: feeds.filter(f => f.date >= since).length,
+      feedsRecorded: feeds.filter(inWindow).length,
       totalEntries: liveEntries(vault).length
     };
   }
@@ -580,7 +609,7 @@
        unchanged; tracked() only counts them in and out. */
     createVault: tracked(createVault), unlock: tracked(unlock), lock, persist,
     vault: () => session.vault,
-    addEntry, removeEntry, setStage, liveEntries,
+    addEntry, removeEntry, setStage, setScene, SCENES, liveEntries,
     pregnancyProgress, postpartumProgress, summarise,
     buildExport,
     KINDS, SYMPTOMS, LESSONS, SEEK_CARE,

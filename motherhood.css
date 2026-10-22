@@ -257,3 +257,357 @@ html.mh-open, html.mh-open body { overflow: hidden; }
   .mh-grid { grid-template-columns: repeat(3, 1fr); }
   .mh-actions { grid-template-columns: repeat(2, 1fr); }
 }
+
+
+/* Motherhood sanctuary: visual-only theme. Vault and consent remain unchanged. */
+.mh-layer {
+  --mh-cream: #fffaf3;
+  --mh-peach: #f8e6db;
+  --mh-sage: #dfe9dc;
+  --mh-rose: #f4dcd9;
+  --mh-ink: #453c37;
+  --mh-muted: #756a63;
+  --mh-accent: #98694f;
+  --ink: var(--mh-ink);
+  --muted: var(--mh-muted);
+  --paper: var(--mh-cream);
+  --card: #fffdf9;
+  --line: #e8dcd0;
+  --accent: var(--mh-accent);
+  background: radial-gradient(ellipse at 90% 3%, #f7ded8 0, transparent 38%),
+              radial-gradient(ellipse at 4% 56%, #e5eddf 0, transparent 46%),
+              var(--mh-cream);
+  color: var(--mh-ink);
+}
+.mh-bar {
+  background: rgba(255,250,243,.94);
+  border-bottom-color: #eadfd4;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.mh-bar-title { color: #624d41; letter-spacing: .01em; }
+.mh-body { gap: 18px; }
+.mh-card {
+  background: rgba(255,253,249,.94);
+  border-color: #eadfd4;
+  border-radius: 23px;
+  box-shadow: 0 10px 30px rgba(108,75,57,.055);
+}
+.mh-card h2 { color: #604839; }
+.mh-card h3 { color: #5f584a; }
+.mh-eyebrow { color: #a36f60; font-weight: 700; }
+.mh-stagecard {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(130deg, #fff0e5 0%, #f9e5e1 48%, #e7eee3 100%);
+  border-color: #efdcd1;
+  padding: 26px 22px;
+}
+.mh-stagecard::before {
+  content: '';
+  position: absolute;
+  width: 150px; height: 150px;
+  top: -70px; right: -45px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.4);
+  pointer-events: none;
+}
+.mh-stagecard h2 { color: #694d45; font-weight: 650; }
+.mh-primary { background: #966a53; color: #fffaf5; }
+.mh-primary:hover:not(:disabled) { background: #805540; }
+.mh-quiet { background: #fffaf4; }
+.mh-tile, .mh-opt, .mh-dot, .mh-chip {
+  background: #fffaf5;
+  border-color: #e7d9cd;
+}
+.mh-tile:hover, .mh-opt:hover, .mh-chip:hover { background: #f9ede5; }
+.mh-opt.on, .mh-dot.on, .mh-chip.on {
+  border-color: #a67b65;
+  box-shadow: inset 0 0 0 1px #a67b65;
+}
+.mh-dot.on, .mh-chip.on { background: #956c55; color: #fff; }
+.mh-stat, .mh-entry { background: #fffcf8; }
+.mh-careline { border-color: #d5dfd0; background: #f4f8f0; }
+.mh-danger-card { border-color: #cb8e87; }
+.mh-layer input[type="text"], .mh-layer input[type="password"],
+.mh-layer input[type="date"], .mh-layer input[type="time"],
+.mh-layer input[type="number"], .mh-layer select, .mh-layer textarea {
+  background: #fffdfa;
+  border-color: #dfd0c4;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mh-card { animation: mh-arrive .42s ease-out both; }
+  @keyframes mh-arrive {
+    from { opacity: .7; transform: translateY(7px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mh-card { animation: none; }
+}
+
+
+/* Dreamscape selection: atmospheric CSS previews, not simulated footage.
+   Swap in the user's licensed original nature assets once accessible. */
+.mh-layer {
+  --dream-top: #101b37;
+  --dream-mid: #314967;
+  --dream-glow: rgba(101,211,171,.38);
+  --dream-text: #f9f6ef;
+  background: linear-gradient(180deg,var(--dream-top),var(--dream-mid) 48%,#f8f4ee 92%);
+}
+.mh-layer[data-scene="starlake"] {
+  --dream-top: #071528; --dream-mid: #1d4162; --dream-glow: rgba(122,171,232,.3);
+}
+.mh-layer[data-scene="firstlight"] {
+  --dream-top: #34446e; --dream-mid: #c28eaa; --dream-glow: rgba(255,208,155,.45);
+}
+.mh-layer[data-scene="moonmeadow"] {
+  --dream-top: #151c38; --dream-mid: #4c5278; --dream-glow: rgba(180,163,226,.4);
+}
+.mh-layer::before {
+  content: ""; position: absolute; inset: 0 0 auto; height: 58%;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 70% 26%, var(--dream-glow), transparent 48%),
+    radial-gradient(1px 1px at 9% 13%, #fff 99%, transparent),
+    radial-gradient(2px 2px at 29% 23%, #fff 99%, transparent),
+    radial-gradient(1px 1px at 46% 9%, #fff 99%, transparent),
+    radial-gradient(2px 2px at 62% 31%, #fff 99%, transparent),
+    radial-gradient(1px 1px at 84% 18%, #fff 99%, transparent),
+    radial-gradient(1px 1px at 92% 39%, #fff 99%, transparent);
+  opacity: .9;
+}
+.mh-layer[data-scene="firstlight"]::before { opacity: .55; }
+.mh-bar { position: relative; z-index: 1; background: rgba(12,25,45,.24);
+  border-bottom: 1px solid rgba(255,255,255,.22); }
+.mh-bar-title,.mh-bar button { color: #fffaf5; }
+.mh-bar button { border-color: rgba(255,255,255,.45); }
+.mh-body { position: relative; z-index: 1; }
+.mh-dream-picker {
+  background: rgba(13,28,49,.32); border: 1px solid rgba(255,255,255,.34);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.mh-dream-picker h2,.mh-dream-picker .mh-eyebrow,.mh-dream-picker .mh-hint { color: #fffaf5; }
+.mh-dream-picker .mh-hint { opacity: .88; }
+.mh-scenes { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+.mh-scene-choice {
+  appearance: none; min-width: 0; display: grid; gap: 5px; padding: 7px;
+  text-align: left; color: #fefaf6; background: rgba(11,23,42,.45);
+  border: 1px solid rgba(255,255,255,.4); border-radius: 17px;
+  font: inherit; cursor: pointer; min-height: 130px;
+}
+.mh-scene-choice strong { font-size: .86rem; padding: 0 5px; }
+.mh-scene-choice small { font-size: .75rem; padding: 0 5px 5px; color: #e6e9f3; }
+.mh-scene-choice[aria-pressed="true"] { border: 2px solid #f7e2bc; background: rgba(39,60,75,.75); }
+.mh-scene-choice:focus-visible { outline: 3px solid #ffe5ad; outline-offset: 3px; }
+.mh-scene-preview { height: 78px; border-radius: 12px; display: block;
+  background-image:
+    radial-gradient(1px 1px at 12% 18%,#fff 99%,transparent),
+    radial-gradient(2px 2px at 65% 26%,#fff 99%,transparent),
+    radial-gradient(1px 1px at 84% 44%,#fff 99%,transparent),
+    linear-gradient(145deg,#0c2242,#33745d 60%,#101c38);
+}
+.mh-preview-starlake { background-image:
+  radial-gradient(1px 1px at 20% 15%,#fff 99%,transparent),
+  radial-gradient(2px 2px at 76% 32%,#fff 99%,transparent),
+  linear-gradient(175deg,#0b1533 0%,#29547c 55%,#0a223f 56%,#203f5c); }
+.mh-preview-firstlight { background: linear-gradient(175deg,#586c9d,#dbb5b5 52%,#f5d4a2 72%,#9aa3a3); }
+.mh-preview-moonmeadow { background-image:
+  radial-gradient(circle at 72% 23%,#fff4d2 0 8px,transparent 9px),
+  linear-gradient(170deg,#151c38,#5e638a 65%,#425c4c 66%); }
+.mh-stagecard { background: linear-gradient(125deg,rgba(255,241,231,.97),rgba(236,239,239,.94)); }
+@media (max-width: 360px) {
+  .mh-scenes { gap: 6px; }
+  .mh-scene-choice strong { font-size: .78rem; }
+}
+
+
+/* PHOTO-FIRST REFINEMENT
+   Genuine landscape photography only. All paths are same-origin so private
+   records never trigger third-party image requests. Until assets are added,
+   show a quiet neutral fallback rather than illustrated stars/auroras.
+   Expected local files:
+     media/motherhood/aurora.webp
+     media/motherhood/starlake.webp
+     media/motherhood/firstlight.webp
+     media/motherhood/moonmeadow.webp
+*/
+.mh-layer {
+  --mh-landscape: url("./media/motherhood/aurora.webp");
+  background: #edf0ee;
+  color: #243a43;
+  --paper: #f8faf8;
+  --card: #ffffff;
+  --ink: #243a43;
+  --muted: #5b6b70;
+  --line: #dbe3df;
+  --accent: #326b6a;
+}
+.mh-layer[data-scene="starlake"] { --mh-landscape: url("./media/motherhood/starlake.webp"); }
+.mh-layer[data-scene="firstlight"] { --mh-landscape: url("./media/motherhood/firstlight.webp"); }
+.mh-layer[data-scene="moonmeadow"] { --mh-landscape: url("./media/motherhood/moonmeadow.webp"); }
+.mh-layer::before { content: none; }
+.mh-bar {
+  background: #f8faf8;
+  border-bottom: 1px solid #dbe3df;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.mh-bar-title,.mh-bar button { color: #29434c; }
+.mh-bar button { border-color: #cbd7d3; }
+.mh-body {
+  gap: 14px;
+  padding-top: 16px;
+  background: linear-gradient(180deg,#edf3f0,#f9faf7 350px);
+}
+.mh-card {
+  background: #fff;
+  border: 1px solid #e1e8e3;
+  box-shadow: 0 3px 16px rgba(20,51,55,.045);
+  border-radius: 19px;
+}
+.mh-card h2,.mh-card h3 { color: #29434c; }
+.mh-eyebrow { color: #487575; }
+.mh-stagecard {
+  min-height: 235px;
+  justify-content: flex-end;
+  background-image:
+    linear-gradient(180deg,rgba(8,29,40,.04),rgba(9,31,42,.79)),
+    var(--mh-landscape);
+  background-color: #45646b;
+  background-size: cover;
+  background-position: center;
+  border: none;
+  padding: 26px;
+  box-shadow: 0 10px 25px rgba(23,49,58,.14);
+}
+.mh-stagecard::before { content: none; }
+.mh-stagecard h2 { color: #fff; font-size: 2.1rem; }
+.mh-stagecard .mh-eyebrow { color: #e8f3ee; }
+.mh-stagecard p,.mh-stagecard .mh-sub { color: #f5f8f6 !important; }
+.mh-dream-picker {
+  background: #fff;
+  border-color: #e1e8e3;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.mh-dream-picker h2 { color: #29434c; font-size: 1.22rem; }
+.mh-dream-picker .mh-eyebrow { color: #487575; }
+.mh-dream-picker .mh-hint { color: #5b6b70; opacity: 1; }
+.mh-scenes { gap: 10px; }
+.mh-scene-choice {
+  background: #f8faf8;
+  border: 1px solid #dfe7e2;
+  color: #2c474b;
+  padding: 7px;
+  min-height: 146px;
+  border-radius: 15px;
+}
+.mh-scene-choice strong { color: #29434c; font-size: .84rem; }
+.mh-scene-choice small { color: #657674; }
+.mh-scene-choice[aria-pressed="true"] {
+  border: 2px solid #4b817e;
+  background: #f2f8f5;
+  box-shadow: 0 0 0 2px #d6e9e1;
+}
+.mh-scene-choice:focus-visible { outline-color: #327a77; }
+.mh-scene-preview {
+  height: 108px;
+  border-radius: 10px;
+  background-image: url("./media/motherhood/aurora.webp");
+  background-color: #6b8485;
+  background-position: center;
+  background-size: cover;
+}
+.mh-preview-aurora { background-image: url("./media/motherhood/aurora.webp"); }
+.mh-preview-starlake { background-image: url("./media/motherhood/starlake.webp"); background-color: #5d7885; }
+.mh-preview-firstlight { background-image: url("./media/motherhood/firstlight.webp"); background-color: #b5b9ae; }
+.mh-preview-moonmeadow { background-image: url("./media/motherhood/moonmeadow.webp"); background-color: #818b8b; }
+.mh-primary { background: #326b6a; color: #fff; }
+.mh-primary:hover:not(:disabled) { background: #275657; }
+.mh-tile,.mh-opt,.mh-dot,.mh-chip { background: #f6f9f7; border-color: #dbe5df; }
+.mh-tile:hover,.mh-opt:hover,.mh-chip:hover { background: #eaf4ef; }
+.mh-opt.on,.mh-dot.on,.mh-chip.on { border-color: #326b6a; box-shadow: inset 0 0 0 1px #326b6a; }
+.mh-dot.on,.mh-chip.on { background: #326b6a; color: #fff; }
+.mh-layer input[type="text"],.mh-layer input[type="password"],
+.mh-layer input[type="date"],.mh-layer input[type="time"],
+.mh-layer input[type="number"],.mh-layer select,.mh-layer textarea {
+  background: #fff;
+  border-color: #cfddd5;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mh-card { animation: none; transition: none; }
+}
+
+
+/* SLEEPSPHERE CELESTIAL CALM — photographic skies, restrained star identity.
+   No simulated footage, animated star fields or distracting sparkle effects. */
+.mh-layer {
+  --mh-night: #233f53;
+  --mh-starlight: #d7c9a6;
+  --mh-mist: #eef3f1;
+  --mh-landscape-overlay: linear-gradient(180deg,rgba(18,38,57,.06),rgba(20,43,59,.58));
+  background: var(--mh-mist);
+}
+.mh-bar {
+  background: #f4f7f5;
+  border-bottom-color: #d9e3e1;
+}
+.mh-bar-title {
+  color: var(--mh-night);
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  letter-spacing: .025em;
+}
+.mh-bar-title::before {
+  content: "✧";
+  display: inline-block;
+  color: #a38e66;
+  font-size: .88em;
+  margin-right: .48em;
+}
+.mh-body {
+  background: linear-gradient(180deg,#edf3f1 0%,#f8faf8 310px,#f9faf8 100%);
+}
+.mh-stagecard {
+  min-height: 268px;
+  background-image: var(--mh-landscape-overlay),var(--mh-landscape);
+  background-color: #466577;
+  background-position: center;
+  border-radius: 23px;
+  box-shadow: 0 12px 28px rgba(27,53,64,.12);
+}
+.mh-stagecard h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.75rem,6vw,2.35rem);
+  letter-spacing: -.018em;
+  line-height: 1.15;
+  text-shadow: 0 1px 10px rgba(0,0,0,.14);
+}
+.mh-stagecard .mh-eyebrow {
+  color: #f1e7cd;
+  font-size: .76rem;
+  letter-spacing: .13em;
+}
+.mh-card {
+  border-color: #e3eae7;
+  box-shadow: 0 3px 14px rgba(26,58,68,.035);
+}
+.mh-dream-picker h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  color: #304a56;
+  font-size: 1.45rem;
+}
+.mh-scene-choice[aria-pressed="true"] {
+  border-color: #557d83;
+  box-shadow: 0 0 0 2px #e4eeec;
+}
+.mh-primary {
+  background: #3f6b76;
+  border-radius: 100px;
+}
+.mh-primary:hover:not(:disabled) { background: #305760; }
+.mh-eyebrow { letter-spacing: .085em; }
+@media (prefers-reduced-motion: reduce) {
+  .mh-card,.mh-scene-choice,.mh-stagecard { animation: none; transition: none; }
+}
