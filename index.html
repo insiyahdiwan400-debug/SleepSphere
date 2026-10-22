@@ -4100,9 +4100,9 @@
     const motherhood = (() => {
       const read = () => {
         try {
-          const raw = store.get(MOTHERHOOD_KEY);
+          const raw = window.localStorage.getItem(MOTHERHOOD_KEY);
           const parsed = raw ? JSON.parse(raw) : null;
-          return parsed && typeof parsed === 'object' ? parsed : null;
+          return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
         } catch { return null; }
       };
       return {
@@ -4113,9 +4113,20 @@
         /* Deliberately not wired to any sensitive field yet. It exists so
            the gate and the erase path are real and testable now. */
         set(next) {
-          store.set(MOTHERHOOD_KEY, JSON.stringify({ ...(read() || {}), ...next }));
+          // Sensitive records must never fall back to volatile session memory.
+          const storage = window.localStorage;
+          const raw = storage.getItem(MOTHERHOOD_KEY);
+          const previous = raw ? JSON.parse(raw) : null;
+          if (raw && (!previous || typeof previous !== 'object' || Array.isArray(previous))) throw new Error('Motherhood vault unreadable');
+          const value = JSON.stringify({ ...(previous || {}), ...next });
+          storage.setItem(MOTHERHOOD_KEY, value);
+          if (storage.getItem(MOTHERHOOD_KEY) !== value) throw new Error('Motherhood save did not persist');
         },
-        clear() { store.remove(MOTHERHOOD_KEY); }
+        clear() {
+          const storage = window.localStorage;
+          storage.removeItem(MOTHERHOOD_KEY);
+          if (storage.getItem(MOTHERHOOD_KEY) !== null) throw new Error('Motherhood deletion did not persist');
+        }
       };
     })();
 
@@ -7987,7 +7998,21 @@
          survives the app's own delete button is a trap, not a
          protection. */
       if (window.SSMotherhood && typeof window.SSMotherhood.lock === 'function') window.SSMotherhood.lock();
-      ['ss_plan','ss_thoughts','ss_mornings','ss_feedback',STORAGE_KEY,MOTHERHOOD_KEY].forEach(key => store.remove(key));
+      /* Verify persistent deletion before resetting state or claiming success.
+         Erase the private vault first; if it remains, preserve sleep history. */
+      const keysToErase = [MOTHERHOOD_KEY,'ss_plan','ss_thoughts','ss_mornings','ss_feedback',STORAGE_KEY];
+      try {
+        for (const key of keysToErase) {
+          store.remove(key);
+          window.localStorage.removeItem(key);
+          if (window.localStorage.getItem(key) !== null) {
+            throw new Error('Deletion was not persisted');
+          }
+        }
+      } catch {
+        toast('Could not verify deletion. Some records may remain on this device. Please retry.');
+        return;
+      }
       /* The save guard exists to stop this build writing over data it
          could not read. The owner of that data has just deliberately
          erased it, so there is nothing left to protect and the flags
