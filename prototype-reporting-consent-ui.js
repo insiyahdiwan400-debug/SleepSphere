@@ -75,10 +75,10 @@
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ consent: true, testerId: id, event: prepared })
         });
-        if (!response.ok) throw new Error('Reporting unavailable');
+        if (!response.ok) throw new Error('HTTP ' + response.status);
         status.textContent = 'Rating submitted successfully.';
-      } catch (_) {
-        error.textContent = 'Could not send rating. Please try again later; no report was confirmed.';
+      } catch (failure) {
+        error.textContent = 'Could not send rating (' + (failure.message || 'network error') + '). No report was confirmed.';
       } finally { busy = false; send.disabled = !reporting.consented(); }
     });
     function render() {
