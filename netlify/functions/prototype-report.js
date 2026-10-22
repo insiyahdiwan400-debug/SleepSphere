@@ -1,6 +1,6 @@
 /* SleepSphere prototype reporting relay.
- * Deploy ONLY on the isolated testing preview. Set SLEEPSPHERE_REPORT_WEBHOOK
- * server-side to a private HTTPS ingestion endpoint. Never put founder email
+ * Deploy ONLY on the isolated testing preview. Set RESEND_API_KEY
+ * and SLEEPSPHERE_REPORT_FROM / SLEEPSPHERE_REPORT_TO server-side. Never put founder email
  * or credentials in client code. No sleep or Motherhood records accepted.
  */
 'use strict';
@@ -16,7 +16,7 @@ function validate(body) {
   if (body.consent !== true || typeof body.testerId !== 'string' || !ID.test(body.testerId)) return null;
   if (!body.event || typeof body.event !== 'object' || Array.isArray(body.event)) return null;
   const e = body.event;
-  if (!Object.hasOwn(TYPES, e.type) || e.schema !== 1) return null;
+  if (e.type !== 'feedback_submitted' || e.schema !== 1) return null;
   const allowed = TYPES[e.type];
   if (Object.keys(e).some(k => !['type','schema',...allowed].includes(k))) return null;
   if (allowed.includes('code') && !CODES.has(e.code)) return null;
