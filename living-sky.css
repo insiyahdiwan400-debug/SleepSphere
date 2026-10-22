@@ -1,0 +1,109 @@
+/* SleepSphere Living Sky — the footage layer.
+ *
+ * Sits between the painted sky and the app. When no footage is installed
+ * for the current daypart the layer is empty and nothing changes: the
+ * drawn sky is what you see, exactly as before.
+ */
+
+#livingSky {
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none;                 /* never takes a tap from the app */
+  overflow: hidden;
+  contain: strict;                      /* its repaints cannot cost the app */
+}
+
+.ss-living-sky-video {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;                    /* a sky fills the frame, never letterboxes */
+  display: block;
+  /* The footage comes up rather than cutting in, so an app that was
+     already on screen does not flash. */
+  opacity: 0;
+}
+:root[data-sky-media="playing"] .ss-living-sky-video,
+:root[data-sky-media="paused"] .ss-living-sky-video { opacity: 1; }
+.ss-living-sky-video[hidden] { display: none; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ss-living-sky-video { transition: opacity 1.6s ease; }
+}
+
+/* The scrim. Recorded sky is far busier than a gradient, and white text
+   over moving cloud is unreadable without one. Its strength is set per
+   clip by living-sky.js, because a night timelapse and a bright evening
+   need different amounts. No footage means --sky-scrim is 0, and this
+   layer disappears entirely. */
+#livingSky::after {
+  content: ''; position: absolute; inset: 0;
+  background:
+    linear-gradient(180deg,
+      rgba(4, 7, 14, calc(var(--sky-scrim, 0) * 1.05)) 0%,
+      rgba(4, 7, 14, calc(var(--sky-scrim, 0) * 0.62)) 38%,
+      rgba(4, 7, 14, calc(var(--sky-scrim, 0) * 0.86)) 100%);
+  opacity: 0;
+}
+:root[data-sky-media="playing"] #livingSky::after,
+:root[data-sky-media="paused"] #livingSky::after { opacity: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  #livingSky::after { transition: opacity 1.6s ease; }
+}
+
+/* The drawn stars stand down when real footage is playing: the recording
+   has its own, and two sets of stars at different scales is the single
+   most obviously fake thing this could do. */
+:root[data-sky-media="playing"] #starfield,
+:root[data-sky-media="paused"] #starfield { opacity: 0 !important; }
+@media (prefers-reduced-motion: no-preference) {
+  #starfield { transition: opacity 1.4s ease; }
+}
+
+/* Autoplay refused. iOS allows muted inline autoplay, but Low Power Mode
+   and some settings still block it, and then the only honest thing is to
+   ask. */
+.ss-living-sky-play {
+  position: fixed; z-index: 7;
+  left: 50%; transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 104px);
+  pointer-events: auto;
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  font: inherit; font-size: .85rem; font-weight: 600;
+  color: #f3efe6; background: rgba(10, 14, 26, .72);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 999px; padding: 11px 20px; min-height: 44px;
+}
+.ss-living-sky-play:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+/* The status line is for assistive tech, not for the screen. */
+.ss-living-sky-status {
+  position: absolute; width: 1px; height: 1px; margin: -1px;
+  padding: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Attribution. CC BY requires credit wherever the work is shown, so this
+   is on screen rather than only in a file — quiet, but present and
+   reachable. It appears only while real footage is actually showing. */
+#skyCredit {
+  position: fixed; z-index: 7;
+  right: max(8px, env(safe-area-inset-right, 0px));
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 4px);
+  max-width: 62vw;
+  font-size: 9.5px; line-height: 1.3; letter-spacing: .01em;
+  color: rgba(240, 238, 232, .5);
+  text-decoration: none;
+  padding: 4px 7px; border-radius: 6px;
+  background: rgba(6, 9, 16, .34);
+  pointer-events: auto;
+  display: none;
+}
+:root[data-sky-media="playing"] #skyCredit,
+:root[data-sky-media="paused"] #skyCredit,
+:root[data-sky-media="blocked"] #skyCredit { display: block; }
+#skyCredit:hover, #skyCredit:focus-visible { color: rgba(240, 238, 232, .85); }
+
+/* Printing a sleep report should not try to print a video. */
+@media print {
+  #livingSky, .ss-living-sky-play, #skyCredit { display: none !important; }
+}

@@ -1,0 +1,229 @@
+/* SleepSphere — the simplified interface, prototype styling.
+ *
+ * No new visual system. It reads the daypart tokens the sky engine already
+ * publishes (--sky-*, --accent*, --text*, --s*), so the app still looks like
+ * itself. There are no decorative effects here on purpose: this iteration is
+ * about how much there is to do, not how it is painted.
+ */
+
+/* When calm is on, the classic shell is out of the way but still present —
+   it is the detail layer, reached deliberately. */
+/* The whole classic shell, not just its children: .app-shell keeps its own
+   height (and the onboarding overlays live inside it), so hiding `main`
+   alone left a full empty screen above the simplified one. The sky and the
+   starfield are painted on :root and a fixed canvas, so they survive. */
+:root[data-ui="calm"] .app-shell { display: none !important; }
+
+/* The classic toast still fires from the shared save path and lands on top
+   of calm's own confirmation, saying the same thing twice in two voices.
+   The detail layer still gets it — that is the classic interface. */
+:root[data-ui="calm"] #toast { display: none !important; }
+
+/* While a classic detail screen is open, calm steps aside instead of
+   unmounting, so going back costs nothing. */
+:root[data-ui="classic-detail"] #calm { display: none !important; }
+
+#calm {
+  position: relative; z-index: 3;
+  min-height: 100dvh;
+  display: flex; flex-direction: column;
+  padding: 0 20px calc(108px + env(safe-area-inset-bottom, 0px));
+  color: var(--text, #f2f0ec);
+  font-family: var(--font-body, -apple-system, BlinkMacSystemFont, system-ui, sans-serif);
+}
+
+.c-stage {
+  flex: 1 1 auto;
+  display: flex; flex-direction: column; justify-content: center;
+  min-height: calc(100dvh - 160px);
+  padding-top: calc(env(safe-area-inset-top, 0px) + 24px);
+}
+
+.c-moment { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.c-moment.c-left { align-items: flex-start; text-align: left; justify-content: flex-start; }
+.c-moment.c-left { padding-top: 8px; }
+
+.c-eyebrow {
+  margin: 0 0 10px; font-size: 11px; font-weight: 700;
+  letter-spacing: .16em; text-transform: uppercase;
+  color: var(--accent, #9fa8d8);
+}
+
+.c-say {
+  margin: 0; font-family: var(--font-display, ui-serif, Georgia, serif);
+  font-weight: 400; font-size: clamp(27px, 8vw, 36px); line-height: 1.14;
+  letter-spacing: -.015em; text-wrap: balance; color: var(--text, #f2f0ec);
+}
+.c-say-s { font-size: clamp(22px, 6vw, 27px); }
+
+.c-sub {
+  margin: 12px 0 0; max-width: 30ch; font-size: 15px; line-height: 1.5;
+  color: var(--text-soft, #c6c6d6);
+}
+.c-moment.c-left .c-sub { max-width: 34ch; }
+
+.c-last { margin: 14px 0 0; font-size: 14px; color: var(--text-quiet, #8e90a8); }
+
+/* One primary action per screen. 54px, full width, unmistakable. */
+.c-go {
+  appearance: none; -webkit-appearance: none; border: 0; cursor: pointer;
+  display: block; width: 100%; max-width: 340px; min-height: 54px;
+  margin: 26px 0 0; padding: 0 24px;
+  border-radius: 999px;
+  background: linear-gradient(142deg, var(--accent-lift, #cdd2ee), var(--accent, #9fa8d8));
+  color: #12152b; font: 650 16px/1 inherit; letter-spacing: .01em;
+  box-shadow: 0 10px 26px -16px rgba(0, 0, 0, .75);
+}
+.c-moment.c-left .c-go { margin-left: 0; }
+
+/* Depth is always a quiet link, never a second button. */
+.c-quiet {
+  appearance: none; -webkit-appearance: none; background: none; border: 0;
+  cursor: pointer; margin: 16px 0 0; padding: 8px 2px;
+  min-height: 44px;
+  color: var(--text-quiet, #8e90a8);
+  font: 550 13.5px/1 inherit; letter-spacing: .01em;
+  text-decoration: underline; text-underline-offset: 4px;
+  text-decoration-color: rgba(255, 255, 255, .22);
+}
+
+/* Four tabs, nothing else. */
+.c-tabs {
+  position: fixed; left: 20px; right: 20px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+  z-index: 6;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px;
+  padding: 5px; border-radius: 999px;
+  background: rgba(10, 12, 24, .72);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, .1);
+}
+.c-tabs button {
+  appearance: none; -webkit-appearance: none; border: 0; cursor: pointer;
+  min-height: 44px; border-radius: 999px; background: transparent;
+  color: var(--text-quiet, #8e90a8); font: 600 12px/1 inherit;
+}
+.c-tabs button[aria-selected="true"] {
+  background: rgba(255, 255, 255, .92); color: #12152b;
+}
+
+/* Sheets: the one way depth opens. */
+.c-sheet {
+  position: fixed; inset: 0; z-index: 20;
+  display: flex; align-items: flex-end;
+  background: rgba(4, 5, 12, .62);
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+}
+.c-sheet-in {
+  width: 100%; max-height: 88dvh; overflow-y: auto;
+  padding: 26px 20px calc(30px + env(safe-area-inset-bottom, 0px));
+  border-radius: 28px 28px 0 0;
+  background: var(--sky-mid, #16193a);
+  border-top: 1px solid rgba(255, 255, 255, .12);
+  position: relative;
+}
+.c-sheet-x {
+  position: absolute; top: 14px; right: 14px;
+  appearance: none; -webkit-appearance: none; border: 0; cursor: pointer;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: transparent; color: var(--text-quiet, #8e90a8); font-size: 15px;
+}
+.c-sheet-h {
+  margin: 0 0 10px; font-family: var(--font-display, ui-serif, Georgia, serif);
+  font-weight: 400; font-size: 25px; line-height: 1.2; color: var(--text, #f2f0ec);
+}
+.c-sheet-p {
+  margin: 0 0 18px; font-size: 15px; line-height: 1.55;
+  color: var(--text-soft, #c6c6d6); max-width: 36ch;
+}
+.c-step {
+  margin: 0 0 18px; font-size: 11px; font-weight: 700;
+  letter-spacing: .16em; text-transform: uppercase;
+  color: var(--accent, #9fa8d8);
+}
+.c-note {
+  margin: 18px 0 0; font-size: 13px; line-height: 1.5;
+  color: var(--text-quiet, #8e90a8); max-width: 36ch;
+}
+
+/* Scales: five targets, each comfortably over 48px. */
+.c-scale-q {
+  margin: 0 0 20px; font-family: var(--font-display, ui-serif, Georgia, serif);
+  font-weight: 400; font-size: 25px; line-height: 1.2; color: var(--text, #f2f0ec);
+  text-wrap: balance;
+}
+.c-dots { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.c-dot {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  min-height: 56px; border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  background: rgba(255, 255, 255, .05);
+  color: var(--text, #f2f0ec); font: 600 16px/1 inherit;
+}
+.c-ends {
+  display: flex; justify-content: space-between;
+  margin-top: 10px; font-size: 12px; color: var(--text-quiet, #8e90a8);
+}
+
+/* Choice lists. */
+.c-choices { display: flex; flex-direction: column; gap: 9px; }
+.c-choice, .c-row {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  display: block; width: 100%; text-align: left;
+  min-height: 56px; padding: 0 18px; border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  background: rgba(255, 255, 255, .045);
+  color: var(--text, #f2f0ec); font: 550 15.5px/1.3 inherit;
+}
+.c-row { margin-top: 9px; }
+
+/* A discovery: one sentence, one quiet way in. */
+.c-disc {
+  width: 100%; max-width: 340px; margin: 22px 0 0;
+  padding-top: 18px; border-top: 1px solid rgba(255, 255, 255, .1);
+  text-align: left;
+}
+.c-moment.c-left .c-disc { max-width: none; }
+.c-disc-s {
+  margin: 0; font-family: var(--font-display, ui-serif, Georgia, serif);
+  font-size: 17px; line-height: 1.35; color: var(--text, #f2f0ec);
+}
+.c-disc .c-quiet { margin-top: 8px; }
+
+/* Seven nights. Evidence under the sentence, not instead of it. */
+/* align-self:stretch matters: the column above sets align-items:flex-start,
+   so without it this box shrinks to its content, the bars' flex-basis of 0
+   resolves to zero width, and the chart renders invisibly. */
+.c-strip {
+  display: flex; align-items: flex-end; gap: 7px;
+  align-self: stretch; width: 100%;
+  height: 60px; margin: 22px 0 0;
+}
+/* Narrow, so seven nights read as a chart rather than seven tiles. The
+   baseline stays at zero: a real week's spread is small, and stretching the
+   scale to make it look dramatic would be a lie told with a rectangle. */
+.c-bar {
+  flex: 1 1 0; max-width: 26px; border-radius: 4px;
+  background: linear-gradient(180deg, var(--accent-lift, #cdd2ee), var(--accent, #9fa8d8));
+  opacity: .85;
+}
+.c-bar-unknown {
+  background: none; border: 1px dashed rgba(255, 255, 255, .3);
+}
+
+/* Back out of a classic detail screen. */
+.c-back {
+  position: fixed; z-index: 30;
+  top: calc(env(safe-area-inset-top, 0px) + 10px); left: 12px;
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  min-height: 44px; padding: 0 16px; border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  background: rgba(10, 12, 24, .82);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  color: #d6d8ea; font: 600 13px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+@media (max-height: 700px) {
+  .c-say { font-size: clamp(23px, 7vw, 29px); }
+  .c-go { margin-top: 20px; }
+}

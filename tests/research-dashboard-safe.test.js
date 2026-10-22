@@ -1,0 +1,23 @@
+'use strict';
+// Run from repository root: node tests/research-dashboard-safe.test.js
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const source=fs.readFileSync('research-dashboard-safe.html','utf8');
+const parser=source.match(/function parseCSV\(text\) \{[\s\S]*?\n\}/)?.[0];
+const importer=source.match(/function studyRows\(csv\)\{[\s\S]*?\n\}/)?.[0];
+assert.ok(parser&&importer,'CSV functions must exist');
+const rows=new Function(parser+'\n'+importer+'\nreturn studyRows;')();
+const head='participant_id,study_day,date,completed,sleep_minutes';
+const data='P123,1,2026-10-16,1,420';
+const csv=(extraHead='',extraData='')=>head+extraHead+'\n'+data+extraData+'\n';
+assert.equal(rows(csv()).length,1);
+assert.equal(rows(csv(',cohort',',"pilot, group"')).length,1);
+assert.throws(()=>rows(head+'\nP123,1,2026-10-16,1,1500\n'),/sleep minutes/);
+assert.throws(()=>rows(csv(',motherhood_notes',',private')),/private columns/);
+assert.equal(Object.keys(rows(csv(',experiment_name',',PersonalDetails'))[0]).length,5);
+assert.equal(JSON.stringify(rows(csv(',experiment_name',',PersonalDetails'))).includes('PersonalDetails'),false);
+assert.equal(rows('\uFEFF'+csv()).length,1);
+assert.equal(rows(csv(',fajr_status',',ready')).length,1);
+assert.throws(()=>rows(csv(',date',',2026-10-16')),/Not a study CSV/);
+assert.match(source,/if\(file\.size>300000\)/);
+console.log('Research dashboard safe importer: 9 checks passed.');

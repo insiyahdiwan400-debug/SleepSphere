@@ -1,0 +1,64 @@
+{
+  "name": "SleepSphere — Prototype",
+  "short_name": "SleepSphere",
+  "description": "A private sleep and restoration companion built around Fatimi prayer times. A test build: everything stays on your device.",
+  "start_url": "./",
+  "scope": "./",
+  "id": "./",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui",
+    "browser"
+  ],
+  "orientation": "portrait",
+  "background_color": "#07080c",
+  "theme_color": "#07080c",
+  "categories": [
+    "health",
+    "lifestyle"
+  ],
+  "icons": [
+    {
+      "src": "./sleepsphere-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./sleepsphere-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./sleepsphere-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Tonight's check-in",
+      "short_name": "Check in",
+      "url": "./?go=flow"
+    },
+    {
+      "name": "Record this morning",
+      "short_name": "Morning",
+      "url": "./?go=morningFlow"
+    },
+    {
+      "name": "My pattern",
+      "short_name": "Pattern",
+      "url": "./?go=twin"
+    }
+  ]
+}

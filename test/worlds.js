@@ -1,0 +1,419 @@
+/**
+ * SleepSphere Worlds — the shared shell.
+ *
+ * The product promise is that a world is a skin over one engine: changing
+ * it changes nothing you have recorded, scheduled or set. That promise is
+ * worth exactly as much as this file, so the central check compares the
+ * whole stored state byte-for-byte across a switch.
+ *
+ * The other half is the anti-engagement rule. The brief asks that the
+ * environment make the experience more enjoyable WITHOUT encouraging
+ * night-time screen use, so these checks assert that the night screen is
+ * actively boring: one line, one way out, no progress to watch, and no
+ * world able to override it.
+ */
+const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+
+let fails = 0;
+const check = (n, ok, x = '') => {
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${n}${x ? ' :: ' + x : ''}`); if (!ok) fails++;
+};
+
+const KEY = 'sleepsphere_state_v2';
+const BASE = { welcomeSeen:true, openingOff:true, mode:'dark', target:480, faith:'on',
+               usualWake:'06:30', fajrHabit:'return',
+               place:{ latitude:25.2048, longitude:55.2708, name:'Dubai' }, name:'' };
+const PLAN = { mode:'fajr', fajr:'04:45', returnSleep:'05:10', finalWake:'06:30',
+  wakeAnchor:'04:45', savedDate:'2026-09-09', settle:15, wind:30,
+  windStart:1310, settleStart:1340, sleepStart:1355, blockOne:400, blockTwo:80,
+  total:480, target:480, afterFajr:'return', brainDay:'hifz',
+  obligation:{ kind:'jamea', time:'07:30' }, source:'build-my-night' };
+const MORNINGS = Array.from({ length: 8 }, (_, i) => ({
+  id:`fix-${i+1}`, supersedes:null,
+  date:`2026-09-0${i+1}`, createdAt:`2026-09-0${i+1}T06:40:00.000Z`,
+  bedTime:'22:30', sleepTime:'23:00', wakeTime:'06:30', awakeMinutes:15, napMinutes:0,
+  opportunityMinutes:480, sleepMinutes:400+i*6, efficiency:Math.round((400+i*6)/480*100),
+  rest:3+(i%3), energy:3, focus:3+(i%2), calm:3, fajr:'ready', factors:[], note:'',
+  targetMinutes:480, intent:'restore', planSnapshot:null, brainDay:'normal',
+  bioHarmonyId:null, bioHarmonySnapshot:null, experimentId:null,
+  adherence:'not_applicable', demo:false, verified:'entered' }));
+
+const seedScript = (plan, mornings) => {
+  const state = { version:3, settings:BASE, plan:plan||null, brainDays:{},
+    mornings:mornings||[], morningRevisions:[],
+    study:{ onboarded:true, participantId:'P001', startDate:'2026-09-01',
+      enrolledAt:'2026-09-01T06:00:00.000Z', consentAck:true,
+      consentAt:'2026-09-01T06:00:00.000Z', cohort:'jamea-v1', schemaVersion:3,
+      storageMode:'local', lastSeenDay:9 },
+    bioCheckins:[], thoughts:[], scans:[], feedback:[], experimentHistory:[] };
+  return `localStorage.setItem(${JSON.stringify(KEY)}, ${JSON.stringify(JSON.stringify(state))});`;
+};
+const clockAt = (h, mi) => `(()=>{const R=Date;const f=new R(2026,8,9,${h},${mi},0);
+  class D extends R{constructor(...a){if(!a.length)return super(f.getTime());return super(...a);}
+  static now(){return f.getTime();}} window.Date=D;})()`;
+
+(async () => {
+  const b = await chromium.launch({ executablePath:'/opt/pw-browsers/chromium', args:['--no-sandbox'] });
+
+  const open = async (world, h, mi, plan, mornings, journey) => {
+    const ctx = await b.newContext({ viewport:{width:390,height:844}, deviceScaleFactor:2,
+      isMobile:true, hasTouch:true, timezoneId:'Asia/Dubai' });
+    const errs = [];
+    await ctx.addInitScript(clockAt(h, mi));
+    await ctx.addInitScript(seedScript(plan, mornings));
+    const p = await ctx.newPage();
+    p.on('console', m => { if (m.type()==='error') errs.push(m.text()); });
+    p.on('pageerror', e => errs.push(String(e)));
+    const q = `?world=${world}` + (journey ? `&journey=${journey}` : '');
+    await p.goto('http://localhost:8099/index.html' + q, { waitUntil:'networkidle' });
+    await p.waitForTimeout(900);
+    return { ctx, p, errs };
+  };
+
+  /* ================================================================
+     1. THE PROMISE — a world switch touches nothing
+     ================================================================ */
+  {
+    const { ctx, p, errs } = await open('flight', 20, 40, PLAN, MORNINGS);
+    const before = await p.evaluate(k => localStorage.getItem(k), KEY);
+
+    /* Switch through every registered world and back. */
+    const ids = await p.evaluate(() => window.__world.worlds());
+    check('More than one world is registered', ids.length >= 2, ids.join(','));
+
+    for (const id of ids.concat(['flight'])) {
+      await p.evaluate(i => { localStorage.setItem('ss_world', i); }, id);
+      await p.goto(`http://localhost:8099/index.html?world=${id}`, { waitUntil:'networkidle' });
+      await p.waitForTimeout(600);
+    }
+    const after = await p.evaluate(k => localStorage.getItem(k), KEY);
+    check('Switching worlds leaves the stored state byte-identical',
+          before === after, `${(before||'').length} vs ${(after||'').length} chars`);
+
+    const same = await p.evaluate(k => {
+      const s = JSON.parse(localStorage.getItem(k));
+      return { mornings: s.mornings.length, plan: Boolean(s.plan),
+               planWind: s.plan && s.plan.windStart,
+               wake: s.settings.usualWake, habit: s.settings.fajrHabit,
+               schema: s.version, participant: s.study.participantId };
+    }, KEY);
+    check('Records survive a world change', same.mornings === 8, String(same.mornings));
+    check('The schedule survives', same.plan === true && same.planWind === 1310, String(same.planWind));
+    check('Preferences survive', same.wake === '06:30' && same.habit === 'return');
+    check('Schema and participant untouched',
+          same.schema === 3 && same.participant === 'P001');
+    check('No console errors across the switches', errs.length === 0, errs.join(' | '));
+    await ctx.close();
+  }
+
+  /* ================================================================
+     2. EVERY WORLD SUPPORTS EVERY JOURNEY
+     ================================================================ */
+  for (const world of ['flight', 'plain']) {
+    for (const journey of ['tonight', 'logbook', 'learn', 'you', 'adjust']) {
+      const { ctx, p, errs } = await open(world, 20, 40, PLAN, MORNINGS, journey);
+      const v = await p.evaluate(() => {
+        const vis = n => n.offsetParent !== null && n.getClientRects().length > 0;
+        const root = document.getElementById('world');
+        return { mounted: Boolean(root),
+                 content: root ? (root.innerText || '').trim().length : 0,
+                 buttons: root ? [...root.querySelectorAll('button')].filter(vis).length : -1,
+                 scrollW: document.documentElement.scrollWidth };
+      });
+      check(`${world}/${journey} renders`, v.mounted && v.content > 10, `${v.content} chars`);
+      check(`${world}/${journey} no horizontal scroll`, v.scrollW <= 390, `${v.scrollW}px`);
+      check(`${world}/${journey} no console errors`, errs.length === 0, errs.join(' | '));
+      await ctx.close();
+    }
+  }
+
+  /* ================================================================
+     3. THE SHARED ENGINE — Flight shows the real plan, compactly
+     ================================================================ */
+  {
+    const { ctx, p } = await open('flight', 20, 40, PLAN, MORNINGS);
+    const v = await p.evaluate(() => ({
+      head: (document.querySelector('.fl-head') || {}).textContent || '',
+      bar: (document.querySelector('.fl-times-v') || {}).textContent || '',
+      sky: Boolean(document.querySelector('.fl-canvas'))
+    }));
+    check('Flight shows the engine\'s real wind-down', /9:50/.test(v.head), v.head);
+    check('The whole night fits one compact bar, not the screen', v.bar === '8h', v.bar);
+    check('And the sky is a real canvas, not a CSS gradient', v.sky === true);
+
+    /* The schedule is available on demand and still never dominates. */
+    await p.locator('#flTimes').click();
+    await p.waitForTimeout(450);
+    const open2 = await p.evaluate(() => {
+      const rows = [...document.querySelectorAll('.fl-times-row b')].map(n => n.textContent.trim());
+      const h = document.querySelector('.fl-times').getBoundingClientRect().height;
+      return { rows: rows, share: +(h / window.innerHeight).toFixed(2) };
+    });
+    check('Opening it reveals every stage', open2.rows.length === 5, open2.rows.join(' / '));
+    check('With the real Fajr among them', open2.rows.indexOf('4:45 AM') >= 0, open2.rows.join(' / '));
+    check('And even open it takes under a third of the screen',
+          open2.share <= 0.34, open2.share + ' of the viewport');
+    await ctx.close();
+  }
+
+  /* ================================================================
+     3b. THE DESCENT — three phases, and the sky really moves
+     ================================================================ */
+  {
+    const { ctx, p, errs } = await open('flight', 20, 40, PLAN, MORNINGS);
+    const skyAt = () => p.evaluate(() => window.__flight.state());
+
+    const before = await skyAt();
+    await p.locator('#flDescend').click();
+    await p.waitForTimeout(900);
+    const arrive = await p.evaluate(() => ({
+      phase: (document.querySelector('.fl-phase') || {}).textContent,
+      line: (document.querySelector('.fl-line') || {}).textContent,
+      tabs: document.querySelectorAll('.w-tabs button').length,
+      dots: document.querySelectorAll('.fl-dot').length
+    }));
+    check('The Descent opens on Arrive', arrive.phase === 'Arrive', arrive.phase);
+    check('It has three phases', arrive.dots === 3, String(arrive.dots));
+    check('Navigation withdraws for it', arrive.tabs === 0, String(arrive.tabs));
+    check('And it carries one line, not a form',
+          /Nothing left to decide/.test(arrive.line || ''), arrive.line);
+
+    await p.locator('#flContinue').click();
+    await p.waitForTimeout(2300);
+    const settle = await skyAt();
+    const settleUI = await p.evaluate(() => ({
+      phase: (document.querySelector('.fl-phase') || {}).textContent,
+      line: (document.querySelector('.fl-line') || {}).textContent
+    }));
+    check('Continue moves it to Settle', settleUI.phase === 'Settle', settleUI.phase);
+    check('The line changes with the phase',
+          /Let the day go/.test(settleUI.line || ''), settleUI.line);
+    /* The Descent now starts from wherever the clock has left the sky
+       and walks FORWARD to night, rather than from a fixed evening
+       position. So the distance covered depends on the hour — a Descent
+       begun at dusk has less evening left to cross — and the invariant
+       worth asserting is the direction, not a fixed amount. Padding a
+       short journey out would mean cycling the sky through morning and
+       midday on the way to bed. */
+    check('And the SKY moved forward, never backwards',
+          settle.sky >= before.sky - 0.001,
+          before.sky.toFixed(2) + ' -> ' + settle.sky.toFixed(2));
+    check('Towards night, not away from it',
+          Math.abs(2.0 - settle.sky) <= Math.abs(2.0 - before.sky) + 0.001,
+          'night is 2.0; ' + before.sky.toFixed(2) + ' -> ' + settle.sky.toFixed(2));
+
+    await p.locator('#flContinue').click();
+    await p.waitForTimeout(2300);
+    const release = await skyAt();
+    const releaseUI = await p.evaluate(() =>
+      (document.querySelector('.fl-phase') || {}).textContent);
+    check('And again to Release', releaseUI === 'Release', releaseUI);
+    /* Same reasoning as above: direction and destination, not distance. */
+    check('With the sky carried on, never back',
+          release.sky >= settle.sky - 0.001,
+          settle.sky.toFixed(2) + ' -> ' + release.sky.toFixed(2));
+    check('And arriving at night by the end',
+          Math.abs(2.0 - release.sky) < 0.25,
+          'night is 2.0; reached ' + release.sky.toFixed(2));
+    check('No console errors through the Descent', errs.length === 0, errs.join(' | '));
+    await ctx.close();
+  }
+
+  /* The gesture IS the metaphor: dragging down pulls the light under. */
+  {
+    const { ctx, p } = await open('flight', 20, 40, PLAN, MORNINGS);
+    await p.locator('#flDescend').click();
+    await p.waitForTimeout(700);
+    const start = await p.evaluate(() => window.__flight.state());
+    const box = await p.locator('.fl-wrap').boundingBox();
+    await p.mouse.move(box.x + box.width / 2, box.y + box.height * 0.4);
+    await p.mouse.down();
+    for (let i = 1; i <= 10; i++) {
+      await p.mouse.move(box.x + box.width / 2, box.y + box.height * 0.4 + i * 28);
+      await p.waitForTimeout(45);
+    }
+    await p.mouse.up();
+    await p.waitForTimeout(700);
+    const end = await p.evaluate(() => window.__flight.state());
+    check('Dragging the sky down advances the Descent',
+          end.progress > start.progress + 0.2,
+          start.progress.toFixed(2) + ' -> ' + end.progress.toFixed(2));
+    await ctx.close();
+  }
+
+  /* Finishing hands straight to the night guard. */
+  {
+    const { ctx, p } = await open('flight', 20, 40, PLAN, MORNINGS);
+    await p.locator('#flDescend').click();
+    await p.waitForTimeout(700);
+    await p.locator('#flSkip').click();
+    await p.waitForTimeout(3700);
+    const after = await p.evaluate(() => ({
+      guard: Boolean(document.querySelector('.w-settled')),
+      tabs: document.querySelectorAll('.w-tabs button').length,
+      sky: Boolean(document.querySelector('.fl-canvas')),
+      words: (document.getElementById('world').innerText || '').trim().split(/\s+/).length
+    }));
+    check('The Descent ends in the night guard', after.guard === true);
+    check('The sky stays; the interface does not',
+          after.sky === true && after.tabs === 0, JSON.stringify(after));
+    check('And it is quiet', after.words <= 30, after.words + ' words');
+    await ctx.close();
+  }
+
+
+  /* ================================================================
+     4. PLANNING AND ADJUSTING GO THROUGH THE ENGINE
+     ================================================================ */
+  {
+    const { ctx, p } = await open('flight', 20, 40, null, MORNINGS);
+    const proposed = await p.evaluate(() => Boolean(JSON.parse(
+      localStorage.getItem('sleepsphere_state_v2')).plan));
+    check('No plan is saved merely by proposing one', proposed === false);
+    await p.locator('#wGo').click();
+    await p.waitForTimeout(600);
+    const saved = await p.evaluate(() => {
+      const pl = JSON.parse(localStorage.getItem('sleepsphere_state_v2')).plan;
+      return pl && { wind: pl.windStart, source: pl.source };
+    });
+    check('Filing the night writes through the engine\'s own path',
+          saved && saved.source === 'build-my-night', JSON.stringify(saved));
+    await ctx.close();
+  }
+  {
+    const { ctx, p } = await open('flight', 20, 40, PLAN, MORNINGS, 'adjust');
+    const before = await p.evaluate(() => JSON.parse(
+      localStorage.getItem('sleepsphere_state_v2')).plan.windStart);
+    await p.locator('.fl-opt[data-sit="later"]').click();
+    await p.waitForTimeout(500);
+    await p.locator('#wRefile').click();
+    await p.waitForTimeout(700);
+    const after = await p.evaluate(() => JSON.parse(
+      localStorage.getItem('sleepsphere_state_v2')).plan.windStart);
+    check('A schedule change re-files a different night', after !== before,
+          `${before} -> ${after}`);
+    await ctx.close();
+  }
+
+  /* ================================================================
+     5. RECORDING STILL GOES THROUGH THE ONE WRITE PATH
+     ================================================================ */
+  {
+    const { ctx, p } = await open('flight', 6, 50, PLAN, MORNINGS, 'logbook');
+    const seg = await p.locator('.fl-seg button[data-v="4"]');
+    check('The arrival report is offered in the morning', await seg.count() === 1);
+    await seg.click();
+    await p.waitForTimeout(800);
+    const rec = await p.evaluate(() => {
+      const s = JSON.parse(localStorage.getItem('sleepsphere_state_v2'));
+      const last = s.mornings[s.mornings.length - 1];
+      return { count: s.mornings.length, rest: last.rest, calm: last.calm,
+               quick: last.quick, verified: last.verified };
+    });
+    check('It writes exactly one record', rec.count === 9, String(rec.count));
+    check('With the rating given', rec.rest === 4, String(rec.rest));
+    check('And calm left null, because it was never asked', rec.calm === null, String(rec.calm));
+    check('Marked as the quick path, as the engine does', rec.quick === true);
+    await ctx.close();
+  }
+
+  /* ================================================================
+     6. THE NIGHT IS BORING, BY CONSTRUCTION
+     ================================================================ */
+  for (const world of ['flight', 'plain']) {
+    const { ctx, p } = await open(world, 22, 50, PLAN, MORNINGS);
+    const before = await p.evaluate(() => {
+      const r = document.getElementById('world');
+      return { buttons: [...r.querySelectorAll('button')].length };
+    });
+    await p.evaluate(() => window.__world.settle());
+    await p.waitForTimeout(500);
+    const after = await p.evaluate(() => {
+      const r = document.getElementById('world');
+      const vis = n => n.offsetParent !== null && n.getClientRects().length > 0;
+      return {
+        buttons: [...r.querySelectorAll('button')].filter(vis).length,
+        tabs: document.querySelectorAll('.w-tabs button').length,
+        words: (r.innerText || '').trim().split(/\s+/).length,
+        stages: r.querySelectorAll('.f-row, .w-plain-list dt').length,
+        /* Only animations a participant could actually see. The classic
+           chrome carries 2.4s and 3s opacity fades driven by --dusk, and
+           it is display:none inside a world — but it is still in the
+           document, so a document-wide count caught those fades roughly
+           one run in six and failed on something invisible. The check
+           means "the night is boring to look at", so it asks about what
+           can be looked at. Verified to fail the same way on the shipped
+           code before this was narrowed. */
+        animations: document.getAnimations().filter(a => {
+          if (a.playState !== 'running') return false;
+          const node = a.effect && a.effect.target;
+          if (!node || !node.getBoundingClientRect) return true;
+          if (!node.isConnected) return false;
+          const box = node.getBoundingClientRect();
+          const style = getComputedStyle(node);
+          return box.width > 0 && box.height > 0 &&
+                 style.visibility !== 'hidden' && Number(style.opacity) > 0.01;
+        }).length,
+        screens: +(document.documentElement.scrollHeight / 844).toFixed(2)
+      };
+    });
+    check(`${world} · after goodnight exactly one action remains`,
+          after.buttons === 1, `${before.buttons} before, ${after.buttons} after`);
+    check(`${world} · navigation is withdrawn for the night`, after.tabs === 0, String(after.tabs));
+    check(`${world} · no stage-by-stage progress to watch`, after.stages === 0, String(after.stages));
+    check(`${world} · it fits one screen`, after.screens <= 1.05, `${after.screens} screens`);
+    check(`${world} · and nothing is animating`, after.animations === 0, String(after.animations));
+    check(`${world} · under thirty words`, after.words <= 30, `${after.words} words`);
+    await ctx.close();
+  }
+
+  /* The guard is the shell's, not the world's: a world cannot render past
+     it even when its own scene would have drawn something. */
+  {
+    const { ctx, p } = await open('flight', 22, 50, PLAN, MORNINGS);
+    await p.evaluate(() => window.__world.settle());
+    await p.waitForTimeout(400);
+    const leaked = await p.evaluate(() =>
+      document.querySelectorAll('.fl-times, .fl-head, .fl-log').length);
+    check('A world cannot draw its own night screen past the guard',
+          leaked === 0, String(leaked));
+    await p.locator('#wMorning').click();
+    await p.waitForTimeout(600);
+    const back = await p.evaluate(() => ({
+      tabs: document.querySelectorAll('.w-tabs button').length,
+      times: document.querySelectorAll('.fl-times').length
+    }));
+    check('And the morning gives the product back', back.tabs === 4 && back.times === 1,
+          JSON.stringify(back));
+    await ctx.close();
+  }
+
+  /* ================================================================
+     7. NOTHING LEAVES THE DEVICE
+     ================================================================ */
+  {
+    const ctx = await b.newContext({ viewport:{width:390,height:844}, isMobile:true,
+      hasTouch:true, timezoneId:'Asia/Dubai' });
+    const external = [];
+    await ctx.route('**', route => {
+      const u = route.request().url();
+      if (!/^http:\/\/localhost:8099/.test(u) && !u.startsWith('data:') && !u.startsWith('blob:')) {
+        external.push(u);
+      }
+      route.continue();
+    });
+    await ctx.addInitScript(clockAt(20, 40));
+    await ctx.addInitScript(seedScript(PLAN, MORNINGS));
+    const p = await ctx.newPage();
+    await p.goto('http://localhost:8099/index.html?world=flight', { waitUntil:'networkidle' });
+    await p.waitForTimeout(800);
+    await p.locator('.w-tabs button[data-journey="logbook"]').click();
+    await p.waitForTimeout(500);
+    check('No request leaves the device', external.length === 0, external.join(' | '));
+    await ctx.close();
+  }
+
+  await b.close();
+  console.log(fails ? `\n${fails} FAILED` : '\nALL CHECKS PASSED');
+  process.exit(fails ? 1 : 0);
+})();

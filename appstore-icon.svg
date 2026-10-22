@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="SleepSphere crescent and orbit">
+  <defs>
+    <linearGradient id="ground" x1="140" y1="60" x2="880" y2="960" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#171A22"/>
+      <stop offset="0.55" stop-color="#0C0E14"/>
+      <stop offset="1" stop-color="#07080C"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(700 190) scale(560)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C3A068" stop-opacity=".20"/>
+      <stop offset="1" stop-color="#C3A068" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="moon" cx="0" cy="0" r="1" gradientTransform="translate(392 328) rotate(55) scale(448)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF1D2"/>
+      <stop offset="1" stop-color="#C3A068"/>
+    </radialGradient>
+    <mask id="crescent">
+      <rect width="1024" height="1024" fill="white"/>
+      <circle cx="612" cy="404" r="284" fill="black"/>
+    </mask>
+  </defs>
+
+  <!-- Full square, fully opaque: iOS applies its own corner mask, and a
+       transparent or pre-rounded icon is rejected at upload. -->
+  <rect width="1024" height="1024" fill="url(#ground)"/>
+  <rect width="1024" height="1024" fill="url(#glow)"/>
+
+  <circle cx="512" cy="512" r="380" fill="none" stroke="#C3A068" stroke-opacity=".20" stroke-width="9"/>
+  <circle cx="512" cy="512" r="292" fill="none" stroke="#C3A068" stroke-opacity=".26" stroke-width="6" stroke-dasharray="16 30"/>
+  <circle cx="464" cy="504" r="284" fill="url(#moon)" mask="url(#crescent)"/>
+  <circle cx="782" cy="288" r="34" fill="#FFF1D2"/>
+  <circle cx="728" cy="686" r="20" fill="#E2C896" fill-opacity=".85"/>
+</svg>

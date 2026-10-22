@@ -1,0 +1,1099 @@
+/* SleepSphere Motherhood — interface styling.
+ *
+ * Built on the app's existing tokens rather than a second palette, so the
+ * module reads as part of SleepSphere and not as a bolted-on product. Every
+ * colour below resolves through --ink/--paper/--card/--accent and inherits
+ * whatever the app's current mode has set them to.
+ *
+ * Nothing here is loaded conditionally — the stylesheet is identical on
+ * every device, like the module's script, so neither discloses anything
+ * about the person holding the phone. The rules only match elements that
+ * the module creates, and it creates none until it is turned on.
+ */
+
+/* The entry point, in "Me". Quiet on purpose: it is a door, not a feature. */
+.mh-entrycard .mh-entry-btn {
+  appearance: none; -webkit-appearance: none;
+  display: block; width: 100%;
+  margin-top: 12px; padding: 14px 16px;
+  font: inherit; font-weight: 600; text-align: left;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card, 16px);
+  cursor: pointer;
+}
+.mh-entrycard .mh-entry-btn::after { content: ' ›'; opacity: .5; }
+.mh-entrycard .mh-entry-btn:hover { border-color: var(--accent); }
+
+/* ------------------------------------------------------------------
+   The layer.
+   ------------------------------------------------------------------ */
+html.mh-open, html.mh-open body { overflow: hidden; }
+
+.mh-layer {
+  position: fixed; inset: 0; z-index: 90;
+  display: flex; flex-direction: column;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body, inherit);
+}
+
+.mh-bar {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: 12px;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+.mh-bar-title {
+  flex: 1 1 auto; min-width: 0;
+  font-weight: 600; font-size: .95rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mh-bar button {
+  appearance: none; -webkit-appearance: none;
+  border: 1px solid var(--line); background: transparent;
+  color: var(--muted); font: inherit; font-size: .85rem;
+  padding: 7px 12px; border-radius: var(--r-pill, 999px); cursor: pointer;
+}
+.mh-bar button:hover { color: var(--ink); border-color: var(--accent); }
+
+.mh-body {
+  flex: 1 1 auto; min-height: 0;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 40px);
+  display: flex; flex-direction: column; gap: 14px;
+}
+
+/* Cards. One radius, one border; weight is spent on the stage card and the
+   danger card only, so the hierarchy survives a long screen. */
+.mh-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card, 16px);
+  padding: 18px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.mh-card h2 { margin: 0; font-family: var(--font-display, inherit); font-size: 1.35rem; line-height: 1.25; }
+.mh-card h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+.mh-card p { margin: 0; line-height: 1.6; color: var(--muted); font-size: .92rem; }
+.mh-lede { color: var(--ink) !important; }
+.mh-sub { font-size: .9rem; }
+.mh-foot { font-size: .82rem; opacity: .85; }
+.mh-eyebrow {
+  font-size: .72rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted);
+}
+.mh-empty { font-style: italic; }
+.mh-caution { color: var(--ink) !important; }
+
+.mh-stagecard { background: linear-gradient(160deg, var(--card), var(--paper)); }
+.mh-stagecard h2 { font-size: 2rem; }
+
+.mh-list { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+.mh-list li { line-height: 1.55; font-size: .92rem; color: var(--muted); }
+
+.mh-careline { border-color: color-mix(in oklab, var(--accent) 40%, var(--line)); }
+.mh-careline summary { cursor: pointer; font-weight: 600; padding: 2px 0; }
+.mh-lesson summary { cursor: pointer; font-weight: 600; padding: 6px 0; line-height: 1.4; }
+.mh-lesson p { margin-top: 6px; }
+.mh-lesson + .mh-lesson { border-top: 1px solid var(--line); }
+
+/* ------------------------------------------------------------------
+   Controls.
+   ------------------------------------------------------------------ */
+.mh-field { display: flex; flex-direction: column; gap: 6px; }
+.mh-label { font-size: .85rem; font-weight: 600; }
+.mh-hint { font-size: .8rem; color: var(--muted); line-height: 1.5; }
+
+/* border-box everywhere in the layer. Without it a width:100% control plus
+   its own padding is wider than its track, and a row of them pushes its
+   last child off the right edge of the phone. */
+.mh-layer *, .mh-layer *::before, .mh-layer *::after { box-sizing: border-box; }
+
+.mh-layer input[type="text"], .mh-layer input[type="password"],
+.mh-layer input[type="date"], .mh-layer input[type="time"],
+.mh-layer input[type="number"], .mh-layer select, .mh-layer textarea {
+  font: inherit; font-size: 1rem;           /* 16px: iOS zooms anything smaller */
+  color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line); border-radius: 12px;
+  padding: 11px 12px; width: 100%; min-width: 0;
+}
+.mh-layer textarea { resize: vertical; line-height: 1.5; }
+.mh-layer input:focus-visible, .mh-layer select:focus-visible,
+.mh-layer textarea:focus-visible, .mh-layer button:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+
+.mh-row { display: flex; gap: 8px; align-items: center; }
+.mh-row select { width: auto; flex: 0 0 auto; }
+
+.mh-check { display: flex; gap: 10px; align-items: flex-start; line-height: 1.55; font-size: .92rem; }
+.mh-check input { width: 20px; height: 20px; flex: 0 0 auto; margin-top: 1px; }
+
+.mh-primary, .mh-quiet, .mh-danger {
+  appearance: none; -webkit-appearance: none;
+  font: inherit; font-weight: 600; font-size: .95rem;
+  padding: 13px 18px; border-radius: var(--r-pill, 999px);
+  cursor: pointer; border: 1px solid transparent;
+  min-height: 44px;                          /* a real touch target */
+}
+.mh-primary { background: var(--accent); color: var(--paper); }
+.mh-primary:disabled { opacity: .6; cursor: default; }
+.mh-quiet { background: transparent; color: var(--ink); border-color: var(--line); }
+.mh-quiet:hover { border-color: var(--accent); }
+.mh-danger { background: transparent; color: #c0392b; border-color: #c0392b; }
+.mh-danger-card { border-color: #c0392b; }
+
+.mh-actions { display: grid; gap: 8px; }
+
+/* Record tiles. */
+.mh-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.mh-tile {
+  appearance: none; -webkit-appearance: none;
+  font: inherit; font-size: .9rem; font-weight: 600; text-align: left;
+  color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px 14px; min-height: 58px; cursor: pointer;
+}
+.mh-tile:hover { border-color: var(--accent); }
+
+/* Stage choice. */
+.mh-choice { display: grid; gap: 8px; }
+.mh-opt {
+  appearance: none; -webkit-appearance: none; text-align: left;
+  display: grid; gap: 3px; font: inherit;
+  color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px; cursor: pointer;
+}
+.mh-opt strong { font-size: 1rem; }
+.mh-opt span { font-size: .85rem; color: var(--muted); }
+.mh-opt.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.mh-detail { display: flex; flex-direction: column; gap: 12px; }
+
+/* Scales and chips. */
+.mh-scale { display: flex; flex-direction: column; gap: 8px; }
+.mh-scale-row { display: flex; gap: 8px; }
+.mh-dot {
+  appearance: none; -webkit-appearance: none;
+  flex: 1 1 0; min-width: 0; min-height: 46px;
+  font: inherit; font-weight: 600;
+  color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line); border-radius: 12px; cursor: pointer;
+}
+.mh-dot.on { background: var(--accent); color: var(--paper); border-color: var(--accent); }
+.mh-ends { display: flex; justify-content: space-between; font-size: .76rem; color: var(--muted); }
+
+.mh-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.mh-chip {
+  appearance: none; -webkit-appearance: none;
+  font: inherit; font-size: .85rem;
+  color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line); border-radius: var(--r-pill, 999px);
+  padding: 9px 13px; min-height: 38px; cursor: pointer;
+}
+.mh-chip.on { background: var(--accent); color: var(--paper); border-color: var(--accent); }
+
+/* Rest intervals. */
+/* A grid, not a flex row: a native time control carries an intrinsic
+   minimum width that flex honours and grid tracks do not, which is what
+   pushed the remove button off the screen edge. */
+.mh-intervals { display: grid; gap: 8px; }
+.mh-interval {
+  display: grid; gap: 6px; align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+}
+.mh-interval input { min-width: 0; padding-left: 8px; padding-right: 4px; }
+.mh-to { font-size: .8rem; color: var(--muted); }
+
+/* Entries. */
+.mh-entries { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px;
+  background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.mh-entry {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center;
+  background: var(--paper); padding: 11px 12px;
+}
+.mh-entry-d { font-size: .8rem; color: var(--muted); white-space: nowrap; }
+.mh-entry-k { font-size: .88rem; min-width: 0; overflow-wrap: anywhere; }
+.mh-del {
+  appearance: none; -webkit-appearance: none;
+  font: inherit; font-size: .78rem; color: var(--muted);
+  background: transparent; border: 1px solid var(--line);
+  border-radius: var(--r-pill, 999px); padding: 6px 10px; cursor: pointer;
+  min-height: 32px; white-space: nowrap;
+}
+.mh-del:hover { color: #c0392b; border-color: #c0392b; }
+.mh-del-x { padding: 0; width: 38px; min-height: 38px; font-size: .9rem; }
+
+/* Insights. Numbers that were typed by a person, laid out so a missing one
+   reads as missing rather than as zero. */
+.mh-stats { display: grid; gap: 1px; background: var(--line);
+  border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.mh-stat { background: var(--paper); padding: 12px 14px; display: grid; gap: 2px; }
+.mh-stat-k { font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.mh-stat-v { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.mh-stat-v.mh-none { font-size: .95rem; font-weight: 400; color: var(--muted); font-style: italic; }
+.mh-stat-n { font-size: .78rem; color: var(--muted); }
+
+/* Toast. */
+.mh-toast {
+  position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
+  transform: translate(-50%, 10px);
+  background: var(--ink); color: var(--paper);
+  padding: 11px 18px; border-radius: var(--r-pill, 999px);
+  font-size: .88rem; max-width: calc(100% - 32px); text-align: center;
+  opacity: 0; pointer-events: none;
+}
+.mh-toast.on { opacity: 1; transform: translate(-50%, 0); }
+@media (prefers-reduced-motion: no-preference) {
+  .mh-toast { transition: opacity .2s var(--ease, ease), transform .2s var(--ease, ease); }
+}
+
+/* Comfortable on a larger screen without becoming a desktop form. */
+@media (min-width: 680px) {
+  .mh-body { padding-left: max(16px, calc(50% - 330px)); padding-right: max(16px, calc(50% - 330px)); }
+  .mh-grid { grid-template-columns: repeat(3, 1fr); }
+  .mh-actions { grid-template-columns: repeat(2, 1fr); }
+}
+
+
+/* Motherhood sanctuary: visual-only theme. Vault and consent remain unchanged. */
+.mh-layer {
+  --mh-cream: #fffaf3;
+  --mh-peach: #f8e6db;
+  --mh-sage: #dfe9dc;
+  --mh-rose: #f4dcd9;
+  --mh-ink: #453c37;
+  --mh-muted: #756a63;
+  --mh-accent: #98694f;
+  --ink: var(--mh-ink);
+  --muted: var(--mh-muted);
+  --paper: var(--mh-cream);
+  --card: #fffdf9;
+  --line: #e8dcd0;
+  --accent: var(--mh-accent);
+  background: radial-gradient(ellipse at 90% 3%, #f7ded8 0, transparent 38%),
+              radial-gradient(ellipse at 4% 56%, #e5eddf 0, transparent 46%),
+              var(--mh-cream);
+  color: var(--mh-ink);
+}
+.mh-bar {
+  background: rgba(255,250,243,.94);
+  border-bottom-color: #eadfd4;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.mh-bar-title { color: #624d41; letter-spacing: .01em; }
+.mh-body { gap: 18px; }
+.mh-card {
+  background: rgba(255,253,249,.94);
+  border-color: #eadfd4;
+  border-radius: 23px;
+  box-shadow: 0 10px 30px rgba(108,75,57,.055);
+}
+.mh-card h2 { color: #604839; }
+.mh-card h3 { color: #5f584a; }
+.mh-eyebrow { color: #a36f60; font-weight: 700; }
+.mh-stagecard {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(130deg, #fff0e5 0%, #f9e5e1 48%, #e7eee3 100%);
+  border-color: #efdcd1;
+  padding: 26px 22px;
+}
+.mh-stagecard::before {
+  content: '';
+  position: absolute;
+  width: 150px; height: 150px;
+  top: -70px; right: -45px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.4);
+  pointer-events: none;
+}
+.mh-stagecard h2 { color: #694d45; font-weight: 650; }
+.mh-primary { background: #966a53; color: #fffaf5; }
+.mh-primary:hover:not(:disabled) { background: #805540; }
+.mh-quiet { background: #fffaf4; }
+.mh-tile, .mh-opt, .mh-dot, .mh-chip {
+  background: #fffaf5;
+  border-color: #e7d9cd;
+}
+.mh-tile:hover, .mh-opt:hover, .mh-chip:hover { background: #f9ede5; }
+.mh-opt.on, .mh-dot.on, .mh-chip.on {
+  border-color: #a67b65;
+  box-shadow: inset 0 0 0 1px #a67b65;
+}
+.mh-dot.on, .mh-chip.on { background: #956c55; color: #fff; }
+.mh-stat, .mh-entry { background: #fffcf8; }
+.mh-careline { border-color: #d5dfd0; background: #f4f8f0; }
+.mh-danger-card { border-color: #cb8e87; }
+.mh-layer input[type="text"], .mh-layer input[type="password"],
+.mh-layer input[type="date"], .mh-layer input[type="time"],
+.mh-layer input[type="number"], .mh-layer select, .mh-layer textarea {
+  background: #fffdfa;
+  border-color: #dfd0c4;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mh-card { animation: mh-arrive .42s ease-out both; }
+  @keyframes mh-arrive {
+    from { opacity: .7; transform: translateY(7px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mh-card { animation: none; }
+}
+
+
+/* Dreamscape selection: atmospheric CSS previews, not simulated footage.
+   Swap in the user's licensed original nature assets once accessible. */
+.mh-layer {
+  --dream-top: #101b37;
+  --dream-mid: #314967;
+  --dream-glow: rgba(101,211,171,.38);
+  --dream-text: #f9f6ef;
+  background: linear-gradient(180deg,var(--dream-top),var(--dream-mid) 48%,#f8f4ee 92%);
+}
+.mh-layer[data-scene="starlake"] {
+  --dream-top: #071528; --dream-mid: #1d4162; --dream-glow: rgba(122,171,232,.3);
+}
+.mh-layer[data-scene="firstlight"] {
+  --dream-top: #34446e; --dream-mid: #c28eaa; --dream-glow: rgba(255,208,155,.45);
+}
+.mh-layer[data-scene="moonmeadow"] {
+  --dream-top: #151c38; --dream-mid: #4c5278; --dream-glow: rgba(180,163,226,.4);
+}
+.mh-layer::before {
+  content: ""; position: absolute; inset: 0 0 auto; height: 58%;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 70% 26%, var(--dream-glow), transparent 48%),
+    radial-gradient(1px 1px at 9% 13%, #fff 99%, transparent),
+    radial-gradient(2px 2px at 29% 23%, #fff 99%, transparent),
+    radial-gradient(1px 1px at 46% 9%, #fff 99%, transparent),
+    radial-gradient(2px 2px at 62% 31%, #fff 99%, transparent),
+    radial-gradient(1px 1px at 84% 18%, #fff 99%, transparent),
+    radial-gradient(1px 1px at 92% 39%, #fff 99%, transparent);
+  opacity: .9;
+}
+.mh-layer[data-scene="firstlight"]::before { opacity: .55; }
+.mh-bar { position: relative; z-index: 1; background: rgba(12,25,45,.24);
+  border-bottom: 1px solid rgba(255,255,255,.22); }
+.mh-bar-title,.mh-bar button { color: #fffaf5; }
+.mh-bar button { border-color: rgba(255,255,255,.45); }
+.mh-body { position: relative; z-index: 1; }
+.mh-dream-picker {
+  background: rgba(13,28,49,.32); border: 1px solid rgba(255,255,255,.34);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.mh-dream-picker h2,.mh-dream-picker .mh-eyebrow,.mh-dream-picker .mh-hint { color: #fffaf5; }
+.mh-dream-picker .mh-hint { opacity: .88; }
+.mh-scenes { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+.mh-scene-choice {
+  appearance: none; min-width: 0; display: grid; gap: 5px; padding: 7px;
+  text-align: left; color: #fefaf6; background: rgba(11,23,42,.45);
+  border: 1px solid rgba(255,255,255,.4); border-radius: 17px;
+  font: inherit; cursor: pointer; min-height: 130px;
+}
+.mh-scene-choice strong { font-size: .86rem; padding: 0 5px; }
+.mh-scene-choice small { font-size: .75rem; padding: 0 5px 5px; color: #e6e9f3; }
+.mh-scene-choice[aria-pressed="true"] { border: 2px solid #f7e2bc; background: rgba(39,60,75,.75); }
+.mh-scene-choice:focus-visible { outline: 3px solid #ffe5ad; outline-offset: 3px; }
+.mh-scene-preview { height: 78px; border-radius: 12px; display: block;
+  background-image:
+    radial-gradient(1px 1px at 12% 18%,#fff 99%,transparent),
+    radial-gradient(2px 2px at 65% 26%,#fff 99%,transparent),
+    radial-gradient(1px 1px at 84% 44%,#fff 99%,transparent),
+    linear-gradient(145deg,#0c2242,#33745d 60%,#101c38);
+}
+.mh-preview-starlake { background-image:
+  radial-gradient(1px 1px at 20% 15%,#fff 99%,transparent),
+  radial-gradient(2px 2px at 76% 32%,#fff 99%,transparent),
+  linear-gradient(175deg,#0b1533 0%,#29547c 55%,#0a223f 56%,#203f5c); }
+.mh-preview-firstlight { background: linear-gradient(175deg,#586c9d,#dbb5b5 52%,#f5d4a2 72%,#9aa3a3); }
+.mh-preview-moonmeadow { background-image:
+  radial-gradient(circle at 72% 23%,#fff4d2 0 8px,transparent 9px),
+  linear-gradient(170deg,#151c38,#5e638a 65%,#425c4c 66%); }
+.mh-stagecard { background: linear-gradient(125deg,rgba(255,241,231,.97),rgba(236,239,239,.94)); }
+@media (max-width: 360px) {
+  .mh-scenes { gap: 6px; }
+  .mh-scene-choice strong { font-size: .78rem; }
+}
+
+
+/* PHOTO-FIRST REFINEMENT
+   Genuine landscape photography only. All paths are same-origin so private
+   records never trigger third-party image requests. Until assets are added,
+   show a quiet neutral fallback rather than illustrated stars/auroras.
+   Expected local files:
+     media/motherhood/aurora.webp
+     media/motherhood/starlake.webp
+     media/motherhood/firstlight.webp
+     media/motherhood/moonmeadow.webp
+*/
+.mh-layer {
+  --mh-landscape: url("./media/motherhood/aurora.webp");
+  background: #edf0ee;
+  color: #243a43;
+  --paper: #f8faf8;
+  --card: #ffffff;
+  --ink: #243a43;
+  --muted: #5b6b70;
+  --line: #dbe3df;
+  --accent: #326b6a;
+}
+.mh-layer[data-scene="starlake"] { --mh-landscape: url("./media/motherhood/starlake.webp"); }
+.mh-layer[data-scene="firstlight"] { --mh-landscape: url("./media/motherhood/firstlight.webp"); }
+.mh-layer[data-scene="moonmeadow"] { --mh-landscape: url("./media/motherhood/moonmeadow.webp"); }
+.mh-layer::before { content: none; }
+.mh-bar {
+  background: #f8faf8;
+  border-bottom: 1px solid #dbe3df;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.mh-bar-title,.mh-bar button { color: #29434c; }
+.mh-bar button { border-color: #cbd7d3; }
+.mh-body {
+  gap: 14px;
+  padding-top: 16px;
+  background: linear-gradient(180deg,#edf3f0,#f9faf7 350px);
+}
+.mh-card {
+  background: #fff;
+  border: 1px solid #e1e8e3;
+  box-shadow: 0 3px 16px rgba(20,51,55,.045);
+  border-radius: 19px;
+}
+.mh-card h2,.mh-card h3 { color: #29434c; }
+.mh-eyebrow { color: #487575; }
+.mh-stagecard {
+  min-height: 235px;
+  justify-content: flex-end;
+  background-image:
+    linear-gradient(180deg,rgba(8,29,40,.04),rgba(9,31,42,.79)),
+    var(--mh-landscape);
+  background-color: #45646b;
+  background-size: cover;
+  background-position: center;
+  border: none;
+  padding: 26px;
+  box-shadow: 0 10px 25px rgba(23,49,58,.14);
+}
+.mh-stagecard::before { content: none; }
+.mh-stagecard h2 { color: #fff; font-size: 2.1rem; }
+.mh-stagecard .mh-eyebrow { color: #e8f3ee; }
+.mh-stagecard p,.mh-stagecard .mh-sub { color: #f5f8f6 !important; }
+.mh-dream-picker {
+  background: #fff;
+  border-color: #e1e8e3;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.mh-dream-picker h2 { color: #29434c; font-size: 1.22rem; }
+.mh-dream-picker .mh-eyebrow { color: #487575; }
+.mh-dream-picker .mh-hint { color: #5b6b70; opacity: 1; }
+.mh-scenes { gap: 10px; }
+.mh-scene-choice {
+  background: #f8faf8;
+  border: 1px solid #dfe7e2;
+  color: #2c474b;
+  padding: 7px;
+  min-height: 146px;
+  border-radius: 15px;
+}
+.mh-scene-choice strong { color: #29434c; font-size: .84rem; }
+.mh-scene-choice small { color: #657674; }
+.mh-scene-choice[aria-pressed="true"] {
+  border: 2px solid #4b817e;
+  background: #f2f8f5;
+  box-shadow: 0 0 0 2px #d6e9e1;
+}
+.mh-scene-choice:focus-visible { outline-color: #327a77; }
+/* The four thumbnails are their own files, not the full scenes scaled
+   down in the browser. The selector shows all four at about 108px tall;
+   pointing it at the backgrounds would have pulled 611KB of photography
+   to draw four postage stamps, on a screen someone opens once. The
+   thumbs are 56KB for the set.
+
+   Each keeps a background-color sampled from its own photograph, so a
+   tile that has not decoded yet is the right colour rather than a grey
+   hole — and so the selector still reads as four distinct places if the
+   images never arrive at all. */
+.mh-scene-preview {
+  display: block;
+  height: 110px;
+  border-radius: 12px;
+  background-color: #2c3c4b;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+.mh-preview-aurora { background-image: url("./media/motherhood/aurora-thumb.webp"); background-color: #15313a; }
+.mh-preview-starlake { background-image: url("./media/motherhood/starlake-thumb.webp"); background-color: #19405e; }
+.mh-preview-firstlight { background-image: url("./media/motherhood/firstlight-thumb.webp"); background-color: #7d8f73; }
+.mh-preview-moonmeadow { background-image: url("./media/motherhood/moonmeadow-thumb.webp"); background-color: #15295c; }
+.mh-primary { background: #326b6a; color: #fff; }
+.mh-primary:hover:not(:disabled) { background: #275657; }
+.mh-tile,.mh-opt,.mh-dot,.mh-chip { background: #f6f9f7; border-color: #dbe5df; }
+.mh-tile:hover,.mh-opt:hover,.mh-chip:hover { background: #eaf4ef; }
+.mh-opt.on,.mh-dot.on,.mh-chip.on { border-color: #326b6a; box-shadow: inset 0 0 0 1px #326b6a; }
+.mh-dot.on,.mh-chip.on { background: #326b6a; color: #fff; }
+.mh-layer input[type="text"],.mh-layer input[type="password"],
+.mh-layer input[type="date"],.mh-layer input[type="time"],
+.mh-layer input[type="number"],.mh-layer select,.mh-layer textarea {
+  background: #fff;
+  border-color: #cfddd5;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mh-card { animation: none; transition: none; }
+}
+
+
+/* SLEEPSPHERE CELESTIAL CALM — photographic skies, restrained star identity.
+   No simulated footage, animated star fields or distracting sparkle effects. */
+.mh-layer {
+  --mh-night: #233f53;
+  --mh-starlight: #d7c9a6;
+  --mh-mist: #eef3f1;
+  /* Darker at the foot than it was (.58 → .72). The stage card carries
+     white serif text over whichever of the four photographs is chosen,
+     and the dawn valley is bright enough along its lower edge that the
+     weaker scrim left "After birth" sitting on sunlit grass. */
+  --mh-landscape-overlay: linear-gradient(180deg,rgba(13,34,48,.08),rgba(13,34,48,.72));
+  background: var(--mh-mist);
+}
+/* Glass, so the landscape runs up under the bar instead of stopping at
+   a hard grey edge. The fallback matters more than the blur: where
+   backdrop-filter is unsupported the bar stays a solid near-ivory and
+   the title keeps its contrast, rather than becoming dark text on a
+   transparent strip over a photograph. */
+.mh-bar {
+  background: #f4f7f5;
+  border-bottom-color: rgba(217, 227, 225, .7);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .mh-bar {
+    background: rgba(246, 249, 247, .74);
+    -webkit-backdrop-filter: saturate(135%) blur(16px);
+    backdrop-filter: saturate(135%) blur(16px);
+  }
+}
+.mh-bar-title {
+  color: var(--mh-night);
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  letter-spacing: .025em;
+}
+.mh-bar-title::before {
+  content: "✧";
+  display: inline-block;
+  color: #a38e66;
+  font-size: .88em;
+  margin-right: .48em;
+}
+/* The chosen landscape, as the screen's own atmosphere rather than a
+   picture on one card.
+
+   background-attachment: local is the important word. The default would
+   pin the photograph to the scroller's box, so the landscape would hold
+   still while the cards slid over it — a parallax that reads as the
+   scene drifting. These are stills, and nothing here may suggest
+   otherwise; `local` makes the photograph scroll with the content, the
+   way a header image does, so there is no relative motion at all.
+
+   The scrim is a single vertical gradient: nearly clear at the top where
+   the sky is, opaque ivory by the time the first card arrives. That is
+   what keeps #29434C text at full contrast over four very different
+   photographs — a bright dawn valley and a near-black meadow included —
+   without dimming the part of the picture anyone actually looks at. */
+.mh-body {
+  background-color: var(--mh-mist);
+  background-image:
+    linear-gradient(180deg,
+      rgba(20, 43, 59, .22) 0,
+      rgba(20, 43, 59, .10) 16%,
+      rgba(245, 244, 239, .72) 34%,
+      rgba(245, 244, 239, .94) 48%,
+      var(--mh-mist) 64%),
+    var(--mh-landscape);
+  background-repeat: no-repeat, no-repeat;
+  background-size: 100% 760px, 100% 760px;
+  background-position: top center, top center;
+  background-attachment: local, local;
+}
+
+/* A photograph that never decodes leaves the gradient and the colour
+   below it, which is a calm ivory page with readable text — not a broken
+   image and not a black screen. Each scene names a colour sampled from
+   its own photograph so the top of the page is still the right mood. */
+.mh-layer[data-scene="aurora"] .mh-body { background-color: #eef2f1; }
+.mh-layer[data-scene="starlake"] .mh-body { background-color: #eceff3; }
+.mh-layer[data-scene="firstlight"] .mh-body { background-color: #eff2ec; }
+.mh-layer[data-scene="moonmeadow"] .mh-body { background-color: #ecedf3; }
+.mh-stagecard {
+  min-height: 270px;
+  background-image: var(--mh-landscape-overlay),var(--mh-landscape);
+  background-color: #476675;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 12px 28px rgba(27,53,64,.12);
+}
+.mh-stagecard h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.75rem,6vw,2.35rem);
+  letter-spacing: -.018em;
+  line-height: 1.15;
+  text-shadow: 0 1px 10px rgba(0,0,0,.14);
+}
+.mh-stagecard .mh-eyebrow {
+  color: #f1e7cd;
+  font-size: .76rem;
+  letter-spacing: .13em;
+}
+.mh-card {
+  border-color: #e3eae7;
+  box-shadow: 0 3px 14px rgba(26,58,68,.035);
+}
+.mh-dream-picker h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  color: #304a56;
+  font-size: 1.45rem;
+}
+/* Two rings rather than one. A single 2px border is the whole selected
+   state here, and on four dark thumbnails sitting edge to edge it is
+   easy to miss which one is yours — the outline gives it a second,
+   lighter edge that reads at a glance and survives a dimmed screen. */
+.mh-scene-choice[aria-pressed="true"] {
+  border: 2px solid #557d83;
+  outline: 2px solid #e4eeec;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px #e4eeec;
+}
+
+/* Nothing in the scenery animates — the landscapes are stills and stay
+   stills. This is here so that if a transition is ever added to a tile
+   or the stage card, it is already excluded for anyone who has asked
+   for less movement, rather than shipping and being noticed later. */
+@media (prefers-reduced-motion: reduce) {
+  .mh-stagecard,
+  .mh-scene-choice {
+    animation: none;
+    transition: none;
+  }
+}
+
+.mh-primary {
+  background: #3f6b76;
+  border-radius: 100px;
+}
+.mh-primary:hover:not(:disabled) { background: #305760; }
+.mh-eyebrow { letter-spacing: .085em; }
+@media (prefers-reduced-motion: reduce) {
+  .mh-card,.mh-scene-choice,.mh-stagecard { animation: none; transition: none; }
+}
+
+/* ==================================================================
+   FULL-BLEED SCENERY
+
+   The landscape was a strip at the top of an ivory page: a white screen
+   with one picture on it, which is not the sanctuary the design asks
+   for. It is now the whole screen.
+
+   .mh-layer is already position: fixed; inset: 0, so the photograph
+   covers the viewport and the scrolling body moves over it. The
+   landscape itself never moves, scales or cross-fades — the stillness
+   rule holds; what scrolls is the content in front of it.
+
+   Everything below follows from one decision: light text on a dark
+   scrim, rather than dark text on light cards. That is what makes a
+   single treatment work across four very different photographs. The
+   dawn valley is bright and the meadow is nearly black, and no
+   light-card scheme survives both — a scrim dark enough to read white
+   text on is the only thing that behaves the same on all four. It also
+   makes the failure case correct rather than lucky: if no photograph
+   ever loads, the floor underneath is deep celestial blue and the text
+   on it is ivory, which is still a legible screen.
+   ================================================================== */
+
+.mh-layer {
+  background-color: #0d2230;
+  background-image: var(--mh-landscape);
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  color: #f5f4ef;
+}
+
+/* The scrim. One gradient over the whole screen, weakest at the top
+   where the sky usually is and strongest at the foot where the cards
+   stack up. It sits under the content (.mh-body is z-index 1) and takes
+   no taps. */
+.mh-layer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg,
+    rgba(10, 26, 38, .38) 0%,
+    rgba(10, 26, 38, .52) 38%,
+    rgba(10, 26, 38, .72) 100%);
+}
+
+/* The bright one needs more help than the dark ones; the near-black
+   meadow needs less, or the photograph disappears into the scrim. */
+/* First Light needs the most of any scene, and more again since the
+   scene became footage: a sunrise valley is the brightest thing in the
+   module and the measurement put text over it at 2.90:1, under the 4.5
+   floor. These numbers come from that measurement, not from taste. */
+.mh-layer[data-scene="firstlight"]::before {
+  background: linear-gradient(180deg,
+    rgba(10, 26, 38, .66) 0%,
+    rgba(10, 26, 38, .76) 38%,
+    rgba(10, 26, 38, .88) 100%);
+}
+.mh-layer[data-scene="moonmeadow"]::before {
+  background: linear-gradient(180deg,
+    rgba(10, 26, 38, .26) 0%,
+    rgba(10, 26, 38, .44) 38%,
+    rgba(10, 26, 38, .68) 100%);
+}
+
+/* The page itself is now the photograph, so the body carries nothing. */
+.mh-layer .mh-body,
+.mh-layer[data-scene="aurora"] .mh-body,
+.mh-layer[data-scene="starlake"] .mh-body,
+.mh-layer[data-scene="firstlight"] .mh-body,
+.mh-layer[data-scene="moonmeadow"] .mh-body {
+  background: none;
+  background-color: transparent;
+}
+
+/* Glass panels. The solid fallback comes first and is what renders
+   without backdrop-filter — translucent-but-unblurred over photography
+   is where text goes to die, so the unsupported path stays opaque. */
+.mh-layer .mh-card {
+  background: rgba(14, 34, 48, .88);
+  border: 1px solid rgba(245, 244, 239, .16);
+  box-shadow: 0 20px 44px -26px rgba(0, 0, 0, .95);
+  color: #f5f4ef;
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .mh-layer .mh-card {
+    background: rgba(14, 34, 48, .55);
+    -webkit-backdrop-filter: blur(22px) saturate(130%);
+    backdrop-filter: blur(22px) saturate(130%);
+  }
+}
+
+.mh-layer .mh-card h2,
+.mh-layer .mh-card h3,
+.mh-layer .mh-dream-picker h2 { color: #f5f4ef; }
+.mh-layer .mh-card p,
+.mh-layer .mh-hint,
+.mh-layer .mh-list li { color: rgba(245, 244, 239, .82); }
+.mh-layer .mh-eyebrow { color: #e8d8b5; }
+
+/* The hero. With the photograph behind everything, a card showing the
+   same photograph again is a picture of the wall, hung on the wall. The
+   stage block keeps its words and gives up its frame. */
+.mh-layer .mh-stagecard {
+  background: none;
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+  min-height: 200px;
+  padding: 30px 6px 18px;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.mh-layer .mh-stagecard h2 { text-shadow: 0 2px 18px rgba(5, 16, 24, .72); }
+.mh-layer .mh-stagecard p { color: rgba(245, 244, 239, .9); text-shadow: 0 1px 12px rgba(5, 16, 24, .7); }
+
+/* Controls on glass. */
+.mh-layer .mh-tile,
+.mh-layer .mh-opt,
+.mh-layer .mh-dot,
+.mh-layer .mh-chip,
+.mh-layer .mh-scene-choice {
+  background: rgba(245, 244, 239, .10);
+  border-color: rgba(245, 244, 239, .22);
+  color: #f5f4ef;
+}
+.mh-layer .mh-tile:hover,
+.mh-layer .mh-opt:hover,
+.mh-layer .mh-chip:hover { background: rgba(245, 244, 239, .17); }
+.mh-layer .mh-opt.on,
+.mh-layer .mh-dot.on,
+.mh-layer .mh-chip.on {
+  background: #e8d8b5;
+  color: #14283a;
+  border-color: #e8d8b5;
+  box-shadow: none;
+}
+.mh-layer .mh-scene-choice strong { color: #f5f4ef; }
+.mh-layer .mh-scene-choice small { color: rgba(245, 244, 239, .74); }
+.mh-layer .mh-scene-choice[aria-pressed="true"] {
+  background: rgba(232, 216, 181, .16);
+  border: 2px solid #e8d8b5;
+  outline: 2px solid rgba(232, 216, 181, .34);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+/* Figures. These are the only numbers in the module and they have to
+   stay the most legible thing on the screen. */
+.mh-layer .mh-stats { background: rgba(245, 244, 239, .16); }
+.mh-layer .mh-stat { background: rgba(10, 26, 38, .62); }
+.mh-layer .mh-stat-k,
+.mh-layer .mh-stat-n { color: rgba(245, 244, 239, .72); }
+.mh-layer .mh-stat-v { color: #f5f4ef; }
+.mh-layer .mh-stat-v.mh-none { color: rgba(245, 244, 239, .66); }
+.mh-layer .mh-entry { background: rgba(10, 26, 38, .55); border-color: rgba(245, 244, 239, .14); }
+
+/* Fields. */
+.mh-layer input[type="text"],
+.mh-layer input[type="password"],
+.mh-layer input[type="date"],
+.mh-layer input[type="time"],
+.mh-layer input[type="number"],
+.mh-layer select,
+.mh-layer textarea {
+  background: rgba(7, 20, 30, .62);
+  border-color: rgba(245, 244, 239, .26);
+  color: #f5f4ef;
+}
+.mh-layer input::placeholder,
+.mh-layer textarea::placeholder { color: rgba(245, 244, 239, .5); }
+.mh-layer label { color: rgba(245, 244, 239, .86); }
+
+/* Chrome and buttons. Champagne carries the primary action: it is the
+   one warm colour in the palette and the only thing on screen that
+   should pull the eye before the photograph does. */
+.mh-layer .mh-bar {
+  background: rgba(8, 22, 33, .72);
+  border-bottom-color: rgba(245, 244, 239, .14);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .mh-layer .mh-bar { background: rgba(8, 22, 33, .46); }
+}
+.mh-layer .mh-bar-title,
+.mh-layer .mh-bar button { color: #f5f4ef; }
+.mh-layer .mh-bar button { border-color: rgba(245, 244, 239, .3); }
+.mh-layer .mh-bar-title::before { color: #e8d8b5; }
+
+.mh-layer .mh-primary { background: #e8d8b5; color: #14283a; }
+.mh-layer .mh-primary:hover:not(:disabled) { background: #f0e4c8; }
+.mh-layer .mh-quiet {
+  background: rgba(245, 244, 239, .09);
+  border-color: rgba(245, 244, 239, .3);
+  color: #f5f4ef;
+}
+.mh-layer .mh-caution { color: #f3dcc4; }
+.mh-layer a { color: #e8d8b5; }
+
+/* Focus has to be visible against a photograph, not just against a
+   card, so it is the champagne ring with a dark halo behind it. */
+.mh-layer :focus-visible {
+  outline: 3px solid #e8d8b5;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px rgba(8, 22, 33, .65);
+}
+
+/* ==================================================================
+   MOTION
+
+   What moves here is the interface. The landscape does not.
+
+   That line comes from the brief itself — "use authentic motion footage
+   only when an actual video asset exists", "do not fake moving nature
+   by panning still photographs" — and there is no video asset, so there
+   is no drifting aurora, no Ken Burns creep across the meadow, and no
+   drawn stars twinkling over a photograph of real ones. Those would all
+   be the app claiming to show something it did not record.
+
+   Everything below is transform and opacity only, so it stays on the
+   compositor and off the main thread; every animation is finite, so
+   nothing loops in the background draining a phone at 3am. All of it
+   stops dead under prefers-reduced-motion.
+   ================================================================== */
+
+/* The two scenery plates. The photograph lives here rather than on the
+   layer, so one can fade out while the other fades in. */
+.mh-scene-plate {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  transition: opacity .85s cubic-bezier(.4, 0, .2, 1);
+  will-change: opacity;
+}
+.mh-scene-plate.on { opacity: 1; }
+.mh-scene-plate.scene-aurora { background-image: url("./media/motherhood/aurora.webp"); }
+.mh-scene-plate.scene-starlake { background-image: url("./media/motherhood/starlake.webp"); }
+.mh-scene-plate.scene-firstlight { background-image: url("./media/motherhood/firstlight.webp"); }
+.mh-scene-plate.scene-moonmeadow { background-image: url("./media/motherhood/moonmeadow.webp"); }
+
+/* The layer keeps the colour floor only; the plates carry the picture.
+   The scrim and the content both move up one, over the plates. */
+.mh-layer { background-image: none; }
+.mh-layer::before { z-index: 1; }
+.mh-layer .mh-body { position: relative; z-index: 2; }
+.mh-layer .mh-bar { position: relative; z-index: 3; }
+.mh-layer .mh-toast { z-index: 4; }
+
+/* Arriving. Cards rise a little and fade in, each a beat after the one
+   above it, so a screen assembles rather than appears. Capped at six so
+   a long screen does not have a card still arriving a second later. */
+@keyframes mh-rise {
+  from { opacity: 0; transform: translate3d(0, 14px, 0); }
+  to { opacity: 1; transform: none; }
+}
+.mh-layer .mh-card,
+.mh-layer .mh-stagecard {
+  animation: mh-rise .52s cubic-bezier(.22, 1, .36, 1) both;
+}
+.mh-layer .mh-body > *:nth-child(1) { animation-delay: 0ms; }
+.mh-layer .mh-body > *:nth-child(2) { animation-delay: 70ms; }
+.mh-layer .mh-body > *:nth-child(3) { animation-delay: 140ms; }
+.mh-layer .mh-body > *:nth-child(4) { animation-delay: 210ms; }
+.mh-layer .mh-body > *:nth-child(5) { animation-delay: 280ms; }
+.mh-layer .mh-body > *:nth-child(n+6) { animation-delay: 340ms; }
+
+/* The module opening at all. */
+@keyframes mh-layer-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.mh-layer { animation: mh-layer-in .42s ease both; }
+
+/* Touch feedback. A tile that answers the finger is the difference
+   between an app that feels built and one that feels like a page. */
+.mh-layer .mh-tile,
+.mh-layer .mh-opt,
+.mh-layer .mh-chip,
+.mh-layer .mh-dot,
+.mh-layer .mh-scene-choice,
+.mh-layer .mh-primary,
+.mh-layer .mh-quiet {
+  transition: transform .18s cubic-bezier(.22, 1, .36, 1),
+              background-color .22s ease,
+              border-color .22s ease,
+              box-shadow .22s ease;
+}
+.mh-layer .mh-tile:active,
+.mh-layer .mh-opt:active,
+.mh-layer .mh-chip:active,
+.mh-layer .mh-scene-choice:active,
+.mh-layer .mh-primary:active:not(:disabled),
+.mh-layer .mh-quiet:active { transform: scale(.972); }
+
+/* Choosing a scene. The tile settles rather than snapping, which reads
+   as the choice being taken rather than a radio button flipping. */
+@keyframes mh-chosen {
+  0% { transform: scale(1); }
+  42% { transform: scale(1.035); }
+  100% { transform: scale(1); }
+}
+.mh-layer .mh-scene-choice[aria-pressed="true"] {
+  animation: mh-chosen .42s cubic-bezier(.22, 1, .36, 1);
+}
+
+/* The toast. */
+.mh-layer .mh-toast {
+  transition: opacity .26s ease, transform .26s cubic-bezier(.22, 1, .36, 1);
+  transform: translate3d(0, 8px, 0);
+}
+.mh-layer .mh-toast.on { transform: none; }
+
+/* Everything above, withdrawn. Not reduced — off. Someone who has asked
+   their phone for less movement has asked once and should not have to
+   trust each app's idea of "subtle". The cross-fade becomes a cut and
+   the cards simply are where they are. */
+@media (prefers-reduced-motion: reduce) {
+  .mh-layer,
+  .mh-layer *,
+  .mh-layer *::before,
+  .mh-layer *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .mh-scene-plate { transition: none !important; }
+  .mh-layer .mh-card,
+  .mh-layer .mh-stagecard { opacity: 1; transform: none; }
+  .mh-layer .mh-toast { transform: none; }
+}
+
+/* The scenery link under the hero. Full width so it reads as part of
+   the photograph above it rather than a stray control, and quiet enough
+   that it never competes with Record. */
+.mh-layer .mh-scenery-link {
+  width: 100%;
+  margin-top: -4px;
+  justify-content: center;
+  font-size: .88rem;
+  letter-spacing: .01em;
+  background: rgba(245, 244, 239, .09);
+  border-color: rgba(245, 244, 239, .24);
+  color: rgba(245, 244, 239, .92);
+}
+.mh-layer .mh-scenery-link::before {
+  content: "◉";
+  margin-right: .5em;
+  color: #e8d8b5;
+  font-size: .9em;
+}
+
+/* The moving scene.
+
+   Authentic footage of the place the still shows — the still is that
+   clip's own first frame — so this is the scene arriving rather than a
+   different one replacing it. It sits inside the plate, over the poster
+   image, and fades in only once frames are actually running: a clip
+   that never decodes stays at opacity 0 and the still remains the
+   scene, with nothing flashing in between.
+
+   The landscape still does not pan or zoom. What moves is what the
+   camera recorded moving — an aurora, stars wheeling, cloud in a
+   valley, grass in wind. */
+.mh-scene-motion {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 1.1s ease;
+  pointer-events: none;
+}
+.mh-scene-motion.on { opacity: 1; }
+
+/* Asked for less movement means the footage is never fetched at all —
+   mountMotion() returns before creating the element — but if one is
+   somehow present it stays hidden rather than fading. */
+@media (prefers-reduced-motion: reduce) {
+  .mh-scene-motion, .mh-scene-motion.on { display: none !important; }
+}
+
+/* First Light is the one bright scene, and the glass is what fails on
+   it: at the shared opacity the sunrise valley came through the cards
+   and put text at 3.51:1, under the 4.5 floor. Darkening the whole
+   scrim further would have dimmed the photograph everywhere to fix a
+   problem that only exists behind a card, so the card carries it. */
+.mh-layer[data-scene="firstlight"] .mh-card { background: rgba(12, 30, 42, .93); }
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .mh-layer[data-scene="firstlight"] .mh-card { background: rgba(12, 30, 42, .80); }
+}
+.mh-layer[data-scene="firstlight"] .mh-tile,
+.mh-layer[data-scene="firstlight"] .mh-opt,
+.mh-layer[data-scene="firstlight"] .mh-chip,
+.mh-layer[data-scene="firstlight"] .mh-scene-choice { background: rgba(10, 26, 38, .46); }
