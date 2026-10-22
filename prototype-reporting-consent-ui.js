@@ -21,7 +21,7 @@
     const title = doc.createElement('h2');
     title.textContent = 'Help improve SleepSphere';
     const detail = doc.createElement('p');
-    detail.textContent = 'Optional prototype diagnostics may include app opens, routine completions, technical errors, and a rating you choose to submit. Your sleep entries, Motherhood records, journals, location, and personal details are never included.';
+    detail.textContent = 'This form sends only the tester ID you choose and a 1–5 rating when you press Submit. It does not automatically send app activity, sleep entries, Motherhood records, journals or location. Use an anonymous tester ID instead of your real name.';
     const notice = doc.createElement('p');
     notice.textContent = 'Optional reporting requires a configured server. A tester can submit a rating with a chosen ID; sleep entries and Motherhood records are never included. You can decline and still use SleepSphere.';
     const status = doc.createElement('p');
