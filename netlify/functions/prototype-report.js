@@ -52,7 +52,7 @@ exports.handler = async function(event) {
         'Authorization': 'Bearer ' + apiKey,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({from, to: [to], subject, text: lines.join('\\n')}),
+      body: JSON.stringify({from, to: [to], subject, text: lines.join('\n')}),
       signal: AbortSignal.timeout(5000)
     });
     if (!response.ok) return {statusCode:502,body:'Email delivery unavailable'};
