@@ -32,14 +32,30 @@ exports.handler = async function(event) {
   try { parsed = JSON.parse(event.body); } catch (_) { return {statusCode:400,body:'Invalid JSON'}; }
   const payload = validate(parsed);
   if (!payload) return {statusCode:400,body:'Invalid reporting event'};
-  const webhook = process.env.SLEEPSPHERE_REPORT_WEBHOOK;
-  if (!webhook || !/^https:\/\//.test(webhook)) return {statusCode:503,body:'Reporting is not configured'};
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.SLEEPSPHERE_REPORT_FROM;
+  const to = process.env.SLEEPSPHERE_REPORT_TO;
+  if (!apiKey || !from || !to) return {statusCode:503,body:'Email delivery is not configured'};
+  // All content is constructed from validated fields. No free-text input,
+  // sleep records, or Motherhood data enters the email.
+  const subject = 'SleepSphere tester rating';
+  const lines = [
+    'SleepSphere prototype feedback',
+    'Tester ID: ' + payload.testerId,
+    'Event: ' + payload.event.type,
+    'Rating: ' + payload.event.rating + '/5'
+  ];
   try {
-    const response = await fetch(webhook, {
-      method:'POST', headers:{'content-type':'application/json'},
-      body:JSON.stringify(payload), signal:AbortSignal.timeout(5000)
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + apiKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({from, to: [to], subject, text: lines.join('\\n')}),
+      signal: AbortSignal.timeout(5000)
     });
-    if (!response.ok) return {statusCode:502,body:'Reporting unavailable'};
-    return {statusCode:202,body:'Accepted'};
-  } catch (_) { return {statusCode:502,body:'Reporting unavailable'}; }
+    if (!response.ok) return {statusCode:502,body:'Email delivery unavailable'};
+    return {statusCode:202,body:'Accepted by email provider'};
+  } catch (_) { return {statusCode:502,body:'Email delivery unavailable'}; }
 };
