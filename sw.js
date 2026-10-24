@@ -1,4 +1,4 @@
-const CACHE = 'sleepsphere-v14-network-first-20261019';
+const CACHE = 'sleepsphere-v15-consent-offline-20261021';
 /* The Arabic face is shell, not an extra. The dua is read at bedtime, which
    is exactly when a phone is likeliest to be in a basement, on aeroplane
    mode, or out of data — so it is fetched on install with everything else
@@ -9,14 +9,16 @@ const CACHE = 'sleepsphere-v14-network-first-20261019';
    is not there when it is wanted. Both files are loaded on every device
    regardless of whether anyone enabled it, so caching them discloses
    nothing. */
-const SHELL = ['./', './manifest.webmanifest', './favicon.svg', './apple-touch-icon.png', './sleepsphere-icon-192.png', './sleepsphere-icon-512.png', './fonts/amiri-naskh-v2.woff2', './motherhood.js', './motherhood-ui.js', './motherhood.css', './insights.js', './insights.css', './explore.js', './explore.css', './living-sky.js', './living-sky.css'];
+const SHELL = ['./', './manifest.webmanifest', './favicon.svg', './apple-touch-icon.png', './sleepsphere-icon-192.png', './sleepsphere-icon-512.png', './fonts/amiri-naskh-v2.woff2', './motherhood.js', './motherhood-ui.js', './motherhood.css', './insights.js', './insights.css', './explore.js', './explore.css', './living-sky.js', './living-sky.css', './prototype-reporting-consent.js', './prototype-reporting-consent-ui.js', './prototype-reporting-embed.js'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
 });
 
+// Only retire SleepSphere's previous app-shell caches. Never delete caches
+// belonging to other applications that happen to share this origin.
 self.addEventListener('activate', event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim()));
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('sleepsphere-') && key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim()));
 });
 
 self.addEventListener('fetch', event => {
