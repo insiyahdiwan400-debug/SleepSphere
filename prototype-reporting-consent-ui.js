@@ -21,7 +21,7 @@
     const title = doc.createElement('h2');
     title.textContent = 'Help improve SleepSphere';
     const detail = doc.createElement('p');
-    detail.textContent = 'This form sends only the tester ID you choose and a 1–5 rating when you press Submit. It does not automatically send app activity, sleep entries, Motherhood records, journals or location. Use an anonymous tester ID instead of your real name.';
+    detail.textContent = 'This form sends only the tester ID you choose and a 1–5 rating when you press Submit. You can also explicitly report that you opened a testing session. It does not automatically send app activity, sleep entries, Motherhood records, journals or location. Use an anonymous tester ID instead of your real name.';
     const notice = doc.createElement('p');
     notice.textContent = 'Optional reporting requires a configured server. A tester can submit a rating with a chosen ID; sleep entries and Motherhood records are never included. You can decline and still use SleepSphere.';
     const status = doc.createElement('p');
@@ -56,6 +56,32 @@
     const send = doc.createElement('button');
     send.type = 'button';
     send.textContent = 'Submit tester rating';
+    const track = doc.createElement('button');
+    track.type = 'button';
+    track.textContent = 'Start tracking this testing session';
+    track.setAttribute('aria-label', 'Send a consented app-open event');
+    track.addEventListener('click', async () => {
+      if (!reporting.consented()) return;
+      const id = testerId.value.trim();
+      if (!/^[a-zA-Z0-9_-]{1,40}$/.test(id)) {
+        error.textContent = 'Enter an anonymous tester ID before starting tracking.';
+        return;
+      }
+      const prepared = reporting.prepareEvent('app_open');
+      if (!prepared) return;
+      track.disabled = true;
+      error.textContent = '';
+      try {
+        const response = await fetch('/.netlify/functions/prototype-report', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ consent: true, testerId: id, event: prepared })
+        });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        status.textContent = 'This testing session was reported successfully.';
+      } catch (failure) {
+        error.textContent = 'Session tracking failed (' + (failure.message || 'network error') + '). No report was confirmed.';
+      } finally { track.disabled = !reporting.consented(); }
+    });
     let busy = false;
     send.addEventListener('click', async () => {
       if (busy || !reporting.consented()) return;
@@ -87,6 +113,7 @@
       enable.hidden = enabled;
       disable.hidden = !enabled;
       send.disabled = !enabled || busy;
+      track.disabled = !enabled;
       return enabled;
     }
     enable.addEventListener('click', () => {
@@ -98,7 +125,7 @@
       error.textContent = removed ? '' : 'Reporting is off for this session. Browser storage may still contain an old consent flag; please clear site data before testing again.';
       render();
     });
-    section.append(title, detail, notice, status, enable, disable, idLabel, ratingLabel, send, error);
+    section.append(title, detail, notice, status, enable, disable, idLabel, ratingLabel, track, send, error);
     host.appendChild(section);
     render();
     return Object.freeze({ destroy() { section.remove(); }, refresh: render });
