@@ -16,7 +16,7 @@ function validate(body) {
   if (body.consent !== true || typeof body.testerId !== 'string' || !ID.test(body.testerId)) return null;
   if (!body.event || typeof body.event !== 'object' || Array.isArray(body.event)) return null;
   const e = body.event;
-  if (e.type !== 'feedback_submitted' || e.schema !== 1) return null;
+  if (!Object.prototype.hasOwnProperty.call(TYPES,e.type) || e.schema !== 1) return null;
   const allowed = TYPES[e.type];
   if (Object.keys(e).some(k => !['type','schema',...allowed].includes(k))) return null;
   if (allowed.includes('code') && !CODES.has(e.code)) return null;
@@ -38,12 +38,13 @@ exports.handler = async function(event) {
   if (!apiKey || !from || !to) return {statusCode:503,body:'Email delivery is not configured'};
   // All content is constructed from validated fields. No free-text input,
   // sleep records, or Motherhood data enters the email.
-  const subject = 'SleepSphere tester rating';
+  const subject = 'SleepSphere tester event: ' + payload.event.type;
   const lines = [
     'SleepSphere prototype feedback',
     'Tester ID: ' + payload.testerId,
     'Event: ' + payload.event.type,
-    'Rating: ' + payload.event.rating + '/5'
+    ...(payload.event.rating === undefined ? [] : ['Rating: ' + payload.event.rating + '/5']),
+    ...(payload.event.code === undefined ? [] : ['Error code: ' + payload.event.code])
   ];
   try {
     const response = await fetch('https://api.resend.com/emails', {
