@@ -3658,6 +3658,7 @@
         <section class="view" id="test">
           <div class="section-head"><div><div class="eyebrow">Prototype validation</div><h2>Tell me what deserves to stay</h2></div><div><p>Try the three-step pathway, then give honest feedback. You are testing the product—not being tested.</p><button class="share-button" type="button" data-share-prototype style="margin-top:10px">Invite another tester</button></div></div>
           <div class="grid">
+            <article class="card span-12 no-print" id="ss-prototype-consent-root" aria-label="Optional prototype reporting controls"></article>
             <article class="card span-5">
               <div class="card-label">Three things to test</div>
               <div class="loop">
@@ -4040,10 +4041,15 @@
         set(key, value) {
           memory.set(key, value);
           if (!backing) return false;
-          try { backing.setItem(key, value); return true; }
-          catch {
-            // Quota, or storage revoked mid-session. Keep the session alive
-            // in memory and stop claiming the disk is working.
+          try {
+            backing.setItem(key, value);
+            // Some browsers silently discard writes. Verify each save, not
+            // only the startup probe, before telling someone it was saved.
+            if (backing.getItem(key) !== value) throw new Error('Storage write did not persist');
+            return true;
+          } catch {
+            // Quota, revoked storage, or a silently discarded write.
+            // Keep this session alive in memory, but warn that disk failed.
             backing = null;
             document.documentElement.dataset.storage = 'unavailable';
             return false;
@@ -4094,9 +4100,9 @@
     const motherhood = (() => {
       const read = () => {
         try {
-          const raw = store.get(MOTHERHOOD_KEY);
+          const raw = window.localStorage.getItem(MOTHERHOOD_KEY);
           const parsed = raw ? JSON.parse(raw) : null;
-          return parsed && typeof parsed === 'object' ? parsed : null;
+          return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
         } catch { return null; }
       };
       return {
@@ -4107,9 +4113,20 @@
         /* Deliberately not wired to any sensitive field yet. It exists so
            the gate and the erase path are real and testable now. */
         set(next) {
-          store.set(MOTHERHOOD_KEY, JSON.stringify({ ...(read() || {}), ...next }));
+          // Sensitive records must never fall back to volatile session memory.
+          const storage = window.localStorage;
+          const raw = storage.getItem(MOTHERHOOD_KEY);
+          const previous = raw ? JSON.parse(raw) : null;
+          if (raw && (!previous || typeof previous !== 'object' || Array.isArray(previous))) throw new Error('Motherhood vault unreadable');
+          const value = JSON.stringify({ ...(previous || {}), ...next });
+          storage.setItem(MOTHERHOOD_KEY, value);
+          if (storage.getItem(MOTHERHOOD_KEY) !== value) throw new Error('Motherhood save did not persist');
         },
-        clear() { store.remove(MOTHERHOOD_KEY); }
+        clear() {
+          const storage = window.localStorage;
+          storage.removeItem(MOTHERHOOD_KEY);
+          if (storage.getItem(MOTHERHOOD_KEY) !== null) throw new Error('Motherhood deletion did not persist');
+        }
       };
     })();
 
@@ -7981,7 +7998,21 @@
          survives the app's own delete button is a trap, not a
          protection. */
       if (window.SSMotherhood && typeof window.SSMotherhood.lock === 'function') window.SSMotherhood.lock();
-      ['ss_plan','ss_thoughts','ss_mornings','ss_feedback',STORAGE_KEY,MOTHERHOOD_KEY].forEach(key => store.remove(key));
+      /* Verify persistent deletion before resetting state or claiming success.
+         Erase the private vault first; if it remains, preserve sleep history. */
+      const keysToErase = [MOTHERHOOD_KEY,'ss_plan','ss_thoughts','ss_mornings','ss_feedback',STORAGE_KEY];
+      try {
+        for (const key of keysToErase) {
+          store.remove(key);
+          window.localStorage.removeItem(key);
+          if (window.localStorage.getItem(key) !== null) {
+            throw new Error('Deletion was not persisted');
+          }
+        }
+      } catch {
+        toast('Could not verify deletion. Some records may remain on this device. Please retry.');
+        return;
+      }
       /* The save guard exists to stop this build writing over data it
          could not read. The owner of that data has just deliberately
          erased it, so there is nothing left to protect and the flags
@@ -11496,5 +11527,14 @@
        daypart; the drawn sky stays and shows wherever one does not. -->
   <script src="living-sky.js"></script>
   <script src="flight-cabin.js"></script>
+  <!-- Prototype consent UI only; no telemetry endpoint is connected. -->
+  <script src="prototype-reporting-consent.js"></script>
+  <script src="prototype-reporting-consent-ui.js"></script>
+  <script src="prototype-reporting-embed.js"></script>
+  <script>
+    try {
+      window.SleepSpherePrototypeReportingEmbed.mount(document, window.localStorage, window.SleepSpherePrototypeReporting, window.SleepSpherePrototypeConsentUI);
+    } catch (_) { /* Reporting UI must never block sleep tracking. */ }
+  </script>
 </body>
 </html>
