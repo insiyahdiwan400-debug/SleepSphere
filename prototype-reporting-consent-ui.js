@@ -60,8 +60,13 @@
     track.type = 'button';
     track.textContent = 'Start tracking this testing session';
     track.setAttribute('aria-label', 'Send a consented app-open event');
+    const trackHelp = doc.createElement('p');
+    trackHelp.textContent = 'To enable tracking, first select Allow optional diagnostics for this session and enter an anonymous tester ID.';
     track.addEventListener('click', async () => {
-      if (!reporting.consented()) return;
+      if (!reporting.consented()) {
+        error.textContent = 'Tracking is off. Tap Allow optional diagnostics for this session first.';
+        return;
+      }
       const id = testerId.value.trim();
       if (!/^[a-zA-Z0-9_-]{1,40}$/.test(id)) {
         error.textContent = 'Enter an anonymous tester ID before starting tracking.';
@@ -80,7 +85,7 @@
         status.textContent = 'This testing session was reported successfully.';
       } catch (failure) {
         error.textContent = 'Session tracking failed (' + (failure.message || 'network error') + '). No report was confirmed.';
-      } finally { track.disabled = !reporting.consented(); }
+      } finally { track.disabled = false; }
     });
     let busy = false;
     send.addEventListener('click', async () => {
@@ -113,7 +118,8 @@
       enable.hidden = enabled;
       disable.hidden = !enabled;
       send.disabled = !enabled || busy;
-      track.disabled = !enabled;
+      track.disabled = false;
+      trackHelp.textContent = enabled ? 'Tracking is ready. Enter an anonymous tester ID, then tap Start tracking this testing session.' : 'Tracking is off. Tap Allow optional diagnostics for this session first.';
       return enabled;
     }
     enable.addEventListener('click', () => {
@@ -125,7 +131,7 @@
       error.textContent = removed ? '' : 'Reporting is off for this session. Browser storage may still contain an old consent flag; please clear site data before testing again.';
       render();
     });
-    section.append(title, detail, notice, status, enable, disable, idLabel, ratingLabel, track, send, error);
+    section.append(title, detail, notice, status, enable, disable, idLabel, ratingLabel, trackHelp, track, send, error);
     host.appendChild(section);
     render();
     return Object.freeze({ destroy() { section.remove(); }, refresh: render });
