@@ -704,6 +704,51 @@
       body { color:#111; background:white; }
       .card, .twin-visual { color:#111; background:white; }
     }
+
+    /* November design pass: calm editorial surfaces, clearer hierarchy, accessible touch targets. */
+    :root { --radius:22px; --shadow:0 14px 42px rgba(24,42,49,.075); }
+    .workspace { min-width:0; }
+    .topbar h1, .section-head h2, .console-copy h2, .welcome-card h2 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-weight:500; letter-spacing:-.035em; line-height:1.14;
+    }
+    .section-head { gap:16px; align-items:end; }
+    .section-head h2 { font-size:clamp(1.7rem,3.4vw,2.65rem); }
+    .section-head > p { max-width:55ch; line-height:1.65; }
+    .eyebrow, .card-label { letter-spacing:.075em; }
+    .card, .surface { border:1px solid rgba(95,125,123,.14); box-shadow:var(--shadow); }
+    .card { transition:box-shadow .2s ease,border-color .2s ease; }
+    .card:focus-within { border-color:rgba(74,169,157,.42); box-shadow:0 12px 36px rgba(24,42,49,.10); }
+    .btn { min-height:46px; border-radius:13px; }
+    .btn.primary { box-shadow:0 8px 22px rgba(42,94,88,.13); }
+    input, select, textarea { min-height:44px; }
+    textarea { min-height:96px; }
+    .helper { line-height:1.6; }
+    .sidebar .nav button { min-height:46px; border-radius:13px; }
+    .nav button.active { box-shadow:inset 3px 0 0 #d8b968; }
+    .topbar .subtitle { max-width:62ch; }
+    .night-console { overflow:hidden; }
+    .intent-pill { min-height:42px; }
+    .twin-delta > div { border-radius:13px; }
+    @media (max-width:760px) {
+      .topbar { padding:23px 19px 15px; }
+      .topbar h1 { font-size:clamp(1.75rem,8vw,2.4rem); }
+      .section-head { display:block; }
+      .section-head > p { margin-top:10px; }
+      .card { padding:clamp(16px,4vw,22px); }
+      .sidebar { overflow:visible; }
+      .sidebar .nav { overflow-x:auto; overscroll-behavior-x:contain; scrollbar-width:none; }
+      .sidebar .nav::-webkit-scrollbar { display:none; }
+      .sidebar .nav button { min-width:69px; min-height:53px; }
+      .sidebar .nav button.active { box-shadow:inset 0 -3px 0 #d8b968; }
+      .console-copy h2 { font-size:clamp(2rem,9vw,2.7rem); }
+      .intent-row { gap:8px; }
+      .intent-pill { min-height:44px; }
+      .button-row .btn { flex:1 1 160px; }
+    }
+    @media (prefers-reduced-motion:reduce) {
+      *,*::before,*::after { scroll-behavior:auto!important; animation-duration:.01ms!important; transition-duration:.01ms!important; }
+    }
   </style>
 </head>
 <body>
@@ -713,9 +758,9 @@
       <nav class="nav" aria-label="Main navigation">
         <button class="active" data-view="today"><span class="nav-icon">◐</span><span>Tonight</span></button>
         <button data-view="bio"><span class="nav-icon">⌬</span><span>Bio Harmony</span></button>
-        <button data-view="plan"><span class="nav-icon">◷</span><span>Night plan</span></button>
+        <button data-view="plan"><span class="nav-icon">◷</span><span>Sleep plan</span></button>
         <button data-view="morning"><span class="nav-icon">☀</span><span>Morning</span></button>
-        <button data-view="twin"><span class="nav-icon">◎</span><span>My pattern</span></button>
+        <button data-view="twin"><span class="nav-icon">◎</span><span>My results</span></button>
         <button type="button" id="navMore" aria-expanded="false"><span class="nav-icon">•••</span><span>More</span></button>
         <button class="secondary-nav" data-view="unload"><span class="nav-icon">✦</span><span>Clear my mind</span></button>
         <button class="secondary-nav" data-view="compass"><span class="nav-icon">⌁</span><span>Trends</span></button>
@@ -729,8 +774,8 @@
 
     <div class="workspace">
       <header class="topbar">
-        <div><div class="eyebrow" id="pageEyebrow">The Sabat Loop</div><h1 id="pageTitle">Rest is more than hours.</h1><p class="subtitle" id="pageSubtitle">Notice the gap. Test one change. Learn what restoration means for you.</p></div>
-        <div class="top-actions"><span class="privacy-pill">V5 • TEST PROTOTYPE</span><button class="share-button" type="button" data-share-prototype>Share prototype</button><button class="icon-button" id="dimToggle" aria-label="Toggle low-light mode" title="Low-light mode">◒</button></div>
+        <div><div class="eyebrow" id="pageEyebrow">The Sabat Loop</div><h1 id="pageTitle">A gentler way to rest.</h1><p class="subtitle" id="pageSubtitle">Plan tonight, check in tomorrow, and learn what helps you rest.</p></div>
+        <div class="top-actions"><span class="privacy-pill">SLEEPSPHERE • PREVIEW</span><button class="share-button" type="button" data-share-prototype>Share SleepSphere</button><button class="icon-button" id="dimToggle" aria-label="Toggle low-light mode" title="Low-light mode">◒</button></div>
       </header>
 
       <main>
@@ -743,9 +788,9 @@
                 <div class="sphere-reading"><strong id="heroGap">—</strong><span id="heroGapLabel">After three mornings, compare your sleep time with how rested you felt.</span></div>
               </div>
               <div class="console-copy">
-                <div class="eyebrow">SleepSphere V5 • Private prototype</div>
+                <div class="eyebrow">Your evening, made simpler</div>
                 <h2>Understand tonight.<br />Learn from tomorrow.</h2>
-                <p>Start with a one-minute body check, make a realistic night plan, then record how you actually felt in the morning. SleepSphere turns those three moments into a pattern you can understand.</p>
+                <p>Take a quick check-in, make a sleep plan that fits your life, and tell us how you feel tomorrow morning. Small steps, without pressure.</p>
                 <div class="intent-label">What matters most tomorrow?</div>
                 <div class="intent-row" id="intentRow">
                   <button type="button" class="intent-pill" data-intent="restore">Feel restored</button>
@@ -838,16 +883,16 @@
             </article>
 
             <article class="card span-6">
-              <div class="card-label">What your results show</div><h3>“The plan and the morning did not match.”</h3><p class="helper">Compare your planned bedtime and time available for sleep with your morning energy and how rested you felt.</p>
+              <div class="card-label">What you can learn</div><h3>“The plan and the morning did not match.”</h3><p class="helper">Compare your planned bedtime and time available for sleep with your morning energy and how rested you felt.</p>
             </article>
             <article class="card span-6">
-              <div class="card-label">What we cannot know yet</div><h3>“This one factor caused the outcome.”</h3><p class="helper">Many things can affect sleep. This comparison cannot tell you exactly why a night went differently or diagnose a problem.</p>
+              <div class="card-label">What one night cannot tell you</div><h3>“This one factor caused the outcome.”</h3><p class="helper">Many things can affect sleep. This comparison cannot tell you exactly why a night went differently or diagnose a problem.</p>
             </article>
           </div>
         </section>
 
         <section class="view" id="plan">
-          <div class="section-head"><div><div class="eyebrow">Signature planner</div><h2>Make tonight’s sleep plan</h2></div><p>Plan one continuous block or account honestly for a Fajr interruption and a second sleep block. The aim is adequate opportunity—not glorifying short sleep.</p></div>
+          <div class="section-head"><div><div class="eyebrow">Tonight</div><h2>Make tonight’s sleep plan</h2></div><p>Plan one continuous block or account honestly for a Fajr interruption and a second sleep block. The aim is adequate opportunity—not glorifying short sleep.</p></div>
           <div class="grid">
             <article class="card span-7">
               <div class="field"><label>Planning mode</label><div class="segmented" id="planMode"><button type="button" class="active" data-mode="continuous">One sleep block</button><button type="button" data-mode="fajr">Sleep before &amp; after Fajr</button></div></div>
@@ -882,7 +927,7 @@
                   <div class="choice"><input type="radio" name="planBarrier" id="pb4" value="Environment" /><label class="option-label" for="pb4"><strong>Room or body</strong><span>Noise, light, temperature, pain or discomfort.</span></label></div>
                 </div>
               </div>
-              <div class="button-row"><button class="btn primary" id="savePlan">Save tonight’s bridge</button><button class="btn ghost" data-go="unload">Continue to unload</button></div>
+              <div class="button-row"><button class="btn primary" id="savePlan">Save tonight’s plan</button><button class="btn ghost" data-go="unload">Continue to unload</button></div>
             </article>
 
             <article class="card span-5">
@@ -935,7 +980,7 @@
         </section>
 
         <section class="view" id="morning">
-          <div class="section-head"><div><div class="eyebrow">Morning record</div><h2>How did sleep actually function?</h2></div><p>This diary borrows the useful structure of sleep diaries while adding restoration, Fajr readiness and everyday context. Estimates are welcome; perfection is not required.</p></div>
+          <div class="section-head"><div><div class="eyebrow">Tomorrow morning</div><h2>How did you feel this morning?</h2></div><p>This diary borrows the useful structure of sleep diaries while adding restoration, Fajr readiness and everyday context. Estimates are welcome; perfection is not required.</p></div>
           <div class="grid">
             <article class="card span-8">
               <div class="form-grid three">
