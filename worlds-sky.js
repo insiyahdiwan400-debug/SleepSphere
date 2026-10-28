@@ -736,7 +736,7 @@
     } else {
       this.t = wrapT(this.target);
     }
-    if (!this.reduced) this.phase += dt * 0.001;
+    if (!this.reduced) this.phase += dt * 0.00018; // slow, nearly imperceptible cloud drift for bedtime
     this.draw(now);
 
     /* Idle out when there is genuinely nothing happening. Under reduced
