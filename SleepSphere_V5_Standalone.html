@@ -704,6 +704,51 @@
       body { color:#111; background:white; }
       .card, .twin-visual { color:#111; background:white; }
     }
+
+    /* November design pass: calm editorial surfaces, clearer hierarchy, accessible touch targets. */
+    :root { --radius:22px; --shadow:0 14px 42px rgba(24,42,49,.075); }
+    .workspace { min-width:0; }
+    .topbar h1, .section-head h2, .console-copy h2, .welcome-card h2 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-weight:500; letter-spacing:-.035em; line-height:1.14;
+    }
+    .section-head { gap:16px; align-items:end; }
+    .section-head h2 { font-size:clamp(1.7rem,3.4vw,2.65rem); }
+    .section-head > p { max-width:55ch; line-height:1.65; }
+    .eyebrow, .card-label { letter-spacing:.075em; }
+    .card, .surface { border:1px solid rgba(95,125,123,.14); box-shadow:var(--shadow); }
+    .card { transition:box-shadow .2s ease,border-color .2s ease; }
+    .card:focus-within { border-color:rgba(74,169,157,.42); box-shadow:0 12px 36px rgba(24,42,49,.10); }
+    .btn { min-height:46px; border-radius:13px; }
+    .btn.primary { box-shadow:0 8px 22px rgba(42,94,88,.13); }
+    input, select, textarea { min-height:44px; }
+    textarea { min-height:96px; }
+    .helper { line-height:1.6; }
+    .sidebar .nav button { min-height:46px; border-radius:13px; }
+    .nav button.active { box-shadow:inset 3px 0 0 #d8b968; }
+    .topbar .subtitle { max-width:62ch; }
+    .night-console { overflow:hidden; }
+    .intent-pill { min-height:42px; }
+    .twin-delta > div { border-radius:13px; }
+    @media (max-width:760px) {
+      .topbar { padding:23px 19px 15px; }
+      .topbar h1 { font-size:clamp(1.75rem,8vw,2.4rem); }
+      .section-head { display:block; }
+      .section-head > p { margin-top:10px; }
+      .card { padding:clamp(16px,4vw,22px); }
+      .sidebar { overflow:visible; }
+      .sidebar .nav { overflow-x:auto; overscroll-behavior-x:contain; scrollbar-width:none; }
+      .sidebar .nav::-webkit-scrollbar { display:none; }
+      .sidebar .nav button { min-width:69px; min-height:53px; }
+      .sidebar .nav button.active { box-shadow:inset 0 -3px 0 #d8b968; }
+      .console-copy h2 { font-size:clamp(2rem,9vw,2.7rem); }
+      .intent-row { gap:8px; }
+      .intent-pill { min-height:44px; }
+      .button-row .btn { flex:1 1 160px; }
+    }
+    @media (prefers-reduced-motion:reduce) {
+      *,*::before,*::after { scroll-behavior:auto!important; animation-duration:.01ms!important; transition-duration:.01ms!important; }
+    }
   </style>
 </head>
 <body>
@@ -713,9 +758,9 @@
       <nav class="nav" aria-label="Main navigation">
         <button class="active" data-view="today"><span class="nav-icon">◐</span><span>Tonight</span></button>
         <button data-view="bio"><span class="nav-icon">⌬</span><span>Bio Harmony</span></button>
-        <button data-view="plan"><span class="nav-icon">◷</span><span>Night plan</span></button>
+        <button data-view="plan"><span class="nav-icon">◷</span><span>Sleep plan</span></button>
         <button data-view="morning"><span class="nav-icon">☀</span><span>Morning</span></button>
-        <button data-view="twin"><span class="nav-icon">◎</span><span>My pattern</span></button>
+        <button data-view="twin"><span class="nav-icon">◎</span><span>My results</span></button>
         <button type="button" id="navMore" aria-expanded="false"><span class="nav-icon">•••</span><span>More</span></button>
         <button class="secondary-nav" data-view="unload"><span class="nav-icon">✦</span><span>Clear my mind</span></button>
         <button class="secondary-nav" data-view="compass"><span class="nav-icon">⌁</span><span>Trends</span></button>
@@ -729,8 +774,8 @@
 
     <div class="workspace">
       <header class="topbar">
-        <div><div class="eyebrow" id="pageEyebrow">The Sabat Loop</div><h1 id="pageTitle">Rest is more than hours.</h1><p class="subtitle" id="pageSubtitle">Notice the gap. Test one change. Learn what restoration means for you.</p></div>
-        <div class="top-actions"><span class="privacy-pill">V5 • TEST PROTOTYPE</span><button class="share-button" type="button" data-share-prototype>Share prototype</button><button class="icon-button" id="dimToggle" aria-label="Toggle low-light mode" title="Low-light mode">◒</button></div>
+        <div><div class="eyebrow" id="pageEyebrow">The Sabat Loop</div><h1 id="pageTitle">A gentler way to rest.</h1><p class="subtitle" id="pageSubtitle">Plan tonight, check in tomorrow, and learn what helps you rest.</p></div>
+        <div class="top-actions"><span class="privacy-pill">SLEEPSPHERE • PREVIEW</span><button class="share-button" type="button" data-share-prototype>Share SleepSphere</button><button class="icon-button" id="dimToggle" aria-label="Toggle low-light mode" title="Low-light mode">◒</button></div>
       </header>
 
       <main>
@@ -740,12 +785,12 @@
             <div class="console-main">
               <div class="sabat-sphere" id="sabatSphere" role="img" aria-labelledby="heroGap heroGapLabel">
                 <span class="sphere-satellite"></span>
-                <div class="sphere-reading"><strong id="heroGap">—</strong><span id="heroGapLabel">Three mornings reveal the distance between sleep opportunity and restoration.</span></div>
+                <div class="sphere-reading"><strong id="heroGap">—</strong><span id="heroGapLabel">After three mornings, compare your sleep time with how rested you felt.</span></div>
               </div>
               <div class="console-copy">
-                <div class="eyebrow">SleepSphere V5 • Private prototype</div>
+                <div class="eyebrow">Your evening, made simpler</div>
                 <h2>Understand tonight.<br />Learn from tomorrow.</h2>
-                <p>Start with a one-minute body check, make a realistic night plan, then record how you actually felt in the morning. SleepSphere turns those three moments into a pattern you can understand.</p>
+                <p>Take a quick check-in, make a sleep plan that fits your life, and tell us how you feel tomorrow morning. Small steps, without pressure.</p>
                 <div class="intent-label">What matters most tomorrow?</div>
                 <div class="intent-row" id="intentRow">
                   <button type="button" class="intent-pill" data-intent="restore">Feel restored</button>
@@ -764,7 +809,7 @@
             </div>
             <div class="console-metrics">
               <div class="console-metric"><span>Wind-down</span><strong id="todayWinddown">Not planned</strong></div>
-              <div class="console-metric"><span>Sleep opportunity</span><strong id="todayOpportunity">—</strong></div>
+              <div class="console-metric"><span>Time available for sleep</span><strong id="todayOpportunity">—</strong></div>
               <div class="console-metric"><span>Wake anchor</span><strong id="todayWake">—</strong></div>
               <div class="console-metric"><span>Live experiment</span><strong id="todayExperiment">None</strong></div>
             </div>
@@ -776,8 +821,8 @@
               <div class="loop">
                 <div class="loop-step"><div class="loop-number">01</div><div><strong>Choose tomorrow’s outcome</strong><small>Restoration, focus, Fajr readiness or a calmer transition.</small></div><span class="status">Intent</span></div>
                 <div class="loop-step"><div class="loop-number">02</div><div><strong>Listen for Bio Harmony</strong><small>Keep timing, sleep pressure, mental load, body comfort and environment visible.</small></div><span class="status">Body</span></div>
-                <div class="loop-step"><div class="loop-number">03</div><div><strong>Build around real obligations</strong><small>One sleep block or a transparent Fajr Bridge.</small></div><span class="status">Plan</span></div>
-                <div class="loop-step"><div class="loop-number">04</div><div><strong>Create the Restoration Twin</strong><small>Compare the planned night, body context and morning that actually happened.</small></div><span class="status">Twin</span></div>
+                <div class="loop-step"><div class="loop-number">03</div><div><strong>Build around real obligations</strong><small>Plan one sleep period, or rest before and after Fajr.</small></div><span class="status">Plan</span></div>
+                <div class="loop-step"><div class="loop-number">04</div><div><strong>Compare your plan and your night</strong><small>Compare the planned night, body context and morning that actually happened.</small></div><span class="status">Twin</span></div>
                 <div class="loop-step"><div class="loop-number">05</div><div><strong>Test one change</strong><small>Predefine success, record adherence and accept unclear results.</small></div><span class="status">Learn</span></div>
               </div>
             </article>
@@ -807,21 +852,21 @@
         </section>
 
         <section class="view" id="twin">
-          <div class="section-head"><div><div class="eyebrow">SleepSphere signature</div><h2>Your Restoration Twin</h2></div><p>A twin is created by pairing a saved plan with the morning that followed. It exposes the gap between intention and real life without hiding the calculation inside a mystery score.</p></div>
+          <div class="section-head"><div><div class="eyebrow">SleepSphere signature</div><h2>Your Plan vs. Your Night</h2></div><p>See how your night actually went compared with what you planned. One night does not tell the whole story.</p></div>
           <div class="grid">
             <article class="twin-visual span-8">
               <div class="console-status"><span class="live-signal">Plan versus reality</span><span class="console-date" id="twinRecordDate">Waiting for a paired morning</span></div>
               <div class="twin-track">
-                <div class="twin-track-head"><strong>Planned sleep opportunity</strong><span id="twinPlanLabel">—</span></div>
-                <div class="twin-line plan" id="twinPlanTrack" role="progressbar" aria-label="Planned sleep opportunity in minutes" aria-valuemin="0" aria-valuemax="600" aria-valuenow="0"><span id="twinPlanLine" style="width:0%"></span></div>
+                <div class="twin-track-head"><strong>Time planned for sleep</strong><span id="twinPlanLabel">—</span></div>
+                <div class="twin-line plan" id="twinPlanTrack" role="progressbar" aria-label="Time planned for sleep in minutes" aria-valuemin="0" aria-valuemax="600" aria-valuenow="0"><span id="twinPlanLine" style="width:0%"></span></div>
               </div>
               <div class="twin-track">
-                <div class="twin-track-head"><strong>Actual sleep opportunity</strong><span id="twinActualLabel">—</span></div>
-                <div class="twin-line actual" id="twinActualTrack" role="progressbar" aria-label="Actual sleep opportunity in minutes" aria-valuemin="0" aria-valuemax="600" aria-valuenow="0"><span id="twinActualLine" style="width:0%"></span></div>
+                <div class="twin-track-head"><strong>Time available for sleep</strong><span id="twinActualLabel">—</span></div>
+                <div class="twin-line actual" id="twinActualTrack" role="progressbar" aria-label="Time available for sleep in minutes" aria-valuemin="0" aria-valuemax="600" aria-valuenow="0"><span id="twinActualLine" style="width:0%"></span></div>
               </div>
               <div class="twin-delta">
-                <div><span>Opportunity difference</span><strong id="twinOpportunityDelta">—</strong></div>
-                <div><span>Bedtime drift</span><strong id="twinTimingDrift">—</strong></div>
+                <div><span>Difference from your plan</span><strong id="twinOpportunityDelta">—</strong></div>
+                <div><span>Difference from planned bedtime</span><strong id="twinTimingDrift">—</strong></div>
                 <div><span>Restoration</span><strong id="twinRestoration">—</strong></div>
                 <div><span>Chosen outcome</span><strong id="twinOutcome">—</strong></div>
               </div>
@@ -829,28 +874,28 @@
             </article>
 
             <article class="card span-4">
-              <div class="card-label">Personal night signature</div>
+              <div class="card-label">Your recent sleep pattern</div>
               <div class="signature-code" id="nightSignature">Still forming</div>
               <p class="helper" id="nightSignatureText">Three mornings begin the signature. It describes your recent pattern; it does not define you.</p>
               <div class="callout teal" style="margin-top:18px"><strong>Why this matters:</strong> a technically perfect schedule that repeatedly fails in real life is not a useful plan. The twin measures realism as well as sleep.</div>
               <button class="btn primary" data-go="plan" style="margin-top:18px">Build or adjust tonight</button>
-              <button class="btn ghost" id="loadTwinDemo" style="margin-top:8px">Preview a labelled example twin</button>
+              <button class="btn ghost" id="loadTwinDemo" style="margin-top:8px">See an example comparison</button>
             </article>
 
             <article class="card span-6">
-              <div class="card-label">What the twin can say</div><h3>“The plan and the morning did not match.”</h3><p class="helper">It can describe bedtime drift, lost sleep opportunity, restoration, focus, energy, Fajr readiness and whether a chosen experiment was followed.</p>
+              <div class="card-label">What you can learn</div><h3>“The plan and the morning did not match.”</h3><p class="helper">Compare your planned bedtime and time available for sleep with your morning energy and how rested you felt.</p>
             </article>
             <article class="card span-6">
-              <div class="card-label">What it cannot say</div><h3>“This one factor caused the outcome.”</h3><p class="helper">Illness, stress, environment, timing and ordinary variation can overlap. The twin generates questions and better next plans—not diagnoses.</p>
+              <div class="card-label">What one night cannot tell you</div><h3>“This one factor caused the outcome.”</h3><p class="helper">Many things can affect sleep. This comparison cannot tell you exactly why a night went differently or diagnose a problem.</p>
             </article>
           </div>
         </section>
 
         <section class="view" id="plan">
-          <div class="section-head"><div><div class="eyebrow">Signature planner</div><h2>Build a realistic sleep bridge</h2></div><p>Plan one continuous block or account honestly for a Fajr interruption and a second sleep block. The aim is adequate opportunity—not glorifying short sleep.</p></div>
+          <div class="section-head"><div><div class="eyebrow">Tonight</div><h2>Make tonight’s sleep plan</h2></div><p>Plan one continuous block or account honestly for a Fajr interruption and a second sleep block. The aim is adequate opportunity—not glorifying short sleep.</p></div>
           <div class="grid">
             <article class="card span-7">
-              <div class="field"><label>Planning mode</label><div class="segmented" id="planMode"><button type="button" class="active" data-mode="continuous">One sleep block</button><button type="button" data-mode="fajr">Fajr Bridge</button></div></div>
+              <div class="field"><label>Planning mode</label><div class="segmented" id="planMode"><button type="button" class="active" data-mode="continuous">One sleep block</button><button type="button" data-mode="fajr">Sleep before &amp; after Fajr</button></div></div>
 
               <div class="conditional active" data-plan-panel="continuous">
                 <div class="form-grid">
@@ -865,7 +910,7 @@
                   <div class="field"><label for="returnSleep">Return to sleep around</label><input id="returnSleep" type="time" value="06:00" /></div>
                   <div class="field"><label for="finalWake">Final wake time</label><input id="finalWake" type="time" value="08:00" /></div>
                 </div>
-                <p class="helper">The Fajr Bridge counts the awake interval honestly instead of pretending the night was one uninterrupted block.</p>
+                <p class="helper">If you wake for Fajr and sleep again, we count the time you were awake separately.</p>
               </div>
 
               <div class="form-grid">
@@ -882,7 +927,7 @@
                   <div class="choice"><input type="radio" name="planBarrier" id="pb4" value="Environment" /><label class="option-label" for="pb4"><strong>Room or body</strong><span>Noise, light, temperature, pain or discomfort.</span></label></div>
                 </div>
               </div>
-              <div class="button-row"><button class="btn primary" id="savePlan">Save tonight’s bridge</button><button class="btn ghost" data-go="unload">Continue to unload</button></div>
+              <div class="button-row"><button class="btn primary" id="savePlan">Save tonight’s plan</button><button class="btn ghost" data-go="unload">Continue to unload</button></div>
             </article>
 
             <article class="card span-5">
@@ -935,7 +980,7 @@
         </section>
 
         <section class="view" id="morning">
-          <div class="section-head"><div><div class="eyebrow">Morning record</div><h2>How did sleep actually function?</h2></div><p>This diary borrows the useful structure of sleep diaries while adding restoration, Fajr readiness and everyday context. Estimates are welcome; perfection is not required.</p></div>
+          <div class="section-head"><div><div class="eyebrow">Tomorrow morning</div><h2>How did you feel this morning?</h2></div><p>This diary borrows the useful structure of sleep diaries while adding restoration, Fajr readiness and everyday context. Estimates are welcome; perfection is not required.</p></div>
           <div class="grid">
             <article class="card span-8">
               <div class="form-grid three">
@@ -981,7 +1026,7 @@
               <div class="card-label">Live estimate</div>
               <div class="result-panel" style="margin-top:12px"><span class="helper">Estimated sleep</span><strong class="big" id="estimatedSleep">7h 10m</strong><span class="helper">Time from estimated sleep onset to final wake, minus reported awake time.</span></div>
               <div class="metric-row" style="grid-template-columns:1fr 1fr;margin-top:12px">
-                <div class="metric-tile"><span>Sleep opportunity</span><strong id="morningOpportunity">7h 30m</strong></div>
+                <div class="metric-tile"><span>Time available for sleep</span><strong id="morningOpportunity">7h 30m</strong></div>
                 <div class="metric-tile"><span>Efficiency estimate</span><strong id="morningEfficiency">96%</strong></div>
               </div>
               <div class="callout" style="margin-top:14px"><strong>Why estimated?</strong> A self-report diary can reveal patterns without pretending to measure exact sleep stages. Consumer tracking and self-report answer different questions.</div>
@@ -1897,7 +1942,7 @@
     function renderTwin() {
       const records = realMornings();
       renderSignature(records);
-      $('#loadTwinDemo').textContent = twinDemoMode ? 'Return to my Restoration Twin' : 'Preview a labelled example twin';
+      $('#loadTwinDemo').textContent = twinDemoMode ? 'Return to my results' : 'See an example comparison';
       const example = {
         date:new Date().toISOString().slice(0,10), bedTime:'23:25', opportunityMinutes:425,
         rest:2, energy:2, focus:3, calm:2, fajr:'woke_tired', intent:'restore',
@@ -1912,7 +1957,7 @@
         $('#twinOpportunityDelta').textContent = '—'; $('#twinTimingDrift').textContent = '—';
         $('#twinRestoration').textContent = '—'; $('#twinOutcome').textContent = '—';
         $('#twinStatus').textContent = 'Waiting for a real morning';
-        $('#twinExplanation').textContent = 'Save a new night plan, then record the following morning. That pair creates the first Restoration Twin.';
+        $('#twinExplanation').textContent = 'Save a new night plan, then record the following morning. Then you can compare your plan with your night.';
         return;
       }
       const plan = record.planSnapshot;
@@ -1936,7 +1981,7 @@
       let explanation = 'The plan and reality were close enough to compare, but more paired mornings are needed before changing direction.';
       if (opportunityDelta < -60) {
         status = 'Reality removed time from the plan';
-        explanation = `Actual sleep opportunity was ${formatDuration(Math.abs(opportunityDelta))} shorter than planned. The next question is whether the plan was unrealistic or whether something repeatedly displaced it.`;
+        explanation = `Time available for sleep was ${formatDuration(Math.abs(opportunityDelta))} shorter than planned. The next question is whether the plan was unrealistic or whether something repeatedly displaced it.`;
       } else if (Math.abs(opportunityDelta) <= 30 && Math.abs(timingDrift) <= 30 && record.rest >= 4) {
         status = 'Plan and morning aligned';
         explanation = 'Timing, opportunity and felt restoration matched reasonably well on this paired night. Repetition—not one good morning—will show whether the plan is dependable.';
