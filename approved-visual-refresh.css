@@ -1,0 +1,57 @@
+/* SleepSphere — approved visual direction, October 2026.
+   Additive polish only: no storage schema, event handlers or audio sources altered.
+   Motherhood: warm, private, natural. Flight: immersive and clear.
+   Explore: reliable controls remain in the existing JS. */
+:root {
+  --ss-ivory:#f7f3ed;
+  --ss-linen:#e9e0d5;
+  --ss-sage:#788d81;
+  --ss-ink:#263b3d;
+  --ss-lavender:#8780a8;
+  --ss-soft-shadow:0 12px 36px rgba(33,42,43,.11);
+}
+.mh-layer, .ex-layer { -webkit-font-smoothing:antialiased; }
+.mh-body, .ex-body { max-width:900px; margin-inline:auto; }
+.mh-bar-title, .ex-bar-title { font-family:Georgia,"Times New Roman",serif; letter-spacing:-.035em; font-weight:500; }
+.mh-card, .mh-stagecard, .mh-tile, .ex-card, .ex-tile {
+  border-radius:20px;
+  box-shadow:var(--ss-soft-shadow);
+  transition:box-shadow .18s ease,transform .18s ease;
+}
+.mh-card:focus-within,.mh-tile:focus-within,.ex-card:focus-within,.ex-tile:focus-within {
+  box-shadow:0 0 0 2px rgba(120,141,129,.5),var(--ss-soft-shadow);
+}
+.mh-lede, .mh-lesson, .mh-hint, .ex-note { line-height:1.65; }
+.mh-primary, .mh-quiet, .mh-choice, .mh-chip,
+.ex-primary, .ex-quiet, .ex-pill, .ss-player-btn {
+  min-height:44px; touch-action:manipulation;
+}
+.mh-primary,.ex-primary { border-radius:14px; }
+.mh-field input,.mh-field select,.mh-field textarea { min-height:44px; }
+.mh-eyebrow,.ex-eyebrow { letter-spacing:.07em; }
+.mh-stagecard { overflow:hidden; }
+.mh-layer .mh-sub { max-width:56ch; }
+.fc { background:#101923; }
+.fc-panel {
+  backdrop-filter:blur(22px);
+  -webkit-backdrop-filter:blur(22px);
+}
+.fc-head { font-family:Georgia,"Times New Roman",serif; font-weight:500; letter-spacing:-.04em; }
+.fc-window { box-shadow:0 28px 90px rgba(0,0,0,.32); }
+.fc-row,.fc-scene,.fc-tool,.fc-play { min-height:44px; touch-action:manipulation; }
+.fc-video { object-fit:cover; }
+.fc-missing { line-height:1.6; }
+.ss-player { border-radius:20px; box-shadow:var(--ss-soft-shadow); }
+.ss-player-btn:focus-visible,.fc-play:focus-visible,.fc-scene:focus-visible,
+.mh-primary:focus-visible,.ex-primary:focus-visible {
+  outline:3px solid #b6c7bf; outline-offset:3px;
+}
+@media (max-width:700px) {
+  .mh-body,.ex-body { padding-inline:max(14px,env(safe-area-inset-left)); }
+  .mh-card,.ex-card { border-radius:17px; }
+  .fc-panel { max-height:calc(100dvh - 28px); overflow-y:auto; }
+  .fc-head { font-size:clamp(1.7rem,6vw,2.5rem); }
+}
+@media (prefers-reduced-motion:reduce) {
+  .mh-card,.mh-tile,.ex-card,.ex-tile { transition:none!important; }
+}
