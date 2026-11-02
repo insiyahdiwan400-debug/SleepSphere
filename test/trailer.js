@@ -22,16 +22,44 @@
  * tease, and what those screens actually do is still only findable in the app.
  *
  *   python3 -m http.server 8099        (in the repo root)
- *   node test/trailer.js               (add TRAILER_SHOTS=1 for beat stills)
+ *   node test/trailer.js               rehearse: records, encodes, throws it away
+ *   node test/trailer.js --publish     keep it: writes trailer/sleepsphere-trailer.mp4
  *
- * TRAILER_LINK puts the live address on the end card.
+ * WHY THERE ARE TWO MODES.
+ *
+ * trailer/sleepsphere-trailer.mp4 is a deliverable and it is tracked. This
+ * file used to write it on every run, so a routine regression sweep left a
+ * four-megabyte binary modified in the working tree — a video of whatever
+ * the app happened to be mid-refactor, which is not a thing anyone chose to
+ * publish. Worse, it is silent: the diff is "Bin 4328386 -> 4181795 bytes"
+ * and nobody can see what changed.
+ *
+ * So the default is a rehearsal. It drives the real app, records the real
+ * screen, runs the real encode and reports the real size and duration — the
+ * whole pipeline is exercised, which is the part worth testing — and then
+ * deletes what it made. Replacing the published trailer is something you ask
+ * for, with --publish, and it is then a deliberate commit of its own.
+ *
+ * TRAILER_SHOTS=1 writes the per-beat stills. TRAILER_LINK puts the live
+ * address on the end card. TRAILER_OUT overrides the directory outright and
+ * implies keeping what it writes.
  */
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const LINK = process.env.TRAILER_LINK || '';      // e.g. sleepsphere.netlify.app
-const OUT  = process.env.TRAILER_OUT  || path.join(__dirname, '..', 'trailer');
+
+const PUBLISH = process.argv.includes('--publish') || process.env.TRAILER_PUBLISH === '1';
+const PUBLISH_DIR = path.join(__dirname, '..', 'trailer');
+/* An explicit TRAILER_OUT is itself a decision about where output goes, so
+   it is kept; otherwise publishing goes to trailer/ and a rehearsal goes to
+   a scratch directory that is removed at the end. */
+const KEEP = PUBLISH || Boolean(process.env.TRAILER_OUT);
+const OUT  = process.env.TRAILER_OUT ||
+             (PUBLISH ? PUBLISH_DIR
+                      : fs.mkdtempSync(path.join(os.tmpdir(), 'ss-trailer-')));
 
 // Dubai, because the prayer times were built and checked against a Dubai
 // Dawat sheet — so what the video shows is the case that is known correct.
@@ -401,5 +429,17 @@ const wait = async (p, ms, label) => {
     console.log(`${mp4}  (${(fs.statSync(mp4).size / 1024).toFixed(0)} KB)`);
   } catch (e) {
     console.log('no mp4 — ffmpeg not available; the webm above is the trailer');
+  }
+
+  if (KEEP) {
+    console.log(PUBLISH
+      ? 'PUBLISHED — trailer/sleepsphere-trailer.mp4 has been replaced.'
+      : 'KEPT — written to TRAILER_OUT.');
+  } else {
+    /* The rehearsal is over. Everything it made goes with it, so a
+       regression sweep leaves the repository exactly as it found it. */
+    fs.rmSync(OUT, { recursive: true, force: true });
+    console.log('REHEARSAL — recorded, encoded and discarded. ' +
+                'The published trailer is untouched; run with --publish to replace it.');
   }
 })().catch(e => { console.error('FATAL', e); process.exit(1); });
