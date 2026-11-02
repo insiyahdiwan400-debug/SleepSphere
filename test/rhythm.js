@@ -76,7 +76,11 @@ async function open(browser) {
       heading: document.getElementById('pageTitle').textContent.trim(),
       wake: document.getElementById('rhythmWake').textContent,
       bed: document.getElementById('rhythmBed').textContent,
-      rows: [...document.querySelectorAll('.rhythm-item')].map(r => r.dataset.key),
+      /* A row can carry more than one item now, when two land on the
+         same minute, so the comparison is over the keys the rows hold
+         rather than over the rows. */
+      rows: [...document.querySelectorAll('.rhythm-item')]
+        .reduce((all, r) => all.concat(r.dataset.key.split(' ')), []),
       labels: [...document.querySelectorAll('.rhythm-label')].map(n => n.textContent),
       engine: window.__rhythm().items.map(i => i.key),
       panelClosed: document.getElementById('rhythmPanel').hidden,
@@ -318,7 +322,8 @@ async function open(browser) {
       await new Promise(r => setTimeout(r, 500));
       return {
         marks: document.querySelectorAll('.rhythm-mark').length,
-        rows: document.querySelectorAll('.rhythm-item').length,
+        /* One .rhythm-line per item, however the rows group them. */
+        rows: document.querySelectorAll('.rhythm-line').length,
         engine: window.__rhythm().items.length,
         labels: [...document.querySelectorAll('.rhythm-label')].map(n => n.textContent)
       };

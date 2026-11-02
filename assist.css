@@ -252,10 +252,11 @@
 .rhythm-item {
   position: relative;
   display: grid;
-  grid-template-columns: var(--rhythm-clock, 74px) 22px 1fr auto;
+  grid-template-columns: var(--rhythm-clock, 74px) 22px 1fr;
   align-items: center;
   gap: 0 12px;
-  min-height: 52px;
+  min-height: 58px;
+  padding: 3px 0;
   opacity: 0;
   transform: translateY(6px);
   transition: opacity .42s ease var(--rhythm-in, 0ms),
@@ -263,7 +264,7 @@
               color .3s ease;
 }
 .rhythm-item.shown { opacity: 1; transform: none; }
-.rhythm-item.done { opacity: .42; }
+.rhythm-item.done { opacity: .62; }
 
 .rhythm-when {
   font-size: .8rem;
@@ -277,6 +278,7 @@
 }
 .rhythm-node {
   justify-self: center;
+  align-self: center;
   width: 7px; height: 7px;
   border-radius: 50%;
   background: var(--bg, #0b1422);
@@ -287,10 +289,28 @@
   background: var(--gold, #c9b27a);
   box-shadow: 0 0 0 1px var(--gold, #c9b27a);
 }
+/* One stack per minute. A single activity is one line in it; two at the
+   same time are two, against one clock and one node. */
+.rhythm-stack { display: grid; gap: 4px; min-width: 0; }
+.rhythm-line {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  transition: opacity .3s ease;
+}
+.rhythm-line.done { opacity: .45; }
 .rhythm-label {
   font-size: 1rem;
   letter-spacing: -.005em;
   min-width: 0;
+}
+/* The node grows into a short bar when it carries more than one thing,
+   so the pairing is visible before the labels are read. */
+.rhythm-item.together .rhythm-node {
+  height: 30px;
+  border-radius: 4px;
 }
 
 /* Wind down and bedtime are where the day is going, so they carry a
@@ -303,12 +323,14 @@
   box-shadow: 0 0 0 1px var(--gold, #c9b27a);
 }
 
+/* Higher contrast than the hairline it used to be: an empty circle at
+   14% opacity reads as a rendering artefact rather than a control. */
 .rhythm-mark {
-  width: 24px; height: 24px;
+  width: 26px; height: 26px;
   margin: 0 0 0 10px;
   border-radius: 50%;
-  border: 1px solid var(--line, rgba(127, 127, 127, .34));
-  background: transparent;
+  border: 1.5px solid var(--gold-soft, #c9b27a);
+  background: rgba(201, 178, 122, .07);
   cursor: pointer;
   touch-action: manipulation;
   position: relative;
@@ -324,15 +346,15 @@
 .rhythm-mark::before {
   content: "";
   position: absolute;
-  left: 8px; top: 4px;
+  left: 9px; top: 5px;
   width: 5px; height: 10px;
-  border: solid var(--bg, #0b1422);
-  border-width: 0 1.6px 1.6px 0;
+  border: solid #141c28;
+  border-width: 0 2px 2px 0;
   transform: rotate(45deg) scale(.4);
   opacity: 0;
   transition: opacity .18s ease, transform .22s cubic-bezier(.3, 1.5, .5, 1);
 }
-.rhythm-mark:hover { border-color: var(--gold, #c9b27a); }
+.rhythm-mark:hover { background: rgba(201, 178, 122, .2); }
 .rhythm-mark[aria-pressed="true"] {
   background: var(--gold, #c9b27a);
   border-color: var(--gold, #c9b27a);
@@ -341,7 +363,41 @@
 .rhythm-mark[aria-pressed="true"]:active { transform: scale(.9); }
 .rhythm-mark:focus-visible { outline: 2px solid var(--gold, #c9b27a); outline-offset: 3px; }
 
-.rhythm-start { width: 100%; margin-top: 26px; }
+.rhythm-start { width: 100%; }
+.rhythm-card { padding-bottom: 24px; }
+
+/* The foot.
+
+   Reserving room below the card is not enough on its own: where the day
+   happens to end a little above the fold, the button lands in the bar's
+   band at the resting scroll position and only clears it once you
+   scroll — which is exactly the state that got flagged. The foot sticks
+   just above the bar instead, so the primary action is never behind
+   anything at any scroll position.
+
+   It carries no block of its own colour. --card is translucent in
+   every theme here, so painting it again over the card came out darker
+   than the card and read as a grey slab behind the button. The button
+   is opaque, so all the foot needs is a short fade in the gap above it
+   — the rows pass under the fade and then under the button. */
+.rhythm-foot {
+  margin-top: 22px;
+  padding-top: 26px;
+}
+@media (max-width: 760px) {
+  .rhythm-foot {
+    position: sticky;
+    bottom: calc(94px + env(safe-area-inset-bottom, 0px));
+    z-index: 2;
+    background: linear-gradient(to bottom,
+      rgba(11, 20, 34, 0) 0%, rgba(11, 20, 34, .82) 78%, rgba(11, 20, 34, .92) 100%)
+      no-repeat top / 100% 26px;
+  }
+}
+:root[data-mode="light"] .rhythm-foot {
+  background-image: linear-gradient(to bottom,
+    rgba(250, 248, 242, 0) 0%, rgba(250, 248, 242, .85) 78%, rgba(250, 248, 242, .95) 100%);
+}
 
 /* ---- the panel ---- */
 .rhythm-panel {
@@ -389,4 +445,126 @@
   .rhythm-item { opacity: 1; transform: none; transition: none; }
   .rhythm-mark, .rhythm-mark::before, .rhythm-node { transition: none; }
   .rhythm-mark[aria-pressed="true"]:active { transform: none; }
+}
+
+/* ==================================================================
+   THE ADJUST SHEET
+
+   Fixed, with its own scroll. Expanding the panel inside the card made
+   the page taller than the screen: on a phone the controls scrolled off
+   the top the moment they appeared, and on a tablet the last of them
+   passed under the fixed bar. A sheet never changes the length of the
+   page behind it, so neither can happen.
+   ================================================================== */
+html.rhythm-sheet-open, html.rhythm-sheet-open body { overflow: hidden; }
+
+.rhythm-scrim {
+  position: fixed; inset: 0;
+  z-index: 75;                    /* over the bar, under the toast */
+  background: rgba(4, 8, 14, .58);
+  opacity: 0;
+  transition: opacity .26s ease;
+}
+.rhythm-scrim.on { opacity: 1; }
+.rhythm-scrim[hidden] { display: none; }
+
+.rhythm-sheet {
+  position: fixed;
+  z-index: 76;
+  left: 0; right: 0; bottom: 0;
+  display: flex;
+  flex-direction: column;
+  /* Never taller than the screen, and never shorter than it needs. */
+  max-height: min(84dvh, 84vh);
+  border-radius: 22px 22px 0 0;
+  border: 1px solid var(--line, rgba(127, 127, 127, .2));
+  border-bottom: 0;
+  /* --card is translucent in every theme here, which is right for a
+     card floating over the sky and wrong for a sheet: the day showed
+     straight through it. The sheet is laid over an opaque ground of its
+     own so only the scrim is between it and the page. */
+  background: var(--card, #101722);
+  box-shadow: 0 -18px 54px rgba(0, 0, 0, .5);
+  isolation: isolate;
+  transform: translate3d(0, 100%, 0);
+  transition: transform .3s cubic-bezier(.22, 1, .36, 1);
+}
+.rhythm-sheet.on { transform: none; }
+.rhythm-sheet[hidden] { display: none; }
+/* The opaque ground, behind everything in the sheet. A colour rather
+   than a blur: a backdrop-filter this size over a live page is the
+   expensive, glitchy option, and nothing behind it needs to show. */
+.rhythm-sheet::before {
+  content: "";
+  position: absolute; inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: #0d1420;
+}
+:root[data-mode="light"] .rhythm-sheet::before { background: #fbf8f2; }
+
+.rhythm-sheet-grab {
+  width: 38px; height: 4px;
+  margin: 10px auto 0;
+  border-radius: 2px;
+  background: var(--line, rgba(127, 127, 127, .34));
+  flex: 0 0 auto;
+}
+.rhythm-sheet-head {
+  flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px;
+  padding: 12px 20px 12px;
+  border-bottom: 1px solid var(--line, rgba(127, 127, 127, .14));
+}
+.rhythm-sheet-head h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  font-size: 1.22rem;
+}
+.rhythm-sheet-done {
+  min-height: 44px; padding: 0 4px;
+  border: 0; background: none;
+  color: var(--gold, #c9b27a);
+  font: inherit; font-size: .92rem; font-weight: 600;
+  cursor: pointer;
+}
+/* The scrolling half. The safe-area inset is here rather than on the
+   sheet, so the last control can always be scrolled above the home
+   indicator instead of sitting under it. */
+.rhythm-sheet-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  display: grid;
+  gap: 16px;
+  padding: 18px 20px calc(26px + env(safe-area-inset-bottom, 0px));
+}
+.rhythm-sheet :focus-visible { outline: 2px solid var(--gold, #c9b27a); outline-offset: 2px; }
+
+@media (min-width: 700px) {
+  .rhythm-sheet {
+    left: 50%; right: auto; bottom: 50%;
+    width: min(560px, calc(100vw - 48px));
+    border-radius: 20px;
+    border-bottom: 1px solid var(--line, rgba(127, 127, 127, .2));
+    max-height: min(78dvh, 78vh);
+    transform: translate3d(-50%, calc(50% + 16px), 0);
+    opacity: 0;
+    transition: transform .3s cubic-bezier(.22, 1, .36, 1), opacity .24s ease;
+  }
+  .rhythm-sheet.on { transform: translate3d(-50%, 50%, 0); opacity: 1; }
+  .rhythm-sheet-grab { display: none; }
+  .rhythm-sheet-head { padding-top: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rhythm-sheet, .rhythm-scrim { transition: none; }
+  .rhythm-sheet { transform: none; opacity: 1; }
+  .rhythm-sheet.on { transform: none; }
+}
+@media (min-width: 700px) and (prefers-reduced-motion: reduce) {
+  .rhythm-sheet, .rhythm-sheet.on { transform: translate3d(-50%, 50%, 0); }
 }

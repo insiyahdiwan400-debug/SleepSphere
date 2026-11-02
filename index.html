@@ -3300,25 +3300,45 @@
 
               <ol class="rhythm-list" id="rhythmList"></ol>
 
-              <button type="button" class="btn primary rhythm-start" id="rhythmStart">Start wind-down</button>
-
-              <!-- The optional information panel. Everything the main screen
-                   used to say out loud is here instead: the four gaps, the
-                   arithmetic behind each line, and the one sentence that
-                   has to stay somewhere — that these are common guidelines
-                   and not measurements of anyone. -->
-              <div class="rhythm-panel" id="rhythmPanel" hidden>
-                <div class="rhythm-fields">
-                  <div class="field"><label for="rhythmCaffeine">Last coffee before bed</label><select id="rhythmCaffeine" data-rule="caffeineGap"></select></div>
-                  <div class="field"><label for="rhythmMeal">Finish dinner before bed</label><select id="rhythmMeal" data-rule="mealGap"></select></div>
-                  <div class="field"><label for="rhythmMove">Last workout before wind-down</label><select id="rhythmMove" data-rule="moveGap"></select></div>
-                  <div class="field"><label for="rhythmBreaks">Breaks</label><select id="rhythmBreaks" data-rule="breaks"></select></div>
-                </div>
-                <h4 class="rhythm-panel-head">How these times are worked out</h4>
-                <ul class="rhythm-why" id="rhythmWhy"></ul>
-                <p class="rhythm-small" id="rhythmCare"></p>
+              <!-- The one action, in a foot that sticks above the floating
+                   bar so there is no scroll position at which it is behind
+                   anything. -->
+              <div class="rhythm-foot">
+                <button type="button" class="btn primary rhythm-start" id="rhythmStart">Start wind-down</button>
               </div>
+
             </article>
+          </div>
+
+          <!-- ==================================================================
+               ADJUST
+
+               A sheet, not a disclosure inside the card. Expanding in place
+               made the card taller than the screen: on a phone the controls
+               you had just asked for scrolled off the top, and on a tablet
+               one of them passed under the fixed bar. A fixed sheet with its
+               own scroll is the same content and cannot do either, because
+               it never changes the length of the page behind it.
+               ================================================================== -->
+          <div class="rhythm-scrim" id="rhythmScrim" hidden></div>
+          <div class="rhythm-sheet" id="rhythmPanel" role="dialog" aria-modal="true"
+               aria-labelledby="rhythmSheetTitle" hidden>
+            <div class="rhythm-sheet-grab" aria-hidden="true"></div>
+            <header class="rhythm-sheet-head">
+              <h2 id="rhythmSheetTitle">Adjust</h2>
+              <button type="button" class="rhythm-sheet-done" id="rhythmDone">Done</button>
+            </header>
+            <div class="rhythm-sheet-body">
+              <div class="rhythm-fields">
+                <div class="field"><label for="rhythmCaffeine">Last coffee before bed</label><select id="rhythmCaffeine" data-rule="caffeineGap"></select></div>
+                <div class="field"><label for="rhythmMeal">Finish dinner before bed</label><select id="rhythmMeal" data-rule="mealGap"></select></div>
+                <div class="field"><label for="rhythmMove">Last workout before wind-down</label><select id="rhythmMove" data-rule="moveGap"></select></div>
+                <div class="field"><label for="rhythmBreaks">Breaks</label><select id="rhythmBreaks" data-rule="breaks"></select></div>
+              </div>
+              <h3 class="rhythm-panel-head">How these times are worked out</h3>
+              <ul class="rhythm-why" id="rhythmWhy"></ul>
+              <p class="rhythm-small" id="rhythmCare"></p>
+            </div>
           </div>
         </section>
 
@@ -5037,6 +5057,7 @@
       if (id === 'plan') renderPrayer();
       if (id === 'sabat') renderSabat();
       if (id === 'rhythm') renderRhythm();
+      else if (rhythmPanelOpen) openRhythmPanel(false);
 
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -7138,11 +7159,24 @@
       const still = window.matchMedia
         && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+      /* Two things at the same minute get one time and one node, with
+         their labels stacked against it. Printing the clock twice makes
+         a reader check whether they misread it; printing it once says
+         plainly that these happen together. */
+      const groups = [];
+      day.items.forEach(item => {
+        const last = groups[groups.length - 1];
+        if (last && last.at === item.at) last.items.push(item);
+        else groups.push({ at: item.at, items: [item] });
+      });
+
       list.innerHTML = '';
-      day.items.forEach((item, index) => {
+      groups.forEach((group, index) => {
         const row = document.createElement('li');
-        row.className = 'rhythm-item' + (item.done ? ' done' : '');
-        row.dataset.key = item.key;
+        const allDone = group.items.every(i => i.done);
+        row.className = 'rhythm-item' + (allDone ? ' done' : '') +
+                        (group.items.length > 1 ? ' together' : '');
+        row.dataset.key = group.items.map(i => i.key).join(' ');
         /* A short stagger on first paint, and nothing at all for anyone
            who asked for less motion. */
         if (!still) row.style.setProperty('--rhythm-in', (index * 34) + 'ms');
@@ -7150,7 +7184,7 @@
 
         const when = document.createElement('time');
         when.className = 'rhythm-when';
-        when.textContent = formatTime(item.at);
+        when.textContent = formatTime(group.at);
         row.appendChild(when);
 
         const node = document.createElement('span');
@@ -7158,23 +7192,33 @@
         node.setAttribute('aria-hidden', 'true');
         row.appendChild(node);
 
-        const label = document.createElement('span');
-        label.className = 'rhythm-label';
-        label.textContent = item.label;
-        row.appendChild(label);
+        const stack = document.createElement('div');
+        stack.className = 'rhythm-stack';
+        group.items.forEach(item => {
+          const line = document.createElement('div');
+          line.className = 'rhythm-line' + (item.done ? ' done' : '');
+          line.dataset.key = item.key;
 
-        if (ticks) {
-          const mark = document.createElement('button');
-          mark.type = 'button';
-          mark.className = 'rhythm-mark';
-          mark.setAttribute('aria-pressed', String(item.done));
-          /* The accessible name carries what the control is for, since
-             the control itself is a circle. */
-          mark.setAttribute('aria-label',
-            (item.done ? 'Undo: ' : 'Done: ') + item.label + ' at ' + formatTime(item.at));
-          mark.addEventListener('click', () => { rhythmMark(item.key, !item.done); renderRhythm(); });
-          row.appendChild(mark);
-        }
+          const label = document.createElement('span');
+          label.className = 'rhythm-label';
+          label.textContent = item.label;
+          line.appendChild(label);
+
+          if (ticks) {
+            const mark = document.createElement('button');
+            mark.type = 'button';
+            mark.className = 'rhythm-mark';
+            mark.setAttribute('aria-pressed', String(item.done));
+            /* The accessible name carries what the control is for, since
+               the control itself is a circle. */
+            mark.setAttribute('aria-label',
+              (item.done ? 'Undo: ' : 'Done: ') + item.label + ' at ' + formatTime(item.at));
+            mark.addEventListener('click', () => { rhythmMark(item.key, !item.done); renderRhythm(); });
+            line.appendChild(mark);
+          }
+          stack.appendChild(line);
+        });
+        row.appendChild(stack);
         list.appendChild(row);
       });
       if (!still) requestAnimationFrame(() =>
@@ -7218,16 +7262,43 @@
       });
     }
 
+    /* The sheet. It is fixed, so the page behind it never grows and
+       nothing can be pushed off the top or under the bar. */
     function paintRhythmPanel() {
-      const panel = $('#rhythmPanel'), button = $('#rhythmAdjust');
+      const panel = $('#rhythmPanel'), scrim = $('#rhythmScrim'), button = $('#rhythmAdjust');
       if (!panel || !button) return;
       panel.hidden = !rhythmPanelOpen;
+      if (scrim) scrim.hidden = !rhythmPanelOpen;
       button.setAttribute('aria-expanded', String(rhythmPanelOpen));
-      button.textContent = rhythmPanelOpen ? 'Done' : 'Adjust';
+      document.documentElement.classList.toggle('rhythm-sheet-open', rhythmPanelOpen);
+      if (rhythmPanelOpen) {
+        requestAnimationFrame(() => {
+          panel.classList.add('on');
+          if (scrim) scrim.classList.add('on');
+          /* Focus the first thing someone came here to change, not the
+             sheet itself. */
+          const first = panel.querySelector('select');
+          if (first) first.focus({ preventScroll: true });
+        });
+      } else {
+        panel.classList.remove('on');
+        if (scrim) scrim.classList.remove('on');
+      }
     }
-    $('#rhythmAdjust')?.addEventListener('click', () => {
-      rhythmPanelOpen = !rhythmPanelOpen;
+
+    function openRhythmPanel(on) {
+      if (rhythmPanelOpen === on) return;
+      rhythmPanelOpen = on;
       paintRhythmPanel();
+      /* Where the focus came from is where it goes back to. */
+      if (!on) $('#rhythmAdjust')?.focus({ preventScroll: true });
+    }
+
+    $('#rhythmAdjust')?.addEventListener('click', () => openRhythmPanel(true));
+    $('#rhythmDone')?.addEventListener('click', () => openRhythmPanel(false));
+    $('#rhythmScrim')?.addEventListener('click', () => openRhythmPanel(false));
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && rhythmPanelOpen) openRhythmPanel(false);
     });
 
     /* The one action. Inside the tap, because the audio context needs it. */
