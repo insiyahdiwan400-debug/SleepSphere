@@ -278,6 +278,11 @@
     return EFFORT.indexOf(saved) > -1 ? saved : 'some';
   }
 
+  /* Whether the wind-down opens the duʿāʾ. Sabat is where it is set;
+     this is where it is kept, beside the sound and the length, because
+     it is the third thing the one tap does. */
+  function setDua(on) { return remember({ dua: on !== false }); }
+
   function setEffort(level) {
     if (EFFORT.indexOf(level) < 0) return false;
     return remember({ effort: level });
@@ -300,7 +305,10 @@
       /* One question in the morning, or the full form offered beside
          it. Neither is a shorter version of the other: the form was
          always there and stays there. */
-      morningQuestionOnly: level !== 'full'
+      morningQuestionOnly: level !== 'full',
+      /* My Rhythm is a day to read at every level. Only above bare
+         minimum does it also offer something to tick. */
+      rhythmTicks: level !== 'minimum'
     };
   }
 
@@ -311,7 +319,7 @@
     session: live,
     onChange,
     ANSWERS, checkIns, recordMorning, skipMorning,
-    EFFORT, EFFORT_WORDS, effort, setEffort, plan,
+    EFFORT, EFFORT_WORDS, effort, setEffort, plan, setDua,
     /* The morning half of the loop: what to ask about, when a wind-down
        actually happened. Never a figure — the question is asked. */
     morningPrompt() {

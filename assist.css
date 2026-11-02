@@ -166,3 +166,64 @@
 .ss-assist-begin:hover { background: #f0e3c6; }
 
 .ss-assist-morning-foot { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+
+/* Sabat. The duʿāʾ set quietly on a card, at a size that can be read
+   rather than admired — the veil is where it is given the whole screen. */
+.sabat-text {
+  display: grid; gap: 10px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--line, rgba(127, 127, 127, .18));
+  background: rgba(127, 127, 127, .06);
+}
+.sabat-text p { margin: 0; font-family: var(--font-arabic), serif; font-weight: 400; }
+.sabat-heading { font-size: 1rem; letter-spacing: 0; color: var(--gold, #c9b27a); }
+.sabat-line { font-size: 1.22rem; line-height: 2.1; }
+.sabat-closing { font-size: 1rem; color: var(--muted, #7d776c); }
+
+/* My Rhythm. A column of moments: the time on the left at a fixed width
+   so the whole day reads as one ruler rather than as ragged rows. */
+.rhythm-list { list-style: none; margin: 16px 0 12px; padding: 0; display: grid; gap: 2px; }
+.rhythm-item {
+  display: grid;
+  grid-template-columns: 78px 1fr auto;
+  gap: 14px; align-items: start;
+  padding: 14px 0;
+  border-top: 1px solid var(--line, rgba(127, 127, 127, .16));
+}
+.rhythm-item:first-child { border-top: 0; }
+.rhythm-item.done { opacity: .5; }
+.rhythm-when {
+  font-variant-numeric: tabular-nums;
+  font-size: .92rem; letter-spacing: .01em;
+  color: var(--gold, #c9b27a);
+  padding-top: 1px;
+}
+.rhythm-body { display: grid; gap: 4px; min-width: 0; }
+.rhythm-body strong { font-size: 1rem; }
+.rhythm-body p { margin: 0; font-size: .88rem; line-height: 1.5; }
+.rhythm-basis { color: var(--muted, #7d776c); font-size: .82rem !important; }
+.rhythm-go { justify-self: start; margin-top: 6px; }
+
+/* The mark. Deliberately small and unlabelled-looking: it is an option,
+   not the point of the screen, and nothing counts it. */
+.rhythm-mark {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--line, rgba(127, 127, 127, .3));
+  background: transparent;
+  color: var(--gold, #c9b27a);
+  font-size: 1rem; line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.rhythm-mark[aria-pressed="true"] {
+  border-color: var(--gold, #c9b27a);
+  background: rgba(201, 178, 122, .16);
+}
+@media (max-width: 480px) {
+  /* Wide enough for "10:15 AM" on one line: a wrapped clock turns the
+     left column from a ruler into noise. */
+  .rhythm-item { grid-template-columns: 76px 1fr auto; gap: 10px; }
+  .rhythm-when { font-size: .84rem; }
+}
