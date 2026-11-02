@@ -89,14 +89,23 @@ const text = p => p.evaluate(() => document.querySelector('.ex-body').innerText)
         document.documentElement.dataset.view === 'compass' ||
         !document.querySelector('#explore') ||
         location.search.indexOf('world=') > -1 ||
-        /* Flight Mode opens the cabin, which is its own full-screen
-           overlay rather than an ex-layer. */
-        Boolean(document.getElementById('flightCabin')));
+        /* Flight Mode opens the cabin, and Jamea al Anwar the courtyard.
+           Both are their own full-screen overlay rather than an
+           ex-layer. */
+        Boolean(document.getElementById('flightCabin')) ||
+        Boolean(document.getElementById('anwar')));
       opened.push((title && hasBody) ? title : (moved ? 'MOVED:' + i : 'EMPTY:' + i));
+      /* The Flight wind-down tile reloads the page into the world, so
+         this can land while the document is being replaced and the
+         app's globals do not exist yet. Guarding every one of them is
+         the difference between a suite that reports what the tiles did
+         and one that fails on its own tidying up, roughly one run in
+         six. */
       await p.evaluate(() => {
-        window.SSExplore.close();
-        if (window.SSFlightCabin) window.SSFlightCabin.close();
-      });
+        if (window.SSExplore && window.SSExplore.close) window.SSExplore.close();
+        if (window.SSFlightCabin && window.SSFlightCabin.close) window.SSFlightCabin.close();
+        if (window.SSAnwar && window.SSAnwar.close) window.SSAnwar.close();
+      }).catch(() => {});
       await p.waitForTimeout(140);
     }
     check('Every tile opens a screen with something on it',
