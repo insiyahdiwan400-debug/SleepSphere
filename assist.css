@@ -131,3 +131,38 @@
   text-decoration: underline; text-underline-offset: 3px;
   cursor: pointer;
 }
+
+/* Easy Mode, chosen next to the button it changes. Sits in the night
+   console, so it reads on the console's own dark ground. */
+.ss-assist-effort { display: grid; gap: 7px; margin: 14px 0 0; text-align: left; }
+.ss-assist-effort .ss-assist-label { margin: 0; }
+/* Three on one line at 390px: a level that wraps onto its own row reads
+   as the odd one out rather than as one of three equals. */
+.ss-assist-effort .ss-assist-row { gap: 6px; }
+.ss-assist-effort .ss-assist-chip {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0 8px;
+  font-size: .78rem;
+  white-space: nowrap;
+  border-color: rgba(245, 244, 239, .22);
+  background: rgba(245, 244, 239, .08);
+  color: #f5f4ef;
+}
+.ss-assist-effort .ss-assist-chip[aria-pressed="true"] {
+  background: #e8d8b5; border-color: #e8d8b5; color: #14283a;
+}
+.ss-assist-effort-note {
+  margin: 0;
+  max-width: 46ch;
+  font-size: .84rem; line-height: 1.5;
+  color: rgba(245, 244, 239, .66);
+}
+
+/* Begin reads as the one forward move on the choose sheet. */
+.ss-assist-begin {
+  background: #e8d8b5; border-color: #e8d8b5; color: #14283a; font-weight: 600;
+}
+.ss-assist-begin:hover { background: #f0e3c6; }
+
+.ss-assist-morning-foot { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }

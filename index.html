@@ -11345,6 +11345,10 @@
       });
     }));
     $('#pendingGo')?.addEventListener('click', () => openFlow('wake'));
+    /* The full morning record, as a named seam. Full routine offers it
+       beside the one-tap question; the two are different records and
+       neither is filled in from the other. */
+    window.SSOpenMorningFlow = () => openFlow('wake');
 
     let nudgeHabit = '';
     $$('#nudgeHabits .brain-chip').forEach(chip => chip.addEventListener('click', () => {

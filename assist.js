@@ -123,6 +123,7 @@
       try { window.SSOpenDua(); done.dua = true; } catch (e) { done.dua = false; }
     }
 
+    done.level = plan().level;
     notify();
     return done;
   }
@@ -247,6 +248,62 @@
      it clears the prompt and records nothing at all. */
   function skipMorning() { return remember({ lastStartedAt: '' }); }
 
+  /* ==================================================================
+     EFFORT.
+
+     Three settings, and the difference between them has to be real.
+     "Bare minimum should genuinely reduce effort. It must not simply
+     show a shorter checklist."
+
+     So effort does not hide steps — it removes them by deciding them.
+     On bare minimum the wind-down does not ask which sound or how long
+     because the answer is already known, the dua opens with it, and
+     the morning asks one question instead of offering a form. On full
+     routine the same tap opens everything and chooses nothing.
+
+     What it never does is take anything away. Every control remains
+     reachable at every level; what changes is how many of them a
+     person has to touch to get to sleep.
+     ================================================================== */
+  const EFFORT = ['minimum', 'some', 'full'];
+  const EFFORT_WORDS = {
+    minimum: 'Bare minimum',
+    some: 'A little effort',
+    full: 'Full routine'
+  };
+
+  function effort() {
+    const s = settings();
+    const saved = s && s.assist && s.assist.effort;
+    return EFFORT.indexOf(saved) > -1 ? saved : 'some';
+  }
+
+  function setEffort(level) {
+    if (EFFORT.indexOf(level) < 0) return false;
+    return remember({ effort: level });
+  }
+
+  /* What a tap should do at this level. The wind-down reads this
+     instead of branching on the level itself, so adding a level later
+     is one entry here rather than a search for every if. */
+  function plan() {
+    const level = effort();
+    return {
+      level,
+      label: EFFORT_WORDS[level],
+      /* Bare minimum never stops to ask; full routine always offers. */
+      askBeforeStarting: level === 'full',
+      /* The controls are present at every level. On bare minimum they
+         are not opened over the dua unasked. */
+      openControls: level !== 'minimum',
+      openDua: prefs().dua,
+      /* One question in the morning, or the full form offered beside
+         it. Neither is a shorter version of the other: the form was
+         always there and stays there. */
+      morningQuestionOnly: level !== 'full'
+    };
+  }
+
   window.SSAssist = {
     TIMERS,
     prefs, setTimer, setSound,
@@ -254,6 +311,7 @@
     session: live,
     onChange,
     ANSWERS, checkIns, recordMorning, skipMorning,
+    EFFORT, EFFORT_WORDS, effort, setEffort, plan,
     /* The morning half of the loop: what to ask about, when a wind-down
        actually happened. Never a figure — the question is asked. */
     morningPrompt() {

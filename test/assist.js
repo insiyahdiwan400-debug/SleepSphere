@@ -459,6 +459,269 @@ async function open(browser, opts) {
     await ctx.close();
   }
 
+  /* ================================================================
+     9. Easy Mode.
+
+        "Bare minimum should genuinely reduce effort. It must not
+        simply show a shorter checklist." So what is measured here is
+        the number of things a person has to touch to be asleep, and
+        the number of things put in front of them while they do it —
+        not the number of items on a list.
+
+        The other half of the same promise: nothing is taken away. At
+        every level, every control is still there and still reachable.
+     ================================================================ */
+  {
+    const { ctx, page } = await open(browser);
+
+    const chooser = await page.evaluate(() => {
+      const box = document.getElementById('assistEffort');
+      if (!box) return { missing: true };
+      return {
+        levels: [...box.querySelectorAll('[data-assist-effort]')].map(b => b.textContent.trim()),
+        ids: [...box.querySelectorAll('[data-assist-effort]')].map(b => b.dataset.assistEffort),
+        pressed: [...box.querySelectorAll('[data-assist-effort]')]
+          .filter(b => b.getAttribute('aria-pressed') === 'true')
+          .map(b => b.dataset.assistEffort),
+        group: box.querySelector('[role="group"][aria-labelledby]') !== null,
+        note: (box.querySelector('.ss-assist-effort-note') || {}).textContent || '',
+        small: [...box.querySelectorAll('button')].filter(b => b.getBoundingClientRect().height < 44).length
+      };
+    });
+    check('9 · The three levels are offered beside the button they change',
+      chooser.missing !== true);
+    check('9 · Worded as the brief words them',
+      chooser.levels && chooser.levels.join(' / ') === 'Bare minimum / A little effort / Full routine',
+      (chooser.levels || []).join(' / '));
+    check('9 · One is current, and it is the middle one',
+      chooser.pressed && chooser.pressed.join(',') === 'some', (chooser.pressed || []).join(','));
+    check('9 · Labelled as a group for a screen reader', chooser.group === true);
+    check('9 · Each level is big enough to tap', chooser.small === 0, String(chooser.small));
+    check('9 · And it says what the level does before it is committed to',
+      chooser.note.length > 40, chooser.note.slice(0, 48));
+
+    /* The note is not one sentence reused three times. */
+    const notes = await page.evaluate(async () => {
+      const out = {};
+      for (const level of window.SSAssist.EFFORT) {
+        document.querySelector('[data-assist-effort="' + level + '"]').click();
+        await new Promise(r => setTimeout(r, 120));
+        out[level] = {
+          note: document.querySelector('.ss-assist-effort-note').textContent,
+          button: document.getElementById('assistStart').textContent.trim(),
+          pressed: document.querySelector('[data-assist-effort="' + level + '"]')
+            .getAttribute('aria-pressed')
+        };
+      }
+      return out;
+    });
+    check('9 · Each level has its own description',
+      new Set(Object.values(notes).map(n => n.note)).size === 3);
+    check('9 · Pressing a level marks it as the current one',
+      Object.values(notes).every(n => n.pressed === 'true'));
+    check('9 · And the button says which of the two things it will do',
+      notes.full.button !== notes.minimum.button,
+      notes.minimum.button + ' | ' + notes.full.button);
+
+    /* ---- bare minimum: one tap, and nothing on top of it ---- */
+    const least = await page.evaluate(async () => {
+      window.SSAssist.setEffort('minimum');
+      document.getElementById('assistStart').click();
+      await new Promise(r => setTimeout(r, 2500));
+      return {
+        audio: window.SSExplore.audioRunning(),
+        session: window.SSAssist.session() !== null,
+        sheet: Boolean(document.querySelector('.ss-assist')),
+        dua: document.getElementById('duaVeil') ? !document.getElementById('duaVeil').hidden : false,
+        timer: window.SSExplore.timerEndsAt() > 0
+      };
+    });
+    check('9 · Bare minimum: the one tap starts the sound', least.audio === true);
+    check('9 · Bare minimum: and the timer that fades it', least.timer === true);
+    check('9 · Bare minimum: and the dua it already decided on', least.dua === true);
+    check('9 · Bare minimum: with no panel put on top of it', least.sheet === false);
+
+    /* Nothing was taken away: the controls are one tap from here, and
+       all of them are there. */
+    const reachable = await page.evaluate(async () => {
+      window.SSAssistUI.open();
+      await new Promise(r => setTimeout(r, 300));
+      const s = document.querySelector('.ss-assist');
+      if (!s) return { missing: true };
+      return {
+        sounds: s.querySelectorAll('[data-assist-sound]').length,
+        layers: window.SSExplore.LAYERS.length,
+        timers: s.querySelectorAll('[data-assist-timer]').length,
+        offered: window.SSAssist.TIMERS.length,
+        transport: [...s.querySelectorAll('[data-transport] button')].map(b => b.textContent.trim())
+      };
+    });
+    check('9 · Bare minimum takes nothing away: every sound is still there',
+      reachable.sounds === reachable.layers,
+      reachable.sounds + ' of ' + reachable.layers);
+    check('9 · Every length too', reachable.timers === reachable.offered,
+      reachable.timers + ' of ' + reachable.offered);
+    check('9 · And hold and stop are where they always are',
+      reachable.transport && reachable.transport.join(' / ') === 'Hold / Stop',
+      (reachable.transport || []).join(' / '));
+
+    await page.evaluate(() => { window.SSAssist.stop(); window.SSAssistUI.close(); });
+    await page.waitForTimeout(500);
+    await ctx.close();
+  }
+
+  /* ================================================================
+     10. Full routine asks first, and starts nothing until told.
+     ================================================================ */
+  {
+    const { ctx, page } = await open(browser);
+
+    const asked = await page.evaluate(async () => {
+      window.SSAssist.setEffort('full');
+      document.getElementById('assistStart').click();
+      await new Promise(r => setTimeout(r, 600));
+      const s = document.querySelector('.ss-assist');
+      return {
+        sheet: Boolean(s),
+        mode: window.SSAssistUI.mode(),
+        audio: window.SSExplore.audioRunning(),
+        session: window.SSAssist.session(),
+        transport: s ? [...s.querySelectorAll('[data-transport] button')].map(b => b.textContent.trim()) : [],
+        pressedSound: s ? [...s.querySelectorAll('[data-assist-sound]')]
+          .filter(b => b.getAttribute('aria-pressed') === 'true').length : 0,
+        pressedTimer: s ? [...s.querySelectorAll('[data-assist-timer]')]
+          .filter(b => b.getAttribute('aria-pressed') === 'true').length : 0
+      };
+    });
+    check('10 · Full routine: the tap opens the controls', asked.sheet === true);
+    check('10 · And starts nothing until it is told to',
+      asked.audio === false && asked.session === null);
+    check('10 · Offering the forward move and a way out',
+      asked.transport.join(' / ') === 'Begin / Not now', asked.transport.join(' / '));
+    check('10 · With the current sound and length already marked',
+      asked.pressedSound === 1 && asked.pressedTimer === 1,
+      asked.pressedSound + ' / ' + asked.pressedTimer);
+
+    /* Changing a choice before starting changes what starts. */
+    const chosen = await page.evaluate(async () => {
+      const other = window.SSExplore.LAYERS.map(l => l.id)
+        .find(id => id !== window.SSAssist.prefs().sound);
+      document.querySelector('[data-assist-sound="' + other + '"]').click();
+      document.querySelector('[data-assist-timer="30"]').click();
+      await new Promise(r => setTimeout(r, 400));
+      return { wanted: other, prefs: window.SSAssist.prefs(),
+               audio: window.SSExplore.audioRunning() };
+    });
+    check('10 · A choice made here is remembered',
+      chosen.prefs.sound === chosen.wanted && chosen.prefs.timer === 30,
+      chosen.prefs.sound + ' / ' + chosen.prefs.timer);
+    check('10 · And still nothing is playing', chosen.audio === false);
+
+    const begun = await page.evaluate(async () => {
+      [...document.querySelectorAll('.ss-assist [data-transport] button')]
+        .find(b => /begin/i.test(b.textContent)).click();
+      await new Promise(r => setTimeout(r, 2600));
+      const s = document.querySelector('.ss-assist');
+      return {
+        audio: window.SSExplore.audioRunning(),
+        session: window.SSAssist.session(),
+        mode: window.SSAssistUI.mode(),
+        transport: s ? [...s.querySelectorAll('[data-transport] button')].map(b => b.textContent.trim()) : []
+      };
+    });
+    check('10 · Begin starts it, from inside the sheet', begun.audio === true);
+    check('10 · On the sound that was chosen',
+      begun.session && begun.session.sound === chosen.wanted,
+      begun.session ? begun.session.sound : 'no session');
+    check('10 · For the length that was chosen',
+      begun.session && begun.session.timer === 30,
+      begun.session ? String(begun.session.timer) : '—');
+    check('10 · And the same sheet becomes the running one',
+      begun.mode === 'live' && begun.transport.join(' / ') === 'Hold / Stop',
+      begun.transport.join(' / '));
+
+    /* The level is a preference like any other and survives a reload. */
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(2300);
+    const kept = await page.evaluate(() => ({
+      level: window.SSAssist.effort(),
+      pressed: [...document.querySelectorAll('[data-assist-effort]')]
+        .filter(b => b.getAttribute('aria-pressed') === 'true')
+        .map(b => b.dataset.assistEffort).join(','),
+      label: document.getElementById('assistStart').textContent.trim(),
+      rejected: window.SSAssist.setEffort('whatever'),
+      afterReject: window.SSAssist.effort()
+    }));
+    check('10 · The level survives a reload', kept.level === 'full', kept.level);
+    check('10 · And the chooser shows it', kept.pressed === 'full', kept.pressed);
+    check('10 · As does the button', /set up/i.test(kept.label), kept.label);
+    check('10 · A level that is not one of the three is refused',
+      kept.rejected === false && kept.afterReject === 'full');
+    await ctx.close();
+  }
+
+  /* ================================================================
+     11. The level reaches the morning too.
+
+        Full routine offers the app's own morning record beside the one
+        question. They are two different records — the question is how
+        someone felt, the record is times and minutes — and answering
+        one never fills in the other.
+     ================================================================ */
+  {
+    const { ctx, page } = await open(browser);
+    const morning = await page.evaluate(async (level) => {
+      const out = {};
+      for (const l of ['minimum', 'full']) {
+        window.SSAssist.setEffort(l);
+        const s = window.SS.state.settings;
+        s.assist = { ...(s.assist || {}),
+                     lastStartedAt: new Date(Date.now() - 9 * 3600000).toISOString() };
+        window.SS.save();
+        const old = document.getElementById('assistMorning');
+        if (old) old.remove();
+        window.SSAssistUI.mountMorning();
+        await new Promise(r => setTimeout(r, 250));
+        const card = document.getElementById('assistMorning');
+        out[l] = {
+          card: Boolean(card),
+          answers: card ? card.querySelectorAll('.ss-assist-chip').length : 0,
+          record: card ? Boolean(card.querySelector('.ss-assist-morning-more')) : false,
+          skip: card ? Boolean([...card.querySelectorAll('button')]
+            .find(b => b.textContent.trim() === 'Skip')) : false
+        };
+      }
+      return out;
+    });
+    check('11 · Both levels ask the one question',
+      morning.minimum.card && morning.full.card &&
+      morning.minimum.answers === 3 && morning.full.answers === 3);
+    check('11 · Both can be skipped', morning.minimum.skip && morning.full.skip);
+    check('11 · Full routine also offers the full morning record',
+      morning.full.record === true);
+    check('11 · Bare minimum does not put that in front of anyone',
+      morning.minimum.record === false);
+
+    const separate = await page.evaluate(async () => {
+      const before = JSON.parse(localStorage.getItem('sleepsphere_state_v2') || '{}');
+      [...document.querySelectorAll('#assistMorning .ss-assist-chip')]
+        .find(b => /tired/i.test(b.textContent)).click();
+      await new Promise(r => setTimeout(r, 500));
+      const after = JSON.parse(localStorage.getItem('sleepsphere_state_v2') || '{}');
+      return {
+        checkIns: ((after.settings.assist || {}).checkIns || []).length,
+        morningsBefore: (before.mornings || []).length,
+        morningsAfter: (after.mornings || []).length
+      };
+    });
+    check('11 · The question is recorded as a question', separate.checkIns === 1,
+      String(separate.checkIns));
+    check('11 · And no morning record is written from it',
+      separate.morningsAfter === separate.morningsBefore,
+      separate.morningsBefore + ' → ' + separate.morningsAfter);
+    await ctx.close();
+  }
+
   await browser.close();
   console.log('\n' + pass + ' passed, ' + fail + ' failed');
   if (fail === 0) console.log('ALL CHECKS PASSED');
