@@ -210,9 +210,15 @@ async function open(browser, opts) {
         await new Promise(r => setTimeout(r, 3200));
         const h = document.getElementById('anwar');
         const cs = getComputedStyle(h.querySelector('.an-plate'));
+        const num = n => parseFloat(h.style.getPropertyValue(n)) || 0;
+        const bright = /brightness\(([\d.]+)\)/.exec(cs.filter);
         return {
-          night: window.SSAnwar.state().night,
+          night: num('--an-night'), day: num('--an-day'), gold: num('--an-gold'),
           filter: cs.filter,
+          brightness: bright ? parseFloat(bright[1]) : null,
+          lamps: getComputedStyle(h.querySelector('.an-lamps')).opacity,
+          lampBg: (h.style.getPropertyValue('--an-lamps') || '').length,
+          goldOpacity: getComputedStyle(h.querySelector('.an-gold')).opacity,
           /* The lighting anchors anwar.js measures off the crop. */
           horizon: h.style.getPropertyValue('--an-horizon'),
           arcade: h.style.getPropertyValue('--an-arcade'),
@@ -223,18 +229,49 @@ async function open(browser, opts) {
       return out;
     };
     const noon = await read(13);
+    const dusk = await read(19);
     const late = await read(23);
+
     check('4 · At one in the afternoon the courtyard is bright',
-      noon.night < 0.3, String(noon.night));
-    check('4 · At eleven at night it is dark', late.night > 0.8, String(late.night));
+      noon.night < 0.3 && noon.day > 0.7, noon.night + ' / ' + noon.day);
+    check('4 · At eleven at night it is dark',
+      late.night > 0.8 && late.day < 0.2, late.night + ' / ' + late.day);
     check('4 · And the two are genuinely different pictures',
       noon.filter !== late.filter,
       noon.filter.slice(0, 30) + '  vs  ' + late.filter.slice(0, 30));
+
+    /* The three keys. Golden hour is its own thing, not a halfway house
+       between the other two: it has to peak in the evening and be close
+       to nothing at either end of the day. */
+    check('4 · Golden hour peaks in the evening',
+      dusk.gold > 0.5, String(dusk.gold));
+    check('4 · And is near nothing at midday and at midnight',
+      noon.gold < 0.2 && late.gold < 0.1,
+      noon.gold + ' / ' + late.gold);
+    check('4 · So the evening is a third picture, not a dimmer first one',
+      dusk.filter !== noon.filter && dusk.filter !== late.filter &&
+      Number(dusk.goldOpacity) > Number(noon.goldOpacity) &&
+      Number(dusk.goldOpacity) > Number(late.goldOpacity),
+      [noon.goldOpacity, dusk.goldOpacity, late.goldOpacity].join(' / '));
+
+    /* The thing that got this sent back: night crushed the plate until
+       the stone and the depth of the arcade were gone. There is a floor
+       under how far the photograph may be darkened, and the mood has to
+       come from the coloured light above it instead. */
+    check('4 · Night never crushes the photograph',
+      late.brightness !== null && late.brightness >= 0.45,
+      'brightness ' + late.brightness);
+    check('4 · The lamps come on instead, and sit on the arcade',
+      Number(late.lamps) > 0.8 && late.lampBg > 400,
+      'opacity ' + late.lamps + ', ' + late.lampBg + ' chars of pools');
+    check('4 · And they are off in daylight',
+      Number(noon.lamps) < Number(late.lamps) * 0.5,
+      noon.lamps + ' vs ' + late.lamps);
+
     check('4 · The lighting is anchored to where the arcade actually is',
       /%$/.test(late.arcade) && parseFloat(late.horizon) < parseFloat(late.arcade)
         && parseFloat(late.arcade) < parseFloat(late.floor),
       [late.horizon, late.arcade, late.floor].join(' < '));
-    await (async () => {})();
   }
 
   /* ================================================================

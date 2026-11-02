@@ -123,10 +123,64 @@
     return (h >= 20 || h < 5) ? 1 : (h >= 18 || h < 7) ? 0.55 : 0;
   }
 
+  /* ------------------------------------------------------------------
+     THREE KEYS, FROM ONE CLOCK.
+
+     A single darkness number can only take light away, and taking light
+     away from a bright photograph gives you a murky bright photograph.
+     Real evenings do something else: the sun leaves, the sky turns over
+     from blue to amber to blue again, and the lamps come on — three
+     separate things, each with its own colour and its own direction.
+
+     So the one number is split into three weights. Night is the number
+     itself. Day is its complement. Golden hour is 4n(1-n) cubed: the
+     parabola alone is one at dusk but still a half at one in the
+     afternoon, which put a sunset over the middle of the day. Cubing
+     it keeps the peak where it was and collapses the shoulders, so the
+     warm hour is an hour rather than a mood that never quite leaves.
+     One clock still, one interpolation still, and nothing here invents
+     a second opinion about what time it is.
+     ------------------------------------------------------------------ */
+  function keys(n) {
+    var arc = Math.max(0, Math.min(1, 4 * n * (1 - n)));
+    return { night: n, day: 1 - n, gold: arc * arc * arc };
+  }
+
+  /* The lamps along the riwaq, as discrete pools rather than one wide
+     wash. They are built here because they have to sit on the arcade
+     wherever the crop puts it, and because the courtyard turns a corner
+     behind the minaret: the arcade is furthest away at the middle of
+     the frame, so pools there are smaller, dimmer and closer together
+     than the ones at the edges. */
+  function lampPools() {
+    var parts = [];
+    for (var i = 0; i <= 10; i++) {
+      var x = 0.04 + (0.92 * i) / 10;
+      var near = Math.abs(x - 0.5) * 2;        /* 0 at the far corner */
+      var w = (4.6 + near * 5.0).toFixed(1);
+      var h = (2.1 + near * 2.3).toFixed(1);
+      var a = (0.20 + near * 0.32).toFixed(3);
+      parts.push('radial-gradient(' + w + '% ' + h + '% at ' +
+        (x * 100).toFixed(1) + '% var(--an-arcade), ' +
+        'rgba(255, 198, 122, ' + a + ') 0%, transparent 74%)');
+    }
+    /* The light that falls out of the arcade onto the marble, and the
+       soffit glow just under the arches. Both are what make the
+       courtyard read as lit rather than as merely less dark. */
+    parts.push('radial-gradient(74% 15% at 50% calc(var(--an-floor) + 5%), ' +
+      'rgba(246, 196, 128, .24) 0%, transparent 76%)');
+    parts.push('linear-gradient(to bottom, transparent calc(var(--an-arcade) - 3%), ' +
+      'rgba(255, 206, 140, .17) var(--an-arcade), transparent calc(var(--an-floor) + 1%))');
+    return parts.join(', ');
+  }
+
   function applyGrade(instant) {
     if (!host) return;
     grade = nightness();
-    host.style.setProperty('--an-night', grade.toFixed(3));
+    var k = keys(grade);
+    host.style.setProperty('--an-night', k.night.toFixed(3));
+    host.style.setProperty('--an-day', k.day.toFixed(3));
+    host.style.setProperty('--an-gold', k.gold.toFixed(3));
     if (instant) host.style.setProperty('--an-settle', '0ms');
     else host.style.removeProperty('--an-settle');
   }
@@ -175,6 +229,9 @@
     host.style.setProperty('--an-horizon', pct(PLATE.parapet));
     host.style.setProperty('--an-arcade', pct((PLATE.parapet + PLATE.floorLine) / 2));
     host.style.setProperty('--an-floor', pct(PLATE.floorLine));
+    /* Built after the anchors, because every pool is positioned on
+       --an-arcade. */
+    host.style.setProperty('--an-lamps', lampPools());
   }
 
   /* ------------------------------------------------------------------
@@ -213,6 +270,8 @@
         rate: 9 + Math.random() * 4,
         glide: 0,
         size: 0.8 + Math.random() * 0.5,
+        seed: Math.random() * 6.28,
+        bob: 0,
         fade: 0
       });
       made++;
@@ -225,9 +284,14 @@
     b.t += dt;
     if (b.hold > 0) { b.hold -= dt; return; }
 
-    /* Beats, then a glide. A bird that flaps without pause is a moth. */
+    /* Beats, then a glide. A bird that flaps without pause is a moth.
+       Climbing costs more, so the beat is faster going up and slower
+       once it is riding; and the body rises on the downstroke, which is
+       the small vertical bob that reads as flying rather than as
+       sliding. */
     b.glide = (b.t * 0.85) % 1 > 0.58 ? 1 : 0;
-    if (!b.glide) b.beat += dt * b.rate;
+    if (!b.glide) b.beat += dt * b.rate * (b.phase === 'up' ? 1.35 : 1);
+    b.bob = b.glide ? b.bob * 0.9 : Math.sin(b.beat) * 0.9;
 
     if (b.phase === 'up') {
       var target = b.cy;
@@ -236,10 +300,14 @@
       b.fade = Math.min(1, b.fade + dt * 1.6);
       if (Math.abs(b.y - target) < box.h * 0.012) { b.phase = 'wheel'; b.t = 0; }
     } else if (b.phase === 'wheel') {
-      b.a += b.spin * dt;
-      /* An ellipse, because the circle is being seen almost edge on. */
-      b.x = b.cx + Math.cos(b.a) * b.r;
-      b.y = b.cy + Math.sin(b.a) * b.r * 0.22;
+      b.a += b.spin * dt * (1 + Math.sin(b.a * 1.7 + b.seed) * 0.16);
+      /* An ellipse seen almost edge on, breathing slightly: a circle
+         held to four decimal places is the thing that reads as a
+         machine rather than as a bird riding air. */
+      var wobble = 1 + Math.sin(b.a * 2.3 + b.seed) * 0.09;
+      b.x = b.cx + Math.cos(b.a) * b.r * wobble;
+      b.y = b.cy + Math.sin(b.a) * b.r * 0.22 * wobble
+            + Math.sin(b.t * 0.7 + b.seed) * box.h * 0.004;
       if (b.t > b.life) {
         b.phase = 'down'; b.t = 0;
         var home = box.at(0.1 + Math.random() * 0.8,
@@ -272,17 +340,24 @@
        standing on the marble is about eight CSS pixels across, and one
        in the air above the arcade is further away, so it is smaller.
        The first cut was three times that and read as paper aeroplanes. */
-    var s = box.w * 0.0034 * b.size * (0.62 + depth * 0.8);
-    var air = 0.30 + depth * 0.30;
+    var s = box.w * 0.0038 * b.size * (0.62 + depth * 0.8);
+    var air = 0.40 + depth * 0.34;
 
     ctx.save();
-    ctx.globalAlpha = b.fade * air * (0.80 + grade * 0.2);
-    ctx.translate(b.x, b.y);
+    ctx.globalAlpha = Math.min(1, b.fade * air * (0.86 + grade * 0.16));
+    /* The bob is vertical in the world, not along the bird's axis. */
+    ctx.translate(b.x, b.y - (b.bob || 0) * s * 0.3);
     if (b.spin < 0) ctx.scale(-1, 1);
     /* Dust, not ink. At night a bird over a city is lighter than the
        sky behind it; by day it is darker than the marble. Near-black on
        near-black was the first cut and it was invisible. */
-    ctx.fillStyle = grade > 0.5 ? '#8e8b84' : '#4b4536';
+    /* A bird reads against what is behind it. Over a night sky it is
+       lit from the city and sits lighter than the sky; against a bright
+       or golden one it is a silhouette. The first cut used near-black
+       at night and the birds were simply not there. */
+    ctx.fillStyle = grade > 0.62 ? '#847f74'
+                  : grade > 0.38 ? '#655e51'
+                  : '#423c2f';
     ctx.shadowColor = ctx.fillStyle;
     /* Just enough to soften the edge. A wide bloom turned the glide
        pose into a lit disc with a bar across it. */
@@ -426,6 +501,8 @@
        none of it adds anything that is not there. */
     stage.appendChild(el('div', 'an-haze'));
     stage.appendChild(el('div', 'an-grade'));
+    stage.appendChild(el('div', 'an-gold-cool'));
+    stage.appendChild(el('div', 'an-gold'));
     stage.appendChild(el('div', 'an-lamps'));
 
     canvas = el('canvas', 'an-birds');

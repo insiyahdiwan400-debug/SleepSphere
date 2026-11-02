@@ -24,6 +24,9 @@
   transition: opacity .7s ease;
 
   --an-night: 1;
+  --an-day: 0;
+  --an-gold: 0;
+  --an-lamps: none;
   --an-settle: 2600ms;
   --an-focus: 46;          /* object-position Y, in % */
   /* Set from anwar.js once the crop is known: where the parapet, the
@@ -43,8 +46,8 @@ html.anwar-open, html.anwar-open body { overflow: hidden; }
   inset: -12%;
   width: 124%; height: 124%;
   object-fit: cover;
-  filter: brightness(calc(1 - var(--an-night) * 0.72))
-          saturate(calc(1 - var(--an-night) * 0.5));
+  filter: brightness(calc(1 - var(--an-night) * 0.62))
+          saturate(calc(1 - var(--an-night) * 0.34 + var(--an-gold) * 0.2));
   transition: filter var(--an-settle) ease;
   transform: scale(1.1);
 }
@@ -59,10 +62,16 @@ html.anwar-open, html.anwar-open body { overflow: hidden; }
   /* The grade itself. Night takes brightness and colour out of a
      daylight frame; contrast is pushed back in so the arcade keeps its
      edges instead of going flat. */
+  /* Darkening a photograph by multiplying it crushes the shadows, and
+     crushed shadows are where the stone texture and the depth of the
+     arcade live. So night takes less brightness than you would expect
+     and LOWERS contrast rather than raising it — the detail survives,
+     and the mood comes from the coloured light above instead. Golden
+     hour adds saturation, because it has more colour, not less. */
   filter:
-    brightness(calc(1 - var(--an-night) * 0.56))
-    contrast(calc(1 + var(--an-night) * 0.26))
-    saturate(calc(1 - var(--an-night) * 0.46));
+    brightness(calc(1 - var(--an-night) * 0.50))
+    contrast(calc(1 - var(--an-night) * 0.06))
+    saturate(calc(1 - var(--an-night) * 0.34 + var(--an-gold) * 0.20));
   transition: filter var(--an-settle) ease;
   animation: anDrift 92s ease-in-out infinite alternate;
   transform-origin: 50% 42%;
@@ -103,40 +112,90 @@ html.anwar-open, html.anwar-open body { overflow: hidden; }
 .an-grade {
   position: absolute; inset: 0;
   background:
-    radial-gradient(118% 78% at 50% 108%,
-      rgba(42, 34, 26, calc(var(--an-night) * .50)) 0%, transparent 62%),
+    /* The ground bounce: warm, and only where the marble is. */
+    radial-gradient(118% 70% at 50% 112%,
+      rgba(58, 44, 30, calc(var(--an-night) * .34)) 0%, transparent 60%),
+    /* The ambient. Deep overhead where the sky is darkest, much lighter
+       across the arcade band so the arches keep their edges, and
+       weighted again at the foot. Night is the only key that darkens —
+       the other two colour. */
     linear-gradient(
       to bottom,
-      rgba(7, 14, 34, calc(var(--an-night) * .86)) 0%,
-      rgba(10, 18, 38, calc(var(--an-night) * .66)) calc(var(--an-horizon) - 6%),
-      rgba(12, 20, 40, calc(var(--an-night) * .40)) var(--an-arcade),
-      rgba(8, 14, 30, calc(var(--an-night) * .58)) var(--an-floor),
-      rgba(5, 9, 20, calc(var(--an-night) * .80)) 100%);
+      rgba(5, 10, 30, calc(var(--an-night) * .90)) 0%,
+      rgba(7, 14, 36, calc(var(--an-night) * .78)) calc(var(--an-horizon) - 14%),
+      rgba(10, 19, 42, calc(var(--an-night) * .50)) calc(var(--an-horizon) - 3%),
+      /* The arcade is the one band the ambient lets alone: the lamps
+         light it, and the gap between this and the sky above is what
+         the eye reads as night. */
+      rgba(14, 23, 44, calc(var(--an-night) * .12)) var(--an-arcade),
+      rgba(9, 16, 32, calc(var(--an-night) * .40)) var(--an-floor),
+      /* The near marble falls away. Light pools by the arcade and the
+         foreground is in shadow, which is what gives the courtyard
+         depth instead of one even wash. */
+      rgba(5, 9, 20, calc(var(--an-night) * .74)) 100%);
   transition: background var(--an-settle) ease;
   pointer-events: none;
 }
 
-/* The lamps along the riwaq. A warm wash where the arcade is, only
-   once it is dark enough for them to be lit. */
+/* ------------------------------------------------------------------
+   GOLDEN HOUR
+
+   Its own layer, because it is a different thing from darkness: the
+   light comes in low and from a direction, so it is a wash across the
+   frame from wherever the app's own sun is, warm on everything it
+   reaches and cool in the shadow it leaves behind. It is screened on
+   rather than multiplied, which is what low sun does to pale stone.
+   ------------------------------------------------------------------ */
+.an-gold {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  opacity: var(--an-gold, 0);
+  transition: opacity var(--an-settle) ease;
+  mix-blend-mode: screen;
+  background:
+    /* The low sun itself, from the app's own light position. */
+    radial-gradient(86% 58% at var(--sun-at, 76% 30%),
+      rgba(255, 186, 104, .40) 0%, rgba(255, 150, 72, .14) 42%, transparent 74%),
+    /* A rim along the parapet, where the light catches last. */
+    linear-gradient(to bottom,
+      transparent calc(var(--an-horizon) - 7%),
+      rgba(255, 196, 126, .22) var(--an-horizon),
+      transparent calc(var(--an-horizon) + 6%));
+}
+/* The cool half of the same hour: shadow in a warm scene is blue, and
+   leaving it neutral is what makes a tinted photograph look tinted
+   rather than lit. */
+.an-gold-cool {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  opacity: calc(var(--an-gold, 0) * .8);
+  transition: opacity var(--an-settle) ease;
+  mix-blend-mode: multiply;
+  background: linear-gradient(to bottom,
+    transparent var(--an-arcade),
+    rgba(126, 146, 190, .22) var(--an-floor),
+    rgba(108, 130, 178, .34) 100%);
+}
+
+/* The lamps along the riwaq. Discrete pools, built in anwar.js so each
+   one sits on the arcade wherever the crop puts it, with the ones near
+   the far corner smaller and dimmer. Screened on, because a lamp adds
+   light; it does not remove darkness. */
 .an-lamps {
   position: absolute; inset: 0;
-  background:
-    /* Under the arches. */
-    radial-gradient(96% 9% at 50% var(--an-arcade),
-      rgba(240, 190, 112, calc(var(--an-night) * .40)) 0%, transparent 72%),
-    /* The spill across the marble, which is what makes the courtyard
-       read as lit rather than as merely less dark. */
-    radial-gradient(78% 16% at 50% calc(var(--an-floor) + 7%),
-      rgba(228, 182, 116, calc(var(--an-night) * .20)) 0%, transparent 76%);
+  background: var(--an-lamps, none);
   mix-blend-mode: screen;
-  opacity: calc(var(--an-night) * 1);
-  transition: opacity var(--an-settle) ease;
+  /* They come on through dusk and are full at night, which is also
+     when the ambient is deepest — so the arcade gets brighter as the
+     sky gets darker, exactly as it does in the courtyard. */
+  opacity: calc(var(--an-night) * 1 + var(--an-gold) * .35);
+  transition: opacity var(--an-settle) ease, background var(--an-settle) ease;
   pointer-events: none;
-  animation: anBreathe 24s ease-in-out infinite alternate;
+  animation: anBreathe 26s ease-in-out infinite alternate;
 }
 @keyframes anBreathe {
-  from { opacity: calc(var(--an-night) * .86); }
-  to   { opacity: calc(var(--an-night) * 1); }
+  from { opacity: calc(var(--an-night) * .9 + var(--an-gold) * .3); }
+  to   { opacity: calc(var(--an-night) * 1 + var(--an-gold) * .38); }
 }
 
 /* ---- 4. the birds ------------------------------------------------ */
@@ -154,7 +213,7 @@ html.anwar-open, html.anwar-open body { overflow: hidden; }
 .an-grain {
   position: absolute; inset: -40px;
   pointer-events: none;
-  opacity: .26;
+  opacity: .18;
   mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='180' height='180' filter='url(%23n)' opacity='.55'/></svg>");
   background-size: 180px 180px;
@@ -173,11 +232,11 @@ html.anwar-open, html.anwar-open body { overflow: hidden; }
   position: absolute; inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(120% 90% at var(--sun-at, 50% 24%),
-      transparent 38%, rgba(0, 0, 0, calc(.14 + var(--an-night) * .22)) 100%),
-    linear-gradient(to bottom, rgba(0,0,0,.38) 0%, transparent 20%,
-      transparent 52%, rgba(0,0,0,.16) 76%, rgba(0,0,0,.52) 93%,
-      rgba(0,0,0,.70) 100%);
+    radial-gradient(124% 94% at var(--sun-at, 50% 24%),
+      transparent 44%, rgba(0, 0, 0, calc(.10 + var(--an-night) * .16)) 100%),
+    linear-gradient(to bottom, rgba(0,0,0,.28) 0%, transparent 18%,
+      transparent 56%, rgba(0,0,0,.16) 78%, rgba(0,0,0,.44) 92%,
+      rgba(0,0,0,.60) 100%);
   transition: background var(--an-settle) ease;
 }
 
@@ -237,26 +296,31 @@ html.anwar-open, html.anwar-open body { overflow: hidden; }
   position: absolute;
   left: calc(16px + env(safe-area-inset-left, 0px));
   right: calc(16px + env(safe-area-inset-right, 0px));
-  bottom: calc(44px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(40px + env(safe-area-inset-bottom, 0px));
   display: flex;
   gap: 10px;
   justify-content: center;
 }
+/* Quiet. The architecture is the screen; these are two things to press
+   and should read as glass on top of it, not as a toolbar under it. */
 .an-btn {
-  flex: 0 1 220px;
-  min-height: 48px;
-  padding: 0 20px;
-  border-radius: 14px;
-  border: 1px solid rgba(245, 241, 232, .2);
-  background: rgba(8, 12, 20, .52);
-  box-shadow: 0 4px 22px rgba(0, 0, 0, .4);
-  color: rgba(245, 241, 232, .94);
-  font: inherit; font-size: .92rem; letter-spacing: .01em;
+  flex: 0 1 180px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(245, 241, 232, .22);
+  background: rgba(10, 14, 22, .46);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, .28);
+  color: rgba(248, 245, 238, .95);
+  /* The courtyard behind these runs from near-white marble at noon to
+     deep blue at midnight, so the label needs to hold on both. */
+  text-shadow: 0 1px 7px rgba(0, 0, 0, .55);
+  font: inherit; font-size: .86rem; letter-spacing: .01em;
   cursor: pointer;
   touch-action: manipulation;
   transition: background-color .25s ease, border-color .25s ease, transform .18s ease;
 }
-.an-btn:hover { background: rgba(8, 12, 20, .6); }
+.an-btn:hover { background: rgba(10, 14, 22, .56); }
 .an-btn:active { transform: scale(.978); }
 .an-btn:disabled { opacity: .45; cursor: default; }
 .an-btn[aria-pressed="true"] {
@@ -264,12 +328,16 @@ html.anwar-open, html.anwar-open body { overflow: hidden; }
   background: rgba(232, 216, 181, .17);
 }
 .an-primary {
-  background: rgba(240, 232, 214, .93);
-  border-color: rgba(240, 232, 214, .93);
-  color: #16202e;
+  /* Translucent rather than solid: it was the brightest thing on the
+     screen, which is the wrong place for the eye to land first when
+     the point of the screen is the architecture. */
+  background: rgba(240, 233, 216, .74);
+  border-color: rgba(244, 238, 224, .8);
+  color: #182130;
   font-weight: 600;
+  text-shadow: none;
 }
-.an-primary:hover { background: #fff; }
+.an-primary:hover { background: rgba(248, 242, 230, .96); }
 
 .an-credit {
   position: absolute;
@@ -294,13 +362,13 @@ html.anwar-open, html.anwar-open body { overflow: hidden; }
    ================================================================== */
 @media (orientation: portrait) and (max-width: 520px) {
   .an { --an-focus: 56; }
-  .an-btn { flex: 1 1 0; min-width: 0; padding: 0 12px; font-size: .86rem; }
+  .an-btn { flex: 0 1 158px; min-width: 0; padding: 0 14px; font-size: .84rem; }
 }
 @media (min-width: 700px) {
   .an { --an-focus: 44; }
   .an-title { font-size: .76rem; top: calc(26px + env(safe-area-inset-top, 0px)); left: calc(30px + env(safe-area-inset-left, 0px)); }
   .an-bar { bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
-  .an-btn { flex: 0 0 230px; }
+  .an-btn { flex: 0 0 196px; }
 }
 @media (orientation: landscape) and (max-height: 520px) {
   .an { --an-focus: 40; }
@@ -315,6 +383,6 @@ html.anwar-open, html.anwar-open body { overflow: hidden; }
   .an { transition: none; }
   .an-plate { animation: none; transform: scale(1.03); }
   .an-grain { animation: none; }
-  .an-lamps { animation: none; opacity: calc(var(--an-night) * .94); }
+  .an-lamps { animation: none; opacity: calc(var(--an-night) * .75 + var(--an-gold) * .35); }
   .an-btn:active { transform: none; }
 }
