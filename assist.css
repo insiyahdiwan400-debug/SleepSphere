@@ -1,0 +1,107 @@
+/* SleepSphere Assist — the wind-down sheet.
+
+   Sits above the app at night, below the toast that reports on it, and
+   above the sound player it supersedes while it is open. Nothing here
+   animates on a loop: it rises once and stays put. */
+
+.ss-assist-start { width: 100%; }
+
+.ss-assist {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 74;                 /* over the tab bar and the mini-player */
+  display: flex; justify-content: center;
+  padding: 0 12px calc(env(safe-area-inset-bottom, 0px) + 12px);
+  pointer-events: none;
+  opacity: 0;
+  transform: translate3d(0, 16px, 0);
+  transition: opacity .24s ease, transform .24s cubic-bezier(.22, 1, .36, 1);
+}
+.ss-assist.on { opacity: 1; transform: none; }
+
+.ss-assist-card {
+  pointer-events: auto;
+  width: min(520px, 100%);
+  display: grid;
+  gap: 10px;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px) * 0);
+  border-radius: 20px;
+  background: rgba(10, 18, 30, .93);
+  border: 1px solid rgba(245, 244, 239, .16);
+  box-shadow: 0 22px 52px -26px rgba(0, 0, 0, .95);
+  color: #f5f4ef;
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .ss-assist-card {
+    background: rgba(10, 18, 30, .72);
+    -webkit-backdrop-filter: blur(22px) saturate(130%);
+    backdrop-filter: blur(22px) saturate(130%);
+  }
+}
+
+.ss-assist-eyebrow {
+  margin: 0;
+  font-size: .68rem; letter-spacing: .14em; text-transform: uppercase;
+  color: #e8d8b5;
+}
+.ss-assist-now {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.12rem; line-height: 1.3;
+}
+.ss-assist-label {
+  margin: 4px 0 0;
+  font-size: .72rem; letter-spacing: .1em; text-transform: uppercase;
+  color: rgba(245, 244, 239, .66);
+}
+
+.ss-assist-row { display: flex; gap: 8px; }
+.ss-assist-wrap { flex-wrap: wrap; }
+
+.ss-assist-btn, .ss-assist-chip {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(245, 244, 239, .24);
+  background: rgba(245, 244, 239, .10);
+  color: #f5f4ef;
+  font: inherit;
+  font-size: .92rem;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color .18s ease, border-color .18s ease, transform .16s ease;
+}
+.ss-assist-btn { flex: 1 1 0; justify-content: center; }
+.ss-assist-chip { font-size: .86rem; padding: 0 13px; }
+.ss-assist-btn:hover, .ss-assist-chip:hover { background: rgba(245, 244, 239, .17); }
+.ss-assist-btn:active, .ss-assist-chip:active { transform: scale(.972); }
+.ss-assist-btn:disabled, .ss-assist-chip:disabled { opacity: .55; cursor: default; }
+
+/* The current sound and the current length. Champagne, like every other
+   chosen thing in the app. */
+.ss-assist-chip[aria-pressed="true"] {
+  background: #e8d8b5;
+  border-color: #e8d8b5;
+  color: #14283a;
+  font-weight: 600;
+}
+
+/* Stop is the one destructive control here and should not look like
+   the others, but it is also the one someone reaches for half asleep —
+   so it is marked, not hidden. */
+.ss-assist-stop {
+  background: rgba(196, 122, 110, .18);
+  border-color: rgba(214, 150, 139, .5);
+}
+.ss-assist-stop:hover { background: rgba(196, 122, 110, .28); }
+
+.ss-assist :focus-visible {
+  outline: 3px solid #e8d8b5;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ss-assist { transition: none; transform: none; }
+  .ss-assist-btn, .ss-assist-chip { transition: none; }
+  .ss-assist-btn:active, .ss-assist-chip:active { transform: none; }
+}

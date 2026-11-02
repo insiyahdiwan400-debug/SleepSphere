@@ -2585,6 +2585,7 @@
   <link rel="stylesheet" href="explore.css" />
   <link rel="stylesheet" href="living-sky.css" />
   <link rel="stylesheet" href="approved-visual-refresh.css" />
+  <link rel="stylesheet" href="assist.css" />
   <link rel="stylesheet" href="flight-cabin.css" />
 </head>
 <body>
@@ -2962,6 +2963,10 @@
                 <p id="heroSub">Take tonight’s check-in to see where your body actually is.</p>
                 <div class="console-actions">
                   <button class="btn primary" id="guideNext" data-go="flow" hidden>Start tonight’s check-in</button>
+                  <!-- One tap: the soundscape they like, the timer they
+                       like, and the dua. Everything behind it already
+                       existed and was four screens apart. -->
+                  <button class="btn primary ss-assist-start" id="assistStart">Start my wind-down</button>
                   <button class="btn ghost" id="lazyStart">Too tired — just go to bed</button>
                 </div>
                 <div class="guide-strip" aria-label="Your SleepSphere progress" hidden>
@@ -3956,6 +3961,12 @@
            context engine had to guess, and a generic 06:30 is wrong for
            anyone whose day starts at Fajr. Empty means never asked — the
            engine falls back and says it is doing so. */
+        /* Assist remembers how someone likes their wind-down: which
+           soundscape, how long a timer, whether the dua opens with it.
+           Additive, and shapeState spreads defaults over stored
+           settings, so a state written before Assist existed reads
+           these as the defaults rather than undefined. */
+        assist: { sound: 'rain', timer: 20, dua: true, lastStartedAt: '' },
         usualWake: '',          // 'HH:MM', when their day usually starts
         fajrHabit: ''           // 'return' | 'stay' | 'depends' | '' (not asked)
       },
@@ -6826,6 +6837,11 @@
       requestAnimationFrame(() => $('#duaVeil').classList.add('on'));
       window.setTimeout(() => $('#duaAmin').focus({ preventScroll: true }), 420);
     }
+
+    /* Assist opens the dua as one step of the wind-down. Exposed as a
+       named seam rather than letting another file reach into this
+       scope, and it is the same verified text either way. */
+    window.SSOpenDua = openDua;
 
     function closeDua() {
       const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -11492,6 +11508,8 @@
   <!-- Explore. Six practices that each do something; audio is opt-in,
        synthesised rather than sampled, and stops when you leave. -->
   <script src="explore.js"></script>
+  <script src="assist.js"></script>
+  <script src="assist-ui.js"></script>
   <script src="meditation-chooser.js"></script>
   <!-- Living Sky. Recorded footage where a licensed clip exists for the
        daypart; the drawn sky stays and shows wherever one does not. -->

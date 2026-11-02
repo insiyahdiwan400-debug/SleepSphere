@@ -1222,6 +1222,16 @@
        playing has to be inspectable from outside, or "the sound works"
        is an opinion. */
     startSound, startSoundOrThrow, stopSound, toggleSound, stopEverySound,
+    /* Pause and resume were already in here, driving the visibility
+       handler, and were the only two things a caller outside this file
+       could not reach. Exporting them is what stops the next feature
+       that needs "hold the sound for a moment" from building a second
+       audio engine beside this one. Pause suspends the context rather
+       than tearing the graph down, so resume picks the same noise back
+       up instead of restarting it. */
+    pause: suspendAudio,
+    resume: wake,
+    contextState: () => (ctx ? ctx.state : 'none'),
     openMixer: soundscape,
     playing: () => [...LIVE.keys()],
     setSleepTimer,
