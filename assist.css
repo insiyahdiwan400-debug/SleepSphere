@@ -105,3 +105,29 @@
   .ss-assist-btn, .ss-assist-chip { transition: none; }
   .ss-assist-btn:active, .ss-assist-chip:active { transform: none; }
 }
+
+/* The morning card. Quiet: it is a question, not an alert, and someone
+   who ignores it should feel no worse for having done so. */
+.ss-assist-morning { display: grid; gap: 10px; }
+.ss-assist-morning .ss-assist-eyebrow { color: var(--gold, #c9b27a); }
+.ss-assist-morning h3 { margin: 0; }
+.ss-assist-morning-note {
+  margin: 0;
+  font-size: .86rem; line-height: 1.5;
+  color: var(--muted, #7d776c);
+}
+.ss-assist-morning .ss-assist-chip {
+  border-color: var(--line, rgba(0, 0, 0, .14));
+  background: transparent;
+  color: inherit;
+}
+.ss-assist-morning .ss-assist-chip:hover { background: rgba(127, 127, 127, .10); }
+.ss-assist-skip {
+  justify-self: start;
+  min-height: 44px; padding: 0 4px;
+  border: 0; background: none;
+  color: var(--muted, #7d776c);
+  font: inherit; font-size: .86rem;
+  text-decoration: underline; text-underline-offset: 3px;
+  cursor: pointer;
+}

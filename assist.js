@@ -207,12 +207,53 @@
     }
   }, 4000);
 
+  /* ==================================================================
+     THE MORNING HALF.
+
+     A wind-down is only half a loop. The other half is one question,
+     asked once, with three answers and a way out — and the answer is
+     kept as what it is: how someone said they felt. It is never turned
+     into minutes, a score, or a night.
+
+     It is deliberately not written as a morning record. The app already
+     has one of those and it carries bed time, wake time, onset and
+     awake minutes; a one-tap answer has none of them, and inventing
+     them to fit the shape would be fabricating sleep data to make a
+     check-in look thorough. This goes where it belongs: the
+     participant's own settings, privately, alongside the preference
+     that produced it.
+     ================================================================== */
+  const ANSWERS = ['tired', 'between', 'refreshed'];
+
+  function checkIns() {
+    const s = settings();
+    const list = (s && s.assist && s.assist.checkIns) || [];
+    return Array.isArray(list) ? list : [];
+  }
+
+  /* Returns false when the write did not reach the disk — the caller
+     says so rather than thanking someone for an answer that was lost. */
+  function recordMorning(answer) {
+    if (ANSWERS.indexOf(answer) < 0) return false;
+    const entry = { at: new Date().toISOString(), answer };
+    /* Thirty is about a month, which is as far back as anything in here
+       looks. An unbounded list in a single settings object is how a
+       save gets slow enough to notice. */
+    const kept = checkIns().concat([entry]).slice(-30);
+    return remember({ checkIns: kept, lastStartedAt: '' });
+  }
+
+  /* Dismissing is an answer about the question, not about the night, so
+     it clears the prompt and records nothing at all. */
+  function skipMorning() { return remember({ lastStartedAt: '' }); }
+
   window.SSAssist = {
     TIMERS,
     prefs, setTimer, setSound,
     start, pause, resume, stop,
     session: live,
     onChange,
+    ANSWERS, checkIns, recordMorning, skipMorning,
     /* The morning half of the loop: what to ask about, when a wind-down
        actually happened. Never a figure — the question is asked. */
     morningPrompt() {

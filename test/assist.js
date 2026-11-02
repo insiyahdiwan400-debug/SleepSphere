@@ -348,6 +348,117 @@ async function open(browser, opts) {
     await ctx.close();
   }
 
+  /* ================================================================
+     8. The morning card.
+
+        The half that closes the loop. One question, three answers, a
+        way out — and the thing it must never do is turn an answer
+        into a night. The app's morning record carries bed time, wake
+        time, onset and awake minutes; a tap has none of them, and
+        inventing them to fit the shape would be fabricating sleep
+        data to make a check-in look thorough.
+     ================================================================ */
+  {
+    const { ctx, page } = await open(browser);
+
+    const quiet = await page.evaluate(() => ({
+      card: Boolean(document.getElementById('assistMorning')),
+      prompt: window.SSAssist.morningPrompt()
+    }));
+    check('8 · With no wind-down behind it, nothing is asked',
+      quiet.card === false && quiet.prompt === null);
+
+    /* A wind-down last night, and the app opened this morning. */
+    const asked = await page.evaluate(async () => {
+      const s = window.SS.state.settings;
+      s.assist = { ...(s.assist || {}), sound: 'rain', timer: 20,
+                   lastStartedAt: new Date(Date.now() - 9 * 3600000).toISOString() };
+      window.SS.save();
+      window.SSAssistUI.mountMorning();
+      await new Promise(r => setTimeout(r, 300));
+      const card = document.getElementById('assistMorning');
+      if (!card) return { missing: true };
+      return {
+        answers: [...card.querySelectorAll('.ss-assist-chip')].map(b => b.textContent.trim()),
+        skip: Boolean([...card.querySelectorAll('button')].find(b => /skip/i.test(b.textContent))),
+        group: card.querySelector('[role="group"][aria-labelledby]') !== null,
+        note: (card.querySelector('.ss-assist-morning-note') || {}).textContent || '',
+        small: [...card.querySelectorAll('button')].filter(b => b.getBoundingClientRect().height < 44).length
+      };
+    });
+    check('8 · After a wind-down, one question appears', asked.missing !== true);
+    check('8 · With the three answers the brief names',
+      asked.answers && asked.answers.join(' / ') === 'Still tired / In between / Refreshed',
+      (asked.answers || []).join(' / '));
+    check('8 · And a way to skip it', asked.skip === true);
+    check('8 · Labelled as a group for a screen reader', asked.group === true);
+    check('8 · It says what the answer is and is not',
+      /not a measurement/i.test(asked.note || ''), (asked.note || '').slice(0, 54));
+    check('8 · Every control is big enough to tap', asked.small === 0, String(asked.small));
+
+    const answered = await page.evaluate(async () => {
+      const before = JSON.parse(localStorage.getItem('sleepsphere_state_v2') || '{}');
+      [...document.querySelectorAll('#assistMorning .ss-assist-chip')]
+        .find(b => /refreshed/i.test(b.textContent)).click();
+      await new Promise(r => setTimeout(r, 500));
+      const after = JSON.parse(localStorage.getItem('sleepsphere_state_v2') || '{}');
+      return {
+        card: Boolean(document.getElementById('assistMorning')),
+        checkIns: (after.settings.assist || {}).checkIns || [],
+        morningsBefore: (before.mornings || []).length,
+        morningsAfter: (after.mornings || []).length,
+        promptNow: window.SSAssist.morningPrompt()
+      };
+    });
+    check('8 · Answering puts the question away', answered.card === false);
+    check('8 · The answer is kept, as an answer',
+      answered.checkIns.length === 1 && answered.checkIns[0].answer === 'refreshed',
+      JSON.stringify(answered.checkIns));
+    check('8 · And carries only when it was said, not how long anyone slept',
+      answered.checkIns[0] && Object.keys(answered.checkIns[0]).sort().join(',') === 'answer,at',
+      Object.keys(answered.checkIns[0] || {}).join(','));
+    check('8 · No sleep record is invented to hold it',
+      answered.morningsAfter === answered.morningsBefore,
+      answered.morningsBefore + ' → ' + answered.morningsAfter);
+    check('8 · And it is not asked twice', answered.promptNow === null);
+
+    /* Skipping records nothing, and still stops the asking. */
+    const skipped = await page.evaluate(async () => {
+      const s = window.SS.state.settings;
+      s.assist = { ...(s.assist || {}),
+                   lastStartedAt: new Date(Date.now() - 9 * 3600000).toISOString() };
+      window.SS.save();
+      window.SSAssistUI.mountMorning();
+      await new Promise(r => setTimeout(r, 250));
+      [...document.querySelectorAll('#assistMorning button')]
+        .find(b => /skip/i.test(b.textContent)).click();
+      await new Promise(r => setTimeout(r, 400));
+      const raw = JSON.parse(localStorage.getItem('sleepsphere_state_v2') || '{}');
+      return {
+        card: Boolean(document.getElementById('assistMorning')),
+        checkIns: ((raw.settings.assist || {}).checkIns || []).length,
+        prompt: window.SSAssist.morningPrompt()
+      };
+    });
+    check('8 · Skipping puts it away too', skipped.card === false);
+    check('8 · Records nothing', skipped.checkIns === 1, String(skipped.checkIns));
+    check('8 · And is not asked again', skipped.prompt === null);
+
+    /* Four days away, one question — not four. */
+    const backlog = await page.evaluate(async () => {
+      const s = window.SS.state.settings;
+      s.assist = { ...(s.assist || {}),
+                   lastStartedAt: new Date(Date.now() - 4 * 24 * 3600000).toISOString() };
+      window.SS.save();
+      window.SSAssistUI.mountMorning();
+      await new Promise(r => setTimeout(r, 250));
+      return { cards: document.querySelectorAll('.ss-assist-morning').length };
+    });
+    check('8 · Coming back after four days brings no backlog',
+      backlog.cards === 0, backlog.cards + ' card(s)');
+    await ctx.close();
+  }
+
   await browser.close();
   console.log('\n' + pass + ' passed, ' + fail + ' failed');
   if (fail === 0) console.log('ALL CHECKS PASSED');

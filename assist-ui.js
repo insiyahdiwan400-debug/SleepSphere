@@ -169,8 +169,67 @@
     });
   }
 
+  /* ================================================================
+     THE MORNING CARD.
+
+     One question, three answers, and a way out. It appears only when
+     there was a wind-down to ask about, it goes for good once it is
+     answered or dismissed, and someone returning after four days meets
+     no backlog of unanswered mornings — there is only ever the most
+     recent one, and only for a day.
+     ================================================================ */
+  const ANSWER_WORDS = [
+    ['tired', 'Still tired'],
+    ['between', 'In between'],
+    ['refreshed', 'Refreshed']
+  ];
+
+  function mountMorning() {
+    const assist = A();
+    if (!assist || document.getElementById('assistMorning')) return;
+    const prompt = assist.morningPrompt();
+    if (!prompt) return;
+    const host = document.getElementById('today');
+    if (!host) return;
+
+    const card = el('section', 'card ss-assist-morning');
+    card.id = 'assistMorning';
+    card.appendChild(el('p', 'ss-assist-eyebrow', 'This morning'));
+    const question = el('h3', null, 'How restored do you feel?');
+    question.id = 'assistMorningQ';
+    card.appendChild(question);
+    card.appendChild(el('p', 'ss-assist-morning-note',
+      'One tap, kept to yourself. It is how you felt, not a measurement ' +
+      'of how you slept — the app has no way to know that and does not guess.'));
+
+    const row = el('div', 'ss-assist-row ss-assist-wrap');
+    row.setAttribute('role', 'group');
+    row.setAttribute('aria-labelledby', 'assistMorningQ');
+    ANSWER_WORDS.forEach(pair => {
+      row.appendChild(btn(pair[1], 'ss-assist-chip', () => {
+        const saved = assist.recordMorning(pair[0]);
+        card.remove();
+        say(saved ? 'Noted. Nothing else to do.'
+                  : 'Noted for now — this device is not saving to disk.');
+      }));
+    });
+    card.appendChild(row);
+
+    /* Skipping is an answer about the question, not about the night: it
+       clears the prompt and records nothing at all. */
+    card.appendChild(btn('Skip', 'ss-assist-skip', () => {
+      assist.skipMorning();
+      card.remove();
+    }));
+
+    host.insertBefore(card, host.firstChild);
+  }
+
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
   else wire();
 
-  window.SSAssistUI = { open, close, sheet: () => sheet };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountMorning);
+  else mountMorning();
+
+  window.SSAssistUI = { open, close, sheet: () => sheet, mountMorning };
 })();
