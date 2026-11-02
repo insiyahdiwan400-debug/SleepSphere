@@ -241,14 +241,29 @@ async function open(browser, w, h) {
       if (ok !== 'canplay') return { ok };
       try { await v.play(); } catch (e) { return { ok: 'blocked ' + e.message }; }
       const a = v.currentTime;
-      await new Promise(r => setTimeout(r, 1200));
-      const b = v.currentTime;
-      return { ok, w: v.videoWidth, h: v.videoHeight, from: +a.toFixed(2), to: +b.toFixed(2) };
+      /* Poll rather than sample once after a fixed delay.
+
+         The question is whether playback advances at all; the old check
+         gave the decoder 1.2 seconds of wall clock and demanded progress
+         within it. That passes on an idle machine and fails on a busy
+         one — it reported 0 -> 0 during a full regression sweep and
+         0 -> 1.17 three times in a row on its own, which is a stopwatch
+         race against machine load rather than a fault in the app. */
+      const deadline = Date.now() + 10000;
+      let b = v.currentTime, waited = 0;
+      while (b <= a && Date.now() < deadline) {
+        await new Promise(r => setTimeout(r, 150));
+        b = v.currentTime;
+        waited = Date.now() - (deadline - 10000);
+      }
+      return { ok, w: v.videoWidth, h: v.videoHeight,
+               from: +a.toFixed(2), to: +b.toFixed(2), waited };
     });
     check('5 · A decodable clip reaches canplay', played.ok === 'canplay', String(played.ok));
     check('5 · It has real dimensions', played.w > 0 && played.h > 0, played.w + 'x' + played.h);
     check('5 · And the playhead actually moves',
-      played.to > played.from, played.from + ' -> ' + played.to);
+      played.to > played.from,
+      played.from + ' -> ' + played.to + ' after ' + played.waited + 'ms');
     await ctx.close();
   }
 
