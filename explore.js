@@ -1137,6 +1137,10 @@
        happened, which is indistinguishable from a dead button. It now
        says what it did and takes you where you can see it. */
     ['Living Sky', 'Recorded sky behind the app, where footage exists.', livingSkyTile],
+    /* Jamea al Anwar. Standalone: its own file, its own screen, and it
+       borrows the sound and the wind-down rather than building either. */
+    ['Jamea al Anwar', 'A courtyard at night, with the birds. Drawn, not photographed.',
+      () => { if (window.SSAnwar) window.SSAnwar.open(); else goView('learn'); }],
     ['Body scan', 'Thirteen steps, feet upward. Voice-free, hands-free.', bodyScan],
     ['Breathing', 'A longer out-breath. No holding.', breathing],
     ['Sabat Compass', 'What your own nights have shown so far.', () => goScreen('compass')],

@@ -5,9 +5,12 @@
  * with confident numbers and no provenance, so that is what the suite is
  * built to catch:
  *
- *   · Every line must carry the arithmetic that produced it, and that
- *     arithmetic must be true — each time is recomputed here from the
- *     anchors and the gap, and compared against what the screen shows.
+ *   · The main screen is a timeline and nothing else: short labels, no
+ *     paragraphs, no commentary. Asserted by measuring the copy, not by
+ *     reading it.
+ *   · The arithmetic behind every line is still there, and still true —
+ *     each time is recomputed here from the anchors and the gap, and
+ *     compared against what the engine and the panel show.
  *   · A gap set to none must remove its line rather than hide it.
  *   · Changing one gap must move one line and leave the rest where they
  *     were. A day that reshuffles when you touch one number is a day
@@ -70,22 +73,52 @@ async function open(browser) {
     const { ctx, page, errs } = await open(browser);
     const seen = await page.evaluate(() => ({
       active: document.getElementById('rhythm').classList.contains('active'),
-      source: document.getElementById('rhythmSource').textContent,
-      span: document.getElementById('rhythmSpan').textContent,
-      basis: document.getElementById('rhythmBasis').textContent,
+      heading: document.getElementById('pageTitle').textContent.trim(),
+      wake: document.getElementById('rhythmWake').textContent,
+      bed: document.getElementById('rhythmBed').textContent,
       rows: [...document.querySelectorAll('.rhythm-item')].map(r => r.dataset.key),
+      labels: [...document.querySelectorAll('.rhythm-label')].map(n => n.textContent),
       engine: window.__rhythm().items.map(i => i.key),
-      anchors: window.__rhythm().anchors
+      panelClosed: document.getElementById('rhythmPanel').hidden,
+      adjust: document.getElementById('rhythmAdjust').textContent.trim(),
+      start: document.getElementById('rhythmStart').textContent.trim()
     }));
     check('1 · The day opens', seen.active === true);
-    check('1 · It names the source of the times, not just the times',
-      /usual day/i.test(seen.source), seen.source);
-    check('1 · And runs from getting up to lights out',
-      /6:30 AM until 10:30 PM/.test(seen.span), seen.span);
+    check('1 · Under a plain heading', seen.heading === 'Your day', seen.heading);
+    check('1 · Waking and bedtime are stated outright',
+      seen.wake === '6:30 AM' && seen.bed === '10:30 PM',
+      seen.wake + ' / ' + seen.bed);
     check('1 · The screen draws exactly what the engine returned',
       seen.rows.join(',') === seen.engine.join(','),
       seen.rows.join(',') + '  vs  ' + seen.engine.join(','));
+    check('1 · Every label is short',
+      seen.labels.every(l => l.split(/\s+/).length <= 3), seen.labels.join(' / '));
+    check('1 · And they are the words asked for',
+      ['Wake up', 'Take a break', 'Last coffee', 'Finish dinner', 'Wind down', 'Bedtime']
+        .every(w => seen.labels.indexOf(w) > -1), seen.labels.join(' / '));
+    check('1 · There is one discreet way to change them',
+      seen.adjust === 'Adjust' && seen.panelClosed === true);
+    check('1 · And one action', seen.start === 'Start wind-down', seen.start);
     check('1 · Nothing was thrown', errs.length === 0, errs.join(' | '));
+
+    /* The redesign, measured rather than admired: with the panel closed
+       the screen is a timeline, and a timeline has no paragraphs. */
+    const prose = await page.evaluate(() => {
+      const card = document.querySelector('.rhythm-card');
+      const visible = [...card.querySelectorAll('p, span, strong, li')]
+        .filter(n => n.offsetParent !== null && !n.querySelector('*'))
+        .map(n => n.textContent.trim())
+        .filter(Boolean);
+      return {
+        longest: visible.reduce((a, b) => (b.length > a.length ? b : a), ''),
+        text: card.innerText
+      };
+    });
+    check('1 · No line on it is a paragraph', prose.longest.length <= 24,
+      prose.longest);
+    check('1 · And none of the old copy survives',
+      !/laid against|asking for|two times and four numbers|blocks the signal|marks are for today/i
+        .test(prose.text));
 
     /* ============================================================
        2. Every time is the stated arithmetic, recomputed here.
@@ -103,8 +136,13 @@ async function open(browser) {
         winddown: at('winddown') === a.windDown,
         sleep: at('sleep') === a.sleep,
         everyLineHasABasis: day.items.every(i => typeof i.basis === 'string' && i.basis.length > 10),
-        domHasABasis: [...document.querySelectorAll('.rhythm-item')]
-          .every(r2 => (r2.querySelector('.rhythm-basis') || {}).textContent)
+        domHasABasis: (function () {
+          document.getElementById('rhythmAdjust').click();
+          const rows = [...document.querySelectorAll('#rhythmWhy li')];
+          const ok = rows.length >= 6 && rows.every(r => (r.querySelector('span') || {}).textContent);
+          document.getElementById('rhythmAdjust').click();
+          return ok;
+        })()
       };
     });
     check('2 · Getting up is where the plan puts it', sums.wake === true);
@@ -115,7 +153,7 @@ async function open(browser) {
     check('2 · Lights out is the planned sleep', sums.sleep === true);
     check('2 · And every line carries the arithmetic that produced it',
       sums.everyLineHasABasis === true);
-    check('2 · On the screen as well as in the engine', sums.domHasABasis === true);
+    check('2 · And it is readable, behind Adjust', sums.domHasABasis === true);
 
     /* Breaks are spaced across the waking day, not pinned to o'clocks. */
     const breaks = await page.evaluate(() => {
@@ -144,6 +182,7 @@ async function open(browser) {
       const snapshot = () => Object.fromEntries(
         window.__rhythm().items.map(i => [i.key, i.at]));
       const before = snapshot();
+      document.getElementById('rhythmAdjust').click();
       const select = document.querySelector('[data-rule="caffeineGap"]');
       select.value = '6';
       select.dispatchEvent(new Event('change', { bubbles: true }));
@@ -154,7 +193,7 @@ async function open(browser) {
         changed, shift: after.caffeine - before.caffeine,
         stored: (JSON.parse(localStorage.getItem('sleepsphere_state_v2') || '{}')
           .settings.rhythm || {}).caffeineGap,
-        shown: document.querySelector('[data-key="caffeine"] .rhythm-basis').textContent
+        shown: (window.__rhythm().items.find(i => i.key === 'caffeine') || {}).basis
       };
     });
     check('3 · Exactly one line moved', moved.changed.join(',') === 'caffeine',
@@ -162,7 +201,7 @@ async function open(browser) {
     check('3 · By exactly the amount asked for', moved.shift === 120,
       String(moved.shift) + ' min');
     check('3 · The new gap is on disk', moved.stored === 6, String(moved.stored));
-    check('3 · And the line now states the new arithmetic',
+    check('3 · And the arithmetic behind it is restated',
       /6 h before/.test(moved.shown), moved.shown);
 
     /* None means gone, not hidden. */
@@ -219,7 +258,12 @@ async function open(browser) {
         dimmed: document.querySelector('.rhythm-item[data-key="caffeine"]')
           .classList.contains('done'),
         stored: (raw.settings.rhythm || {}).done,
-        note: document.getElementById('rhythmMarks').textContent
+        note: (function () {
+          document.getElementById('rhythmAdjust').click();
+          const t = document.getElementById('rhythmCare').textContent;
+          document.getElementById('rhythmAdjust').click();
+          return t;
+        })()
       };
     });
     check('4 · A line can be marked done',
@@ -229,10 +273,10 @@ async function open(browser) {
       marked.stored && marked.stored.date === new Date().toISOString().slice(0, 10) &&
       marked.stored.keys.join(',') === 'caffeine',
       JSON.stringify(marked.stored));
-    check('4 · The screen says the marks do not accumulate',
-      /tomorrow they are gone/i.test(marked.note), marked.note);
-    check('4 · And that a day with none of them is not a failure',
-      /not a day you failed/i.test(marked.note));
+    check('4 · The panel says the marks do not accumulate',
+      /clear overnight/i.test(marked.note), marked.note);
+    check('4 · And that nothing is counted',
+      /nothing is counted/i.test(marked.note));
 
     /* Yesterday's marks simply stop applying. */
     const stale = await page.evaluate(async () => {
@@ -276,7 +320,7 @@ async function open(browser) {
         marks: document.querySelectorAll('.rhythm-mark').length,
         rows: document.querySelectorAll('.rhythm-item').length,
         engine: window.__rhythm().items.length,
-        note: document.getElementById('rhythmMarks').textContent
+        labels: [...document.querySelectorAll('.rhythm-label')].map(n => n.textContent)
       };
     });
     check('5 · Bare minimum asks nothing of the day', least.marks === 0,
@@ -284,11 +328,12 @@ async function open(browser) {
     check('5 · While showing every line of it',
       least.rows === least.engine && least.rows > 4,
       least.rows + ' of ' + least.engine);
-    check('5 · And saying why there is nothing to tick',
-      /something to read, not something to tick/i.test(least.note), least.note);
+    check('5 · With the same labels, not a shorter list',
+      least.labels.indexOf('Last coffee') > -1 && least.labels.indexOf('Take a break') > -1,
+      least.labels.join(' / '));
 
     const started = await page.evaluate(async () => {
-      const go = document.querySelector('.rhythm-item[data-key="winddown"] .rhythm-go');
+      const go = document.getElementById('rhythmStart');
       if (!go) return { missing: true };
       go.click();
       await new Promise(r => setTimeout(r, 2600));
@@ -298,7 +343,7 @@ async function open(browser) {
         view: document.documentElement.dataset.view
       };
     });
-    check('5 · The wind-down line starts the wind-down', started.audio === true);
+    check('5 · The one button starts the wind-down', started.audio === true);
     check('5 · As a real session, not a navigation', started.session === true);
     check('5 · And takes you to the night, where it is running',
       started.view === 'today', started.view);
@@ -311,14 +356,17 @@ async function open(browser) {
      ================================================================ */
   {
     const { ctx, page } = await open(browser);
-    const words = await page.evaluate(() => ({
-      text: document.getElementById('rhythm').textContent,
-      rules: document.getElementById('rhythmRules').textContent
-    }));
-    check('6 · It says the gaps are conventions, not findings',
-      /not findings measured on you/i.test(words.rules));
+    const words = await page.evaluate(() => {
+      document.getElementById('rhythmAdjust').click();
+      return {
+        text: document.getElementById('rhythm').textContent,
+        panel: document.getElementById('rhythmPanel').textContent
+      };
+    });
+    check('6 · The panel says the gaps are guidelines, not measurements',
+      /not measurements of you/i.test(words.panel));
     check('6 · And that no outcome is claimed for them',
-      /does not claim an outcome/i.test(words.rules));
+      /no outcome is claimed/i.test(words.panel));
     check('6 · No study is cited that is not in the app',
       !/et al\.|20\d\d\)|journal/i.test(words.text));
     check('6 · Nothing promises an improvement',

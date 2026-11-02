@@ -2586,6 +2586,7 @@
   <link rel="stylesheet" href="living-sky.css" />
   <link rel="stylesheet" href="approved-visual-refresh.css" />
   <link rel="stylesheet" href="assist.css" />
+  <link rel="stylesheet" href="anwar.css" />
   <link rel="stylesheet" href="flight-cabin.css" />
 </head>
 <body>
@@ -3273,45 +3274,67 @@
              something that reads plausibly.
              ================================================================== -->
         <!-- ==================================================================
-             MY RHYTHM — the day that follows from the night.
+             MY RHYTHM
+
+             One card: the two times the day runs between, a timeline, and
+             the one action the screen exists to offer. Everything that
+             explains itself lives behind Adjust.
 
              Drawn entirely by renderRhythm() from rhythmDay(), which is a
-             pure function of state. Nothing in this markup contains a time,
-             a gap or a recommendation; if it did, there would be two places
-             to change a rule and one of them would be missed.
+             pure function of state. No time, gap or label is written into
+             this markup; if one were, there would be two places to change
+             a rule and one of them would be missed.
              ================================================================== -->
         <section class="view" id="rhythm">
-          <div class="section-head"><div><div class="eyebrow">Shaped by tonight</div><h2>Your day, laid against your night</h2></div><p>Four daytime gaps, each one arithmetic you can see and change. None of them is a measurement of you.</p></div>
           <div class="grid">
+            <article class="card span-12 rhythm-card">
+              <header class="rhythm-head">
+                <div class="rhythm-bounds">
+                  <div class="rhythm-bound"><span>Wake</span><strong id="rhythmWake">—</strong></div>
+                  <div class="rhythm-rule" aria-hidden="true"></div>
+                  <div class="rhythm-bound"><span>Bed</span><strong id="rhythmBed">—</strong></div>
+                </div>
+                <button type="button" class="rhythm-adjust" id="rhythmAdjust"
+                        aria-expanded="false" aria-controls="rhythmPanel">Adjust</button>
+              </header>
 
-            <article class="card span-12" id="rhythmCard">
-              <div class="card-label" id="rhythmSource"></div>
-              <h3 style="margin:6px 0 4px" id="rhythmSpan"></h3>
-              <p class="helper" id="rhythmBasis"></p>
               <ol class="rhythm-list" id="rhythmList"></ol>
-              <p class="helper" id="rhythmMarks"></p>
-            </article>
 
-            <article class="card span-7" id="rhythmRules">
-              <div class="card-label">The gaps themselves</div>
-              <h3 style="margin:6px 0 10px">Change any of these and only its line moves.</h3>
-              <div class="field"><label for="rhythmCaffeine">Stop caffeine before sleep</label><select id="rhythmCaffeine" data-rule="caffeineGap"></select></div>
-              <div class="field"><label for="rhythmMeal">Leave after a full meal</label><select id="rhythmMeal" data-rule="mealGap"></select></div>
-              <div class="field"><label for="rhythmMove">Hard effort ends before wind-down</label><select id="rhythmMove" data-rule="moveGap"></select></div>
-              <div class="field"><label for="rhythmBreaks">Breaks across the day</label><select id="rhythmBreaks" data-rule="breaks"></select></div>
-              <p class="helper">These are common conventions, not findings measured on you, and SleepSphere does not claim an outcome for any of them. The defaults are 8 hours, 3 hours, 2 hours and 3 breaks; set any of them to none and the line disappears.</p>
-            </article>
+              <button type="button" class="btn primary rhythm-start" id="rhythmStart">Start wind-down</button>
 
-            <article class="card span-5">
-              <div class="card-label">Where this comes from</div>
-              <h3 style="margin:6px 0 10px">Two times and four numbers.</h3>
-              <p>Everything on the left is your start of day and your planned sleep, with the four gaps above subtracted from one or the other. There is no model, no score and nothing learned about you behind it — which is why every line can say exactly what produced it.</p>
-              <div class="button-row" style="margin-top:12px"><button class="btn ghost" data-go="plan">Change tonight's plan</button><button class="btn ghost" data-go="learn">Read the evidence</button></div>
+              <!-- The optional information panel. Everything the main screen
+                   used to say out loud is here instead: the four gaps, the
+                   arithmetic behind each line, and the one sentence that
+                   has to stay somewhere — that these are common guidelines
+                   and not measurements of anyone. -->
+              <div class="rhythm-panel" id="rhythmPanel" hidden>
+                <div class="rhythm-fields">
+                  <div class="field"><label for="rhythmCaffeine">Last coffee before bed</label><select id="rhythmCaffeine" data-rule="caffeineGap"></select></div>
+                  <div class="field"><label for="rhythmMeal">Finish dinner before bed</label><select id="rhythmMeal" data-rule="mealGap"></select></div>
+                  <div class="field"><label for="rhythmMove">Last workout before wind-down</label><select id="rhythmMove" data-rule="moveGap"></select></div>
+                  <div class="field"><label for="rhythmBreaks">Breaks</label><select id="rhythmBreaks" data-rule="breaks"></select></div>
+                </div>
+                <h4 class="rhythm-panel-head">How these times are worked out</h4>
+                <ul class="rhythm-why" id="rhythmWhy"></ul>
+                <p class="rhythm-small" id="rhythmCare"></p>
+              </div>
             </article>
-
           </div>
         </section>
 
+        <!-- ==================================================================
+             SABAT
+
+             The two ends of the night, in one place. Everything religious on
+             this screen is rendered at runtime from the DUA constant and
+             from the verse already set on Learn — none of it is typed a
+             second time into this markup, because a second transcription of
+             pointed Arabic is a second chance to drop a diacritic.
+
+             Where SleepSphere has no verified wording it says so and leaves
+             the space empty. It does not fill a gap in religious text with
+             something that reads plausibly.
+             ================================================================== -->
         <section class="view" id="sabat">
           <div class="section-head"><div><div class="eyebrow">Kept as supplied</div><h2>The two ends of the night</h2></div><p>What is said before sleep, and what is said on waking. Verbatim as supplied, with the wind-down able to open it for you.</p></div>
           <div class="grid">
@@ -4698,14 +4721,13 @@
       const back = (from, hours) => normalizeMinutes(from - Math.round(hours * 60));
 
       const items = [];
-      const add = (key, at, title, body, basis) =>
-        items.push({ key, at: normalizeMinutes(at), title, body, basis,
+      const add = (key, at, label, basis) =>
+        items.push({ key, at: normalizeMinutes(at), label, basis,
                      done: marks.indexOf(key) > -1 });
 
-      add('wake', anchors.wake, 'Your day starts',
-        'The hour the rest of this is measured from.',
+      add('wake', anchors.wake, 'Wake up',
         anchors.source === 'plan' ? "From tonight's saved plan."
-          : anchors.source === 'usual' ? 'From the usual start of day you gave SleepSphere.'
+          : anchors.source === 'usual' ? 'The usual start of day you gave SleepSphere.'
           : 'A generic start of day — SleepSphere does not know yours yet.');
 
       /* Breaks, spaced across the waking day rather than at fixed hours:
@@ -4715,40 +4737,34 @@
         const step = awake / (rules.breaks + 1);
         for (let i = 1; i <= rules.breaks; i++) {
           add('break' + i, anchors.wake + Math.round(step * i),
-            'Step away for a few minutes',
-            'Not a task. Standing up, looking at something further away, or going outside all count.',
+            'Take a break',
             `${i} of ${rules.breaks}, spaced evenly across your ${formatDuration(awake)} awake.`);
         }
       }
 
       if (rules.moveGap > 0) {
         add('move', back(anchors.windDown, rules.moveGap),
-          'Last hard effort of the day',
-          'Gentle movement after this is fine. This is about the kind that leaves you still keyed up an hour later.',
+          'Last workout',
           `${rules.moveGap} h before your wind-down at ${formatTime(anchors.windDown)}.`);
       }
 
       if (rules.caffeineGap > 0) {
         add('caffeine', back(anchors.sleep, rules.caffeineGap),
-          'Last caffeine',
-          'Caffeine blocks the signal that builds sleep pressure through the day, and it clears slowly and at very different speeds in different people.',
+          'Last coffee',
           `${rules.caffeineGap} h before your planned sleep at ${formatTime(anchors.sleep)}.`);
       }
 
       if (rules.mealGap > 0) {
         add('meal', back(anchors.sleep, rules.mealGap),
-          'Last substantial meal',
-          'Something small later is not the same thing. This is about a full meal still being digested at bedtime.',
+          'Finish dinner',
           `${rules.mealGap} h before your planned sleep at ${formatTime(anchors.sleep)}.`);
       }
 
-      add('winddown', anchors.windDown, 'Wind-down',
-        'One tap starts the soundscape, the timer and the duʿāʾ.',
+      add('winddown', anchors.windDown, 'Wind down',
         anchors.source === 'plan' ? "Where tonight's plan puts it."
-          : 'An hour before sleep, which is the default until a night is planned.');
+          : 'An hour before sleep, until a night is planned.');
 
-      add('sleep', anchors.sleep, 'Lights out',
-        'The opportunity your night was planned around.',
+      add('sleep', anchors.sleep, 'Bedtime',
         anchors.source === 'plan' ? "From tonight's saved plan."
           : `Your target of ${formatDuration(Number(state_.settings?.target) || 480)} back from the start of day.`);
 
@@ -4992,7 +5008,7 @@
       plan: ['Plan tonight', 'Build a realistic night.', 'Protect sleep around the responsibilities you actually have.'],
       travel: ['Travel', 'Move your body clock on purpose.', 'Cross time zones with a light plan instead of hoping it sorts itself out.'],
       unload: ['Clear my mind', 'Put unfinished thoughts somewhere safe.', 'Name the thought, give it a destination and continue offline.'],
-      rhythm: ['My Rhythm', 'The day your night is asking for.', 'Four daytime gaps, measured from your own start of day and planned sleep.'],
+      rhythm: ['My Rhythm', 'Your day', ''],
       sabat: ['Sabat', 'What is said at either end of the night.', 'The bedtime duʿāʾ, kept exactly as supplied, and where a waking one will go.'],
       morning: ['Morning check-in', 'How did sleep actually feel?', 'Record restoration, energy and focus in a few taps.'],
       bio: ['Step 1 of 3', 'Check your Bio Harmony.', 'Notice five body and routine signals, then receive one clear suggestion.'],
@@ -7082,102 +7098,106 @@
 
     /* ==================================================================
        MY RHYTHM, drawn.
+
+       One list, short labels, one action. Everything that explains
+       itself — the four gaps, the arithmetic behind each line, and the
+       note that these are guidelines rather than measurements — is
+       behind Adjust, which is closed by default.
        ================================================================== */
     const RHYTHM_CHOICES = {
-      caffeineGap: [[0, 'No cut-off'], [4, '4 hours'], [6, '6 hours'], [8, '8 hours'], [10, '10 hours'], [12, '12 hours']],
-      mealGap: [[0, 'No gap'], [1, '1 hour'], [2, '2 hours'], [3, '3 hours'], [4, '4 hours']],
+      caffeineGap: [[0, 'No limit'], [4, '4 hours'], [6, '6 hours'], [8, '8 hours'], [10, '10 hours'], [12, '12 hours']],
+      mealGap: [[0, 'No limit'], [1, '1 hour'], [2, '2 hours'], [3, '3 hours'], [4, '4 hours']],
       moveGap: [[0, 'No limit'], [1, '1 hour'], [2, '2 hours'], [3, '3 hours'], [4, '4 hours']],
       breaks: [[0, 'None'], [1, 'One'], [2, 'Two'], [3, 'Three'], [4, 'Four'], [5, 'Five']]
     };
 
+    /* Shown only inside the panel. The main screen names the moment and
+       stops; anyone who wants the reasoning opens Adjust. */
+    const RHYTHM_NOTES = {
+      caffeine: 'Caffeine clears slowly, and at very different rates in different people.',
+      meal: 'A full meal still being digested at bedtime is the thing this spaces out; something small later is not the same.',
+      move: 'Hard effort, not movement in general — gentle movement later is fine.',
+      wake: 'Every other time on this list is measured from your wake time or your bedtime.'
+    };
+
+    let rhythmPanelOpen = false;
+
     function renderRhythm() {
-      const day = rhythmDay();
       const list = $('#rhythmList');
       if (!list) return;
+      const day = rhythmDay();
 
-      $('#rhythmSource').textContent =
-        day.anchors.source === 'plan' ? "From tonight's plan"
-        : day.anchors.source === 'usual' ? 'From your usual day'
-        : 'No plan yet';
-      $('#rhythmSpan').textContent =
-        `${formatTime(day.anchors.wake)} until ${formatTime(day.anchors.sleep)}`;
-      $('#rhythmBasis').textContent = day.anchors.source === 'plan'
-        ? `${formatDuration(day.awake)} awake, then the night you planned.`
-        : day.anchors.source === 'usual'
-          ? `${formatDuration(day.awake)} awake. Plan a night and these shift to it.`
-          : 'SleepSphere is using a generic day because it does not know yours yet. Plan a night, or set your usual start of day, and every line below moves.';
+      $('#rhythmWake').textContent = formatTime(day.anchors.wake);
+      $('#rhythmBed').textContent = formatTime(day.anchors.sleep);
 
       /* Bare minimum reads the day; it is not asked to tick it off. The
          rows are identical either way — what changes is whether anything
          on the screen wants something from you. */
       const ticks = !window.SSAssist || !window.SSAssist.plan
         || window.SSAssist.plan().rhythmTicks !== false;
+      const still = window.matchMedia
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
       list.innerHTML = '';
-      day.items.forEach(item => {
+      day.items.forEach((item, index) => {
         const row = document.createElement('li');
         row.className = 'rhythm-item' + (item.done ? ' done' : '');
         row.dataset.key = item.key;
+        /* A short stagger on first paint, and nothing at all for anyone
+           who asked for less motion. */
+        if (!still) row.style.setProperty('--rhythm-in', (index * 34) + 'ms');
+        else row.classList.add('shown');
 
-        const when = document.createElement('div');
+        const when = document.createElement('time');
         when.className = 'rhythm-when';
         when.textContent = formatTime(item.at);
         row.appendChild(when);
 
-        const body = document.createElement('div');
-        body.className = 'rhythm-body';
-        const title = document.createElement('strong');
-        title.textContent = item.title;
-        body.appendChild(title);
-        const text = document.createElement('p');
-        text.textContent = item.body;
-        body.appendChild(text);
-        /* The arithmetic, on every line, always. */
-        const basis = document.createElement('p');
-        basis.className = 'rhythm-basis';
-        basis.textContent = item.basis;
-        body.appendChild(basis);
+        const node = document.createElement('span');
+        node.className = 'rhythm-node';
+        node.setAttribute('aria-hidden', 'true');
+        row.appendChild(node);
 
-        if (item.key === 'winddown') {
-          const go = document.createElement('button');
-          go.type = 'button';
-          go.className = 'btn ghost small rhythm-go';
-          go.textContent = 'Start my wind-down';
-          go.addEventListener('click', async () => {
-            /* Inside the tap, because the audio context needs it. */
-            if (!window.SSAssist) { navigate('today'); return; }
-            go.disabled = true;
-            try {
-              await window.SSAssist.start();
-              navigate('today');
-              if (window.SSAssistUI && window.SSAssist.plan().openControls) window.SSAssistUI.open();
-            } catch (err) {
-              toast(err && err.message ? err.message : 'The wind-down could not start.');
-            } finally { go.disabled = false; }
-          });
-          body.appendChild(go);
-        }
-        row.appendChild(body);
+        const label = document.createElement('span');
+        label.className = 'rhythm-label';
+        label.textContent = item.label;
+        row.appendChild(label);
 
         if (ticks) {
           const mark = document.createElement('button');
           mark.type = 'button';
           mark.className = 'rhythm-mark';
           mark.setAttribute('aria-pressed', String(item.done));
+          /* The accessible name carries what the control is for, since
+             the control itself is a circle. */
           mark.setAttribute('aria-label',
-            (item.done ? 'Unmark ' : 'Mark done: ') + item.title);
-          mark.textContent = item.done ? '✓' : '';
+            (item.done ? 'Undo: ' : 'Done: ') + item.label + ' at ' + formatTime(item.at));
           mark.addEventListener('click', () => { rhythmMark(item.key, !item.done); renderRhythm(); });
           row.appendChild(mark);
         }
         list.appendChild(row);
       });
+      if (!still) requestAnimationFrame(() =>
+        list.querySelectorAll('.rhythm-item').forEach(r => r.classList.add('shown')));
 
-      /* Said once, plainly, and it is the whole of the app's position on
-         marking things off. */
-      $('#rhythmMarks').textContent = ticks
-        ? 'Marks are for today only. Tomorrow they are gone — nothing is counted, and a day with none of them ticked is not a day you failed.'
-        : 'On bare minimum this is something to read, not something to tick. Nothing here is asking you for anything.';
+      /* ---- the panel ---- */
+      const why = $('#rhythmWhy');
+      why.innerHTML = '';
+      day.items.forEach(item => {
+        if (/^break[2-9]/.test(item.key)) return;     /* one line for all of them */
+        const li = document.createElement('li');
+        const name = document.createElement('strong');
+        name.textContent = item.label;
+        li.appendChild(name);
+        const basis = document.createElement('span');
+        basis.textContent = item.basis +
+          (RHYTHM_NOTES[item.key] ? ' ' + RHYTHM_NOTES[item.key] : '');
+        li.appendChild(basis);
+        why.appendChild(li);
+      });
+      $('#rhythmCare').textContent = day.anchors.source === 'default'
+        ? 'These are common guidelines, not measurements of you. SleepSphere does not know your usual day yet, so plan a night or set your wake time and every line will move.'
+        : 'These are common guidelines, not measurements of you, and no outcome is claimed for them. Marks clear overnight and nothing is counted.';
 
       Object.keys(RHYTHM_CHOICES).forEach(key => {
         const select = document.querySelector('[data-rule="' + key + '"]');
@@ -7197,6 +7217,34 @@
         select.value = String(day.rules[key]);
       });
     }
+
+    function paintRhythmPanel() {
+      const panel = $('#rhythmPanel'), button = $('#rhythmAdjust');
+      if (!panel || !button) return;
+      panel.hidden = !rhythmPanelOpen;
+      button.setAttribute('aria-expanded', String(rhythmPanelOpen));
+      button.textContent = rhythmPanelOpen ? 'Done' : 'Adjust';
+    }
+    $('#rhythmAdjust')?.addEventListener('click', () => {
+      rhythmPanelOpen = !rhythmPanelOpen;
+      paintRhythmPanel();
+    });
+
+    /* The one action. Inside the tap, because the audio context needs it. */
+    $('#rhythmStart')?.addEventListener('click', async () => {
+      const button = $('#rhythmStart');
+      if (!window.SSAssist) { navigate('today'); return; }
+      button.disabled = true;
+      const was = button.textContent;
+      button.textContent = 'Starting\u2026';
+      try {
+        await window.SSAssist.start();
+        navigate('today');
+        if (window.SSAssistUI && window.SSAssist.plan().openControls) window.SSAssistUI.open();
+      } catch (err) {
+        toast(err && err.message ? err.message : 'The wind-down could not start.');
+      } finally { button.disabled = false; button.textContent = was; }
+    });
 
     /* ==================================================================
        SABAT, rendered.
@@ -11938,5 +11986,10 @@
        daypart; the drawn sky stays and shows wherever one does not. -->
   <script src="living-sky.js"></script>
   <script src="flight-cabin.js"></script>
+  <!-- Jamea al Anwar. A standalone courtyard, drawn entirely in SVG, CSS
+       and canvas — no photograph, and the screen says so permanently.
+       It borrows sound from SSExplore and the wind-down from SSAssist
+       and owns neither. -->
+  <script src="anwar.js"></script>
 </body>
 </html>

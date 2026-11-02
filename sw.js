@@ -1,4 +1,4 @@
-const CACHE = 'sleepsphere-v14-network-first-20261019';
+const CACHE = 'sleepsphere-v15-assist-20261102';
 /* The Arabic face is shell, not an extra. The dua is read at bedtime, which
    is exactly when a phone is likeliest to be in a basement, on aeroplane
    mode, or out of data — so it is fetched on install with everything else
@@ -9,7 +9,13 @@ const CACHE = 'sleepsphere-v14-network-first-20261019';
    is not there when it is wanted. Both files are loaded on every device
    regardless of whether anyone enabled it, so caching them discloses
    nothing. */
-const SHELL = ['./', './manifest.webmanifest', './favicon.svg', './apple-touch-icon.png', './sleepsphere-icon-192.png', './sleepsphere-icon-512.png', './fonts/amiri-naskh-v2.woff2', './motherhood.js', './motherhood-ui.js', './motherhood.css', './insights.js', './insights.css', './explore.js', './explore.css', './living-sky.js', './living-sky.css'];
+const SHELL = ['./', './manifest.webmanifest', './favicon.svg', './apple-touch-icon.png', './sleepsphere-icon-192.png', './sleepsphere-icon-512.png', './fonts/amiri-naskh-v2.woff2', './motherhood.js', './motherhood-ui.js', './motherhood.css', './insights.js', './insights.css', './explore.js', './explore.css', './living-sky.js', './living-sky.css',
+  /* Assist and Jamea al Anwar are shell for the same reason the Arabic
+     face is: they are what the app is for at bedtime, which is exactly
+     when the phone is likeliest to have no network. Neither file loads
+     anything further — Anwar draws its courtyard rather than fetching
+     one — so caching them makes the whole of both available offline. */
+  './assist.js', './assist-ui.js', './assist.css', './anwar.js', './anwar.css'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));

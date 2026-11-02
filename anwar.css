@@ -1,0 +1,241 @@
+/* Jamea al Anwar — the courtyard at night.
+
+   Everything here is drawn. There is no photograph in this file, no
+   background-image pointing at one, and nothing that would load one.
+
+   The stage is a stack: sky, stars, moon, the far silhouette, the near
+   arcade, the lanterns, then the birds on a canvas above all of it. The
+   ledge the birds stand on is the top edge of .anwar-near, so the two
+   coordinate systems meet at one number — 58% — which is LEDGE in
+   anwar.js and `top` here. Change one and change the other. */
+
+.anwar {
+  position: fixed;
+  inset: 0;
+  z-index: 78;                       /* above the sheet, below the toast */
+  display: grid;
+  grid-template-rows: 1fr auto;
+  background: #04070e;
+  opacity: 0;
+  transition: opacity .5s ease;
+}
+.anwar.on { opacity: 1; }
+html.anwar-open, html.anwar-open body { overflow: hidden; }
+
+.anwar-stage { position: relative; overflow: hidden; }
+
+/* ---- sky ---------------------------------------------------------- */
+.anwar-sky {
+  position: absolute; inset: 0;
+  /* The glow sits at the ledge, which is what makes the birds read:
+     a silhouette needs something behind it that is lighter than it is,
+     and at 58% that is this band rather than the sky above. */
+  background:
+    radial-gradient(135% 42% at 50% 59%, rgba(104, 128, 162, .62), transparent 72%),
+    linear-gradient(#04070f 0%, #091223 38%, #16243c 58%, #0b1424 70%, #060b16 100%);
+}
+
+.anwar-stars { position: absolute; inset: 0; }
+.anwar-stars span {
+  position: absolute;
+  width: 2px; height: 2px;
+  border-radius: 50%;
+  background: #f3efe4;
+  animation: anwarTwinkle var(--anwar-twinkle, 4s) ease-in-out var(--anwar-delay, 0s) infinite;
+}
+@keyframes anwarTwinkle {
+  0%, 100% { opacity: .22; }
+  50% { opacity: .9; }
+}
+
+.anwar-moon {
+  position: absolute;
+  top: 9%; left: 63%;
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 34%, #fbf6e7, #e2d6b4 62%, #cbbb92);
+  box-shadow: 0 0 60px 18px rgba(240, 230, 200, .13);
+}
+
+/* ---- the buildings ------------------------------------------------ */
+.anwar-far {
+  position: absolute;
+  left: 0; bottom: 42%;
+  width: 100%; height: 46%;         /* width stated: an absolutely
+                                       positioned SVG with left+right and
+                                       no width takes its intrinsic size
+                                       from the viewBox ratio instead */
+  display: block;
+}
+.anwar-near {
+  position: absolute;
+  left: 0; bottom: 0;
+  width: 100%; height: 42%;          /* top edge at 58% — LEDGE */
+  display: block;
+}
+
+/* ---- lanterns ----------------------------------------------------- */
+.anwar-lantern {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%) scale(var(--anwar-scale, 1));
+  transform-origin: 50% 0;
+  display: grid;
+  justify-items: center;
+  animation: anwarSway 7.5s ease-in-out var(--anwar-delay, 0s) infinite;
+  pointer-events: none;
+}
+.anwar-cord {
+  display: block;
+  width: 1px; height: clamp(40px, 13vh, 110px);
+  background: linear-gradient(rgba(233, 228, 217, .34), rgba(233, 228, 217, .14));
+}
+.anwar-glass {
+  display: block;
+  width: 15px; height: 23px;
+  border-radius: 48% 48% 36% 36%;
+  background: linear-gradient(#f3dfa6, #d9a94f 58%, #a3762f);
+  box-shadow: 0 0 26px 7px rgba(236, 196, 116, .3),
+              0 0 70px 24px rgba(214, 160, 70, .13);
+}
+@keyframes anwarSway {
+  0%, 100% { transform: translateX(-50%) scale(var(--anwar-scale, 1)) rotate(-1.1deg); }
+  50% { transform: translateX(-50%) scale(var(--anwar-scale, 1)) rotate(1.1deg); }
+}
+
+/* ---- the birds ---------------------------------------------------- */
+.anwar-birds {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  display: block;
+  pointer-events: none;
+}
+
+/* The courtyard itself is the control. Invisible, but a real button:
+   it has a name, it takes focus, and a keyboard reaches it. */
+.anwar-touch {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  border: 0; padding: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.anwar-touch:focus-visible {
+  outline: 3px solid #e8d8b5;
+  outline-offset: -6px;
+}
+
+/* ---- the panel ---------------------------------------------------- */
+.anwar-panel {
+  padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+  display: grid;
+  gap: 9px;
+  background: rgba(6, 11, 20, .94);
+  border-top: 1px solid rgba(245, 244, 239, .14);
+  color: #f5f4ef;
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .anwar-panel {
+    background: rgba(6, 11, 20, .74);
+    -webkit-backdrop-filter: blur(20px) saturate(125%);
+    backdrop-filter: blur(20px) saturate(125%);
+  }
+}
+.anwar-eyebrow {
+  margin: 0;
+  font-size: .68rem; letter-spacing: .15em; text-transform: uppercase;
+  color: #e8d8b5;
+}
+.anwar-title {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  font-size: clamp(1.3rem, 5.4vw, 1.72rem);
+  line-height: 1.22;
+}
+.anwar-note {
+  margin: 0;
+  max-width: 54ch;
+  font-size: .9rem; line-height: 1.55;
+  color: rgba(245, 244, 239, .78);
+}
+
+/* The provenance. Smaller than the rest, and permanent: it is the one
+   line on this screen that must never be behind a disclosure. */
+.anwar-provenance {
+  margin: 2px 0 0;
+  max-width: 62ch;
+  font-size: .76rem; line-height: 1.5;
+  color: rgba(245, 244, 239, .54);
+}
+
+.anwar-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+
+/* Close sits on the courtyard, where a full-screen thing is closed from,
+   so the panel carries only the two things you came here to do. */
+.anwar-close {
+  position: absolute;
+  top: calc(10px + env(safe-area-inset-top, 0px)); right: 10px;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(245, 244, 239, .26);
+  background: rgba(6, 11, 20, .5);
+  color: #f5f4ef;
+  font: inherit; font-size: 1.1rem; line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.anwar-close:hover { background: rgba(6, 11, 20, .78); }
+.anwar-close:focus-visible { outline: 3px solid #e8d8b5; outline-offset: 2px; }
+.anwar-btn {
+  flex: 1 1 auto;
+  min-height: 46px;
+  padding: 0 15px;
+  border-radius: 13px;
+  border: 1px solid rgba(245, 244, 239, .24);
+  background: rgba(245, 244, 239, .09);
+  color: #f5f4ef;
+  font: inherit; font-size: .9rem;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color .18s ease, transform .16s ease;
+}
+.anwar-btn:hover { background: rgba(245, 244, 239, .16); }
+.anwar-btn:active { transform: scale(.975); }
+.anwar-btn:disabled { opacity: .5; cursor: default; }
+.anwar-primary {
+  background: #e8d8b5; border-color: #e8d8b5; color: #14283a; font-weight: 600;
+}
+.anwar-primary:hover { background: #f0e3c6; }
+.anwar-btn[aria-pressed="true"] {
+  background: rgba(232, 216, 181, .22);
+  border-color: rgba(232, 216, 181, .55);
+}
+.anwar-panel :focus-visible { outline: 3px solid #e8d8b5; outline-offset: 2px; }
+
+@media (min-width: 700px) {
+  .anwar-panel { padding: 22px clamp(22px, 7vw, 64px) calc(22px + env(safe-area-inset-bottom, 0px)); }
+  .anwar-row { max-width: 560px; }
+}
+
+/* Nothing loops for someone who asked for no motion. The birds stop
+   moving in anwar.js — this stops everything drawn in CSS, so the
+   courtyard becomes a still picture rather than a quieter animation. */
+@media (prefers-reduced-motion: reduce) {
+  .anwar { transition: none; }
+  .anwar-stars span { animation: none; }
+  .anwar-lantern { animation: none; }
+  .anwar-btn:active { transform: none; }
+}
+
+/* The courtyard floor-side of the arcade, falling away into the dark.
+   Sits above .anwar-near and below the birds, so nothing standing on the
+   ledge is dimmed by it. */
+.anwar-court {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 42%;
+  background: linear-gradient(rgba(4, 7, 14, 0) 0%, rgba(4, 7, 14, .35) 34%, rgba(4, 7, 14, .9) 100%);
+  pointer-events: none;
+}

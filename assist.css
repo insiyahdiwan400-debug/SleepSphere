@@ -181,49 +181,212 @@
 .sabat-line { font-size: 1.22rem; line-height: 2.1; }
 .sabat-closing { font-size: 1rem; color: var(--muted, #7d776c); }
 
-/* My Rhythm. A column of moments: the time on the left at a fixed width
-   so the whole day reads as one ruler rather than as ragged rows. */
-.rhythm-list { list-style: none; margin: 16px 0 12px; padding: 0; display: grid; gap: 2px; }
-.rhythm-item {
-  display: grid;
-  grid-template-columns: 78px 1fr auto;
-  gap: 14px; align-items: start;
-  padding: 14px 0;
-  border-top: 1px solid var(--line, rgba(127, 127, 127, .16));
-}
-.rhythm-item:first-child { border-top: 0; }
-.rhythm-item.done { opacity: .5; }
-.rhythm-when {
-  font-variant-numeric: tabular-nums;
-  font-size: .92rem; letter-spacing: .01em;
-  color: var(--gold, #c9b27a);
-  padding-top: 1px;
-}
-.rhythm-body { display: grid; gap: 4px; min-width: 0; }
-.rhythm-body strong { font-size: 1rem; }
-.rhythm-body p { margin: 0; font-size: .88rem; line-height: 1.5; }
-.rhythm-basis { color: var(--muted, #7d776c); font-size: .82rem !important; }
-.rhythm-go { justify-self: start; margin-top: 6px; }
+/* ==================================================================
+   MY RHYTHM
 
-/* The mark. Deliberately small and unlabelled-looking: it is an option,
-   not the point of the screen, and nothing counts it. */
-.rhythm-mark {
-  width: 44px; height: 44px;
-  border-radius: 50%;
-  border: 1px solid var(--line, rgba(127, 127, 127, .3));
-  background: transparent;
+   A timeline, and as little else as possible. The clock column is fixed
+   and tabular so the left edge reads as a ruler; the rail runs behind
+   the nodes and stops at the first and last of them rather than running
+   off the card. Everything explanatory is in .rhythm-panel, which is
+   closed until someone asks for it.
+   ================================================================== */
+.rhythm-card { padding-bottom: 20px; }
+
+.rhythm-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line, rgba(127, 127, 127, .14));
+}
+.rhythm-bounds { display: flex; align-items: center; gap: 18px; }
+.rhythm-bound { display: grid; gap: 3px; }
+.rhythm-bound span {
+  font-size: .64rem; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--muted, #7d776c);
+}
+.rhythm-bound strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  font-size: clamp(1.32rem, 6vw, 1.68rem);
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
+}
+.rhythm-rule {
+  width: 26px; height: 1px;
+  background: var(--line, rgba(127, 127, 127, .3));
+}
+
+/* Discreet by design: this is the only control in the header and it
+   should not compete with the two times beside it. */
+.rhythm-adjust {
+  flex: 0 0 auto;
+  min-height: 44px; padding: 0 2px;
+  border: 0; background: none;
   color: var(--gold, #c9b27a);
-  font-size: 1rem; line-height: 1;
+  font: inherit; font-size: .82rem; letter-spacing: .02em;
+  cursor: pointer;
+}
+.rhythm-adjust:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+/* ---- the timeline ---- */
+.rhythm-list {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  position: relative;
+}
+/* The rail, behind the nodes, inset so it begins and ends at one. */
+.rhythm-list::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--rhythm-clock, 74px) + 11px);
+  top: 26px; bottom: 26px;
+  width: 1px;
+  background: linear-gradient(var(--line, rgba(127, 127, 127, .26)),
+                              var(--line, rgba(127, 127, 127, .26)));
+}
+
+.rhythm-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--rhythm-clock, 74px) 22px 1fr auto;
+  align-items: center;
+  gap: 0 12px;
+  min-height: 52px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity .42s ease var(--rhythm-in, 0ms),
+              transform .42s cubic-bezier(.22, 1, .36, 1) var(--rhythm-in, 0ms),
+              color .3s ease;
+}
+.rhythm-item.shown { opacity: 1; transform: none; }
+.rhythm-item.done { opacity: .42; }
+
+.rhythm-when {
+  font-size: .8rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .01em;
+  color: var(--muted, #7d776c);
+  white-space: nowrap;
+  /* Right-aligned so the column reads as one ruler against the rail
+     instead of as ragged text with a gap after the short times. */
+  text-align: right;
+}
+.rhythm-node {
+  justify-self: center;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--bg, #0b1422);
+  box-shadow: 0 0 0 1px var(--line, rgba(127, 127, 127, .42));
+  transition: background-color .25s ease, box-shadow .25s ease;
+}
+.rhythm-item.done .rhythm-node {
+  background: var(--gold, #c9b27a);
+  box-shadow: 0 0 0 1px var(--gold, #c9b27a);
+}
+.rhythm-label {
+  font-size: 1rem;
+  letter-spacing: -.005em;
+  min-width: 0;
+}
+
+/* Wind down and bedtime are where the day is going, so they carry a
+   little more weight than the moments along the way. */
+.rhythm-item[data-key="winddown"] .rhythm-label,
+.rhythm-item[data-key="sleep"] .rhythm-label { font-weight: 600; }
+.rhythm-item[data-key="winddown"] .rhythm-node,
+.rhythm-item[data-key="sleep"] .rhythm-node {
+  width: 9px; height: 9px;
+  box-shadow: 0 0 0 1px var(--gold, #c9b27a);
+}
+
+.rhythm-mark {
+  width: 24px; height: 24px;
+  margin: 0 0 0 10px;
+  border-radius: 50%;
+  border: 1px solid var(--line, rgba(127, 127, 127, .34));
+  background: transparent;
   cursor: pointer;
   touch-action: manipulation;
+  position: relative;
+  transition: border-color .2s ease, background-color .2s ease, transform .2s cubic-bezier(.3, 1.4, .5, 1);
 }
+/* The control is 28px to look right; the target is 44px, which is what
+   a thumb actually hits. */
+.rhythm-mark::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+}
+.rhythm-mark::before {
+  content: "";
+  position: absolute;
+  left: 8px; top: 4px;
+  width: 5px; height: 10px;
+  border: solid var(--bg, #0b1422);
+  border-width: 0 1.6px 1.6px 0;
+  transform: rotate(45deg) scale(.4);
+  opacity: 0;
+  transition: opacity .18s ease, transform .22s cubic-bezier(.3, 1.5, .5, 1);
+}
+.rhythm-mark:hover { border-color: var(--gold, #c9b27a); }
 .rhythm-mark[aria-pressed="true"] {
+  background: var(--gold, #c9b27a);
   border-color: var(--gold, #c9b27a);
-  background: rgba(201, 178, 122, .16);
 }
-@media (max-width: 480px) {
-  /* Wide enough for "10:15 AM" on one line: a wrapped clock turns the
-     left column from a ruler into noise. */
-  .rhythm-item { grid-template-columns: 76px 1fr auto; gap: 10px; }
-  .rhythm-when { font-size: .84rem; }
+.rhythm-mark[aria-pressed="true"]::before { opacity: 1; transform: rotate(45deg) scale(1); }
+.rhythm-mark[aria-pressed="true"]:active { transform: scale(.9); }
+.rhythm-mark:focus-visible { outline: 2px solid var(--gold, #c9b27a); outline-offset: 3px; }
+
+.rhythm-start { width: 100%; margin-top: 26px; }
+
+/* ---- the panel ---- */
+.rhythm-panel {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line, rgba(127, 127, 127, .14));
+  display: grid;
+  gap: 14px;
+}
+.rhythm-fields { display: grid; gap: 12px; }
+.rhythm-panel-head {
+  margin: 4px 0 0;
+  font-size: .64rem; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--muted, #7d776c);
+  font-weight: 600;
+}
+.rhythm-why { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.rhythm-why li { display: grid; gap: 2px; }
+.rhythm-why strong { font-size: .88rem; }
+.rhythm-why span {
+  font-size: .82rem; line-height: 1.5;
+  color: var(--muted, #7d776c);
+}
+.rhythm-small {
+  margin: 0;
+  font-size: .78rem; line-height: 1.5;
+  color: var(--muted, #7d776c);
+}
+
+@media (min-width: 620px) {
+  .rhythm-fields { grid-template-columns: 1fr 1fr; gap: 12px 18px; }
+  .rhythm-start { width: auto; min-width: 240px; }
+  .rhythm-item { min-height: 56px; }
+  /* Capped, so on a tablet the tick stays beside its label instead of
+     drifting to the far edge of a very wide card. */
+  .rhythm-list { max-width: 520px; }
+  .rhythm-why { max-width: 620px; }
+}
+@media (max-width: 380px) {
+  .rhythm-list, .rhythm-item { --rhythm-clock: 66px; }
+  .rhythm-label { font-size: .94rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rhythm-item { opacity: 1; transform: none; transition: none; }
+  .rhythm-mark, .rhythm-mark::before, .rhythm-node { transition: none; }
+  .rhythm-mark[aria-pressed="true"]:active { transform: none; }
 }
