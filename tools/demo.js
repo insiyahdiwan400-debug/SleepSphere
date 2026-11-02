@@ -65,7 +65,7 @@ const CINEMA = () => {
       background:linear-gradient(to top, rgba(4,5,12,.94) 0%, rgba(4,5,12,.78) 34%,
                                  rgba(4,5,12,.34) 56%, rgba(4,5,12,0) 74%); }
     #__demo.full { align-items:center; }
-    #__demo.full::before { background:rgba(3,4,10,.88); }
+    #__demo.full::before { background:rgba(3,4,10,.955); }
     #__demo > div { position:relative; text-align:center; max-width:330px;
       padding:0 22px 104px; transform:translateY(12px); transition:transform .34s ease; }
     #__demo.on > div { transform:none; }
@@ -108,8 +108,19 @@ const CINEMA = () => {
   };
 };
 
-/* Two weeks of ordinary nights, written through the app's own save path so
-   the screens that show history have something true in them. */
+/* Two weeks of ordinary nights.
+
+   Written through the app's own save path, AFTER it has loaded, and not by
+   putting bytes into localStorage before it starts. The first cut did that
+   and the app quite rightly refused to save anything afterwards: a state
+   with no schema version on it is a state this build cannot prove it can
+   read, so loadState flags it and saveState protects the original bytes
+   rather than overwriting them. The demo then showed taps that changed the
+   screen and changed nothing on disk — which is the exact failure this
+   whole script exists to catch, caught on itself.
+
+   So the seed goes through window.SS, and the demo asserts the save
+   actually reached the disk before it films anything. */
 const SEED = () => {
   const mins = t => (+t.slice(0, 2)) * 60 + (+t.slice(3));
   const rows = [
@@ -121,9 +132,8 @@ const SEED = () => {
     ['23:45', '00:05', '07:05', 3, 3], ['22:55', '23:10', '06:35', 4, 1],
     ['23:20', '23:38', '06:55', 3, 2], ['23:08', '23:22', '06:42', 4, 2]
   ];
-  const state = JSON.parse(localStorage.getItem('sleepsphere_state_v2') || '{}');
   const day = 86400000, today = Date.now();
-  state.mornings = rows.map((r, i) => {
+  const mornings = rows.map((r, i) => {
     const d = new Date(today - (rows.length - i) * day).toISOString().slice(0, 10);
     const bed = mins(r[0]), sleep = mins(r[1]), wake = mins(r[2]);
     let opportunity = wake - bed; if (opportunity <= 0) opportunity += 1440;
@@ -138,8 +148,12 @@ const SEED = () => {
       createdAt: new Date(today - (rows.length - i) * day).toISOString()
     };
   });
-  state.settings = { ...(state.settings || {}), usualWake: '06:45', target: 480 };
-  localStorage.setItem('sleepsphere_state_v2', JSON.stringify(state));
+  window.SS.state.mornings = mornings;
+  window.SS.state.settings.usualWake = '06:45';
+  window.SS.state.settings.target = 480;
+  const written = window.SS.save();
+  const raw = JSON.parse(localStorage.getItem('sleepsphere_state_v2') || '{}');
+  return { written, onDisk: (raw.mornings || []).length };
 };
 
 /* ------------------------------------------------------------------ */
@@ -171,7 +185,6 @@ function beat(label, ok, detail) {
   p.on('pageerror', e => errs.push(e.message));
 
   await p.addInitScript(EVENING);
-  await p.addInitScript(SEED);
   await p.goto(BASE, { waitUntil: 'networkidle' });
   await p.waitForTimeout(2600);
   await p.evaluate(CINEMA);
@@ -191,11 +204,19 @@ function beat(label, ok, detail) {
     return true;
   };
 
+  /* Before anything is filmed: the history goes in through the app's own
+     save path, and the app confirms it reached the disk. */
+  const seeded = await p.evaluate(SEED);
+  beat('Two weeks of nights saved through the app’s own save path',
+    seeded.written === true && seeded.onDisk === 14,
+    'written=' + seeded.written + ', ' + seeded.onDisk + ' on disk');
+  await wait(600);
+
   /* ================================================================
      1 — the night (0:00)
      ================================================================ */
   await say('SleepSphere', 'Rest better. Live better. Your way.', true);
-  await wait(3200);
+  await wait(4400);
   await hush();
   await wait(2600);
 
@@ -289,7 +310,7 @@ function beat(label, ok, detail) {
   beat('Sound, timer and session all actually running',
     running.audio === true && running.session !== null && running.timer === true,
     running.now);
-  await wait(2200);
+  await wait(5400);
 
   /* Hold and resume — the controls do what they say. */
   await p.evaluate(() => {
@@ -317,8 +338,10 @@ function beat(label, ok, detail) {
   await wait(2600);
   await hush();
   await wait(600);
-  await p.evaluate(() => { window.SSAssistUI.close(); window.SSOpenDua(); });
-  await wait(4200);
+  await p.evaluate(() => window.SSAssistUI.close());
+  await wait(500);
+  await p.evaluate(() => window.SSOpenDua());
+  await wait(6400);
   const dua = await p.evaluate(() => ({
     open: !document.getElementById('duaVeil').hidden,
     line: document.getElementById('duaLine1').textContent.length,
@@ -352,7 +375,7 @@ function beat(label, ok, detail) {
   }));
   beat('The day is laid out from this person’s own times',
     rhythm.rows > 4, rhythm.wake + ' → ' + rhythm.bed + ' :: ' + rhythm.labels);
-  await wait(2400);
+  await wait(4600);
 
   const tickOne = await p.evaluate(() => {
     const m = document.querySelectorAll('.rhythm-mark')[1];
@@ -409,8 +432,11 @@ function beat(label, ok, detail) {
       credit: (h.querySelector('.an-credit') || {}).textContent || ''
     };
   });
-  beat('The courtyard opens, graded to the hour',
-    anwar.open && anwar.plate && anwar.night > 0.8,
+  /* The demo's clock is pinned to 20:40, so the courtyard is graded for
+     the evening rather than for midnight. What matters is that it is
+     graded at all and is clearly not the daylight plate. */
+  beat('The courtyard opens, graded for the evening',
+    anwar.open && anwar.plate && anwar.night > 0.45,
     'night ' + anwar.night + ' · ' + anwar.credit.trim());
   await wait(2200);
 
@@ -418,17 +444,13 @@ function beat(label, ok, detail) {
   await wait(4200);
   const lifted = await p.evaluate(() => window.SSAnwar.state().flying);
   beat('Birds lift out of the courtyard', lifted > 0, String(lifted));
-  await wait(3600);
+  await wait(8200);
   await p.evaluate(() => window.SSAnwar.close());
   await wait(1600);
 
   /* ================================================================
      7 — the morning (≈2:06)
      ================================================================ */
-  await say('Tomorrow', 'One question, and it is only ever a question.');
-  await wait(2700);
-  await hush();
-  await wait(500);
   await p.evaluate(async () => {
     document.querySelector('.nav button[data-view="today"]').click();
     const s = window.SS.state.settings;
@@ -444,7 +466,11 @@ function beat(label, ok, detail) {
     const c = document.getElementById('assistMorning');
     if (c) c.scrollIntoView({ block: 'center', behavior: 'smooth' });
   });
-  await wait(1600);
+  await wait(1400);
+  await say('Tomorrow', 'One question, and it is only ever a question.');
+  await wait(2800);
+  await hush();
+  await wait(900);
   const morning = await p.evaluate(() => {
     const c = document.getElementById('assistMorning');
     return c ? [...c.querySelectorAll('.ss-assist-chip')].map(b => b.textContent.trim()) : [];
@@ -471,18 +497,22 @@ function beat(label, ok, detail) {
   /* ================================================================
      8 — what it will not do (≈2:22)
      ================================================================ */
-  await say('Private', 'Encrypted on this device, behind a passcode only you have.');
-  await wait(2900);
-  await hush();
-  await wait(400);
   await p.evaluate(() => {
     const b = document.querySelector('.nav button[data-view="private"]');
     window.__ring(b); b.click();
   });
-  await wait(3400);
+  await wait(2200);
+  await say('Private', 'Encrypted on this device, behind a passcode only you have.');
+  await wait(3200);
+  await hush();
+  await wait(1800);
 
+  /* Back to the sky for the last line. The closing card used to sit over
+     a screen of body text, which it then had to shout through. */
+  await p.evaluate(() => document.querySelector('.nav button[data-view="today"]').click());
+  await wait(2000);
   await say('', 'Rest better. Live better. Your way.', true);
-  await wait(3600);
+  await wait(4600);
 
   /* ---------------------------------------------------------------- */
   const video = p.video();
@@ -506,9 +536,13 @@ function beat(label, ok, detail) {
     seconds = total - HEAD;
     const mp4 = path.join(OUT, 'sleepsphere-demo.mp4');
     execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-ss', String(HEAD), '-i', webm,
-      '-vf', 'scale=780:1688:flags=lanczos,unsharp=5:5:0.3:5:5:0,' +
+      /* 720 wide at crf 26. Checked against crf 21 at 780 on the frame
+         with the most to lose — the duʿāʾ, where a dropped diacritic
+         would be a real fault — and they are indistinguishable, at half
+         the bytes. A tracked video is a file people have to clone. */
+      '-vf', 'scale=720:1558:flags=lanczos,unsharp=5:5:0.3:5:5:0,' +
              'fade=t=out:st=' + end.toFixed(2) + ':d=' + TAIL_FADE,
-      '-c:v', 'libx264', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-crf', '21',
+      '-c:v', 'libx264', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-crf', '26',
       '-preset', 'slow', '-movflags', '+faststart', '-an', mp4]);
     console.log(mp4 + '  (' + (fs.statSync(mp4).size / 1024 / 1024).toFixed(1) + ' MB, ' +
                 seconds.toFixed(1) + 's)');

@@ -256,8 +256,17 @@
 
     A().EFFORT.forEach(level => {
       const b = btn(A().EFFORT_WORDS[level], 'ss-assist-chip', () => {
-        if (!A().setEffort(level)) { say('That level is not available.'); return; }
+        /* Two different failures used to share one message and one early
+           return: a level that does not exist, and a level that applied
+           fine but could not be written to disk. In the second case the
+           chooser was left showing the old level while the app had
+           already changed to the new one, and said "not available" about
+           something that was. They are separate now, and the chooser
+           repaints either way because the level really has changed. */
+        if (A().EFFORT.indexOf(level) < 0) { say('That level is not available.'); return; }
+        const saved = A().setEffort(level);
         paint();
+        if (!saved) say('Set for tonight \u2014 this device is not saving preferences.');
         /* Changing the level while the sheet is open should not leave
            a panel standing that this level would not have opened. */
         if (sheet && !A().session() && mode === 'choose' && !A().plan().askBeforeStarting) close();
