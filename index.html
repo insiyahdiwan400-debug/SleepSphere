@@ -2796,7 +2796,7 @@
              belongs to instead of from a row of twelve. The map lives in the
              Phase 1A report, and nav-map.js proves nothing was stranded. -->
         <button class="active" data-view="today"><span class="nav-icon">◐</span><span>Today</span></button>
-        <button data-view="twin"><span class="nav-icon">◎</span><span>My pattern</span></button>
+        <button data-view="twin"><span class="nav-icon">◎</span><span>My Rest</span></button>
         <button data-view="learn"><span class="nav-icon">◌</span><span>Explore</span></button>
         <button data-view="data"><span class="nav-icon">◍</span><span>Me</span></button>
         <!-- A fifth destination, and the only one whose name is doing a
@@ -3039,7 +3039,7 @@
         </section>
 
         <section class="view" id="twin">
-          <div class="section-head"><div><div class="eyebrow">SleepSphere signature</div><h2>Your Restoration Twin</h2></div><p>A twin is created by pairing a saved plan with the morning that followed. It exposes the gap between intention and real life without hiding the calculation inside a mystery score.</p></div>
+          <div class="section-head"><div><div class="eyebrow">SleepSphere signature</div><h2>My Rest</h2></div><p>Pairing a saved plan with the morning that followed shows the gap between what you intended and what happened, without hiding the calculation inside a mystery score.</p></div>
           <div class="grid">
             <!-- Rehomed from the old tab row. -->
             <article class="card span-12 elsewhere">
@@ -3263,7 +3263,7 @@
             <article class="card span-8">
               <div class="card-label">This morning</div>
               <h3 style="margin:6px 0 8px">A few quick taps, then your result.</h3>
-              <p class="helper">One question at a time. If you saved a plan last night, this creates your Restoration Twin.</p>
+              <p class="helper">One question at a time. If you saved a plan last night, this pairs it with your morning.</p>
               <div class="button-row" style="margin-top:16px"><button class="btn primary" id="startMorningFlow">Record this morning</button></div>
               <!-- Given an id because the morning card's "Not right" opens it
                    directly: landing a participant who has just said the times
@@ -3380,7 +3380,7 @@
               <button class="btn primary" data-go="plan" style="margin-top:14px">Use this in tonight’s plan</button>
             </article>
             <article class="card span-6">
-              <div class="card-label">What makes this different</div><h3>The body gets a voice before the algorithm speaks.</h3><p class="helper">Bio Harmony combines self-reported body context with timing already recorded in SleepSphere. It explains uncertainty, preserves optional cycle context and connects one day’s conditions to the Restoration Twin that follows.</p>
+              <div class="card-label">What makes this different</div><h3>The body gets a voice before the algorithm speaks.</h3><p class="helper">Bio Harmony combines self-reported body context with timing already recorded in SleepSphere. It explains uncertainty, preserves optional cycle context and connects one day’s conditions to the rest that follows.</p>
             </article>
             <article class="card span-12">
               <div class="section-head" style="margin-bottom:12px"><div><div class="card-label">Recent check-ins</div><h3>Your alignment history</h3></div><button class="btn ghost small" id="exportBio">Export Bio Harmony CSV</button></div>
@@ -3522,7 +3522,7 @@
                 <div class="loop-step"><div class="loop-number">01</div><div><strong>Choose tomorrow’s outcome</strong><small>Restoration, focus, Fajr readiness or a calmer transition.</small></div><span class="status">Intent</span></div>
                 <div class="loop-step"><div class="loop-number">02</div><div><strong>Listen for Bio Harmony</strong><small>Keep timing, sleep pressure, mental load, body comfort and environment visible.</small></div><span class="status">Body</span></div>
                 <div class="loop-step"><div class="loop-number">03</div><div><strong>Build around real obligations</strong><small>One sleep block or a transparent Fajr Bridge.</small></div><span class="status">Plan</span></div>
-                <div class="loop-step"><div class="loop-number">04</div><div><strong>Create the Restoration Twin</strong><small>Compare the planned night, body context and morning that actually happened.</small></div><span class="status">Twin</span></div>
+                <div class="loop-step"><div class="loop-number">04</div><div><strong>Pair the plan with the morning</strong><small>Compare the planned night, body context and morning that actually happened.</small></div><span class="status">My Rest</span></div>
                 <div class="loop-step"><div class="loop-number">05</div><div><strong>Test one change</strong><small>Predefine success, record adherence and accept unclear results.</small></div><span class="status">Learn</span></div>
               </div>
             </article>
@@ -3717,8 +3717,8 @@
                 <div class="feedback-row"><label>The app explains patterns without sounding diagnostic or judgemental.</label><div class="scale feedback-scale" data-feedback="trust"><input type="hidden" name="trust" value="" /><button type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">4</button><button type="button">5</button></div></div>
                 <div class="feedback-row"><label>I could realistically complete the short nightly and morning steps.</label><div class="scale feedback-scale" data-feedback="use"><input type="hidden" name="use" value="" /><button type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">4</button><button type="button">5</button></div></div>
                 <div class="form-grid" style="margin-top:14px">
-                  <div class="field"><label for="mostUseful">Most useful element</label><select id="mostUseful" name="most_useful"><option>Restoration Twin</option><option>Bio Harmony</option><option>Restoration gap</option><option>Fajr Bridge</option><option>Context scan</option><option>Mind unload</option><option>Sabat Compass</option><option>Experiment studio</option><option>Data export</option><option>None yet</option></select></div>
-                  <div class="field"><label for="leastUseful">Least useful or most confusing</label><select id="leastUseful" name="least_useful"><option>Nothing yet</option><option>Restoration Twin</option><option>Bio Harmony</option><option>Restoration gap</option><option>Fajr Bridge</option><option>Context scan</option><option>Mind unload</option><option>Sabat Compass</option><option>Experiment studio</option><option>Data export</option></select></div>
+                  <div class="field"><label for="mostUseful">Most useful element</label><select id="mostUseful" name="most_useful"><option value="Restoration Twin">My Rest</option><option>Bio Harmony</option><option>Restoration gap</option><option>Fajr Bridge</option><option>Context scan</option><option>Mind unload</option><option>Sabat Compass</option><option>Experiment studio</option><option>Data export</option><option>None yet</option></select></div>
+                  <div class="field"><label for="leastUseful">Least useful or most confusing</label><select id="leastUseful" name="least_useful"><option>Nothing yet</option><option value="Restoration Twin">My Rest</option><option>Bio Harmony</option><option>Restoration gap</option><option>Fajr Bridge</option><option>Context scan</option><option>Mind unload</option><option>Sabat Compass</option><option>Experiment studio</option><option>Data export</option></select></div>
                 </div>
                 <div class="field"><label for="feedbackText">What felt intrusive, confusing, unrealistic or unnecessary?</label><textarea id="feedbackText" name="comment" placeholder="Honest criticism decides what deserves to remain..."></textarea></div>
                 <div class="form-grid" style="margin-top:4px">
@@ -4750,7 +4750,7 @@
 
     const pageMeta = {
       today: ['Start here', 'Your simple sleep loop.', 'Check today, plan tonight and return tomorrow.'],
-      twin: ['My pattern', 'What helped me feel restored?', 'See the difference between the night you planned and the morning you experienced.'],
+      twin: ['My Rest', 'What helped me feel restored?', 'See the difference between the night you planned and the morning you experienced.'],
       plan: ['Plan tonight', 'Build a realistic night.', 'Protect sleep around the responsibilities you actually have.'],
       travel: ['Travel', 'Move your body clock on purpose.', 'Cross time zones with a light plan instead of hoping it sorts itself out.'],
       unload: ['Clear my mind', 'Put unfinished thoughts somewhere safe.', 'Name the thought, give it a destination and continue offline.'],
@@ -7089,7 +7089,7 @@
         }
         if (!recordedThisMorning) {
           status.textContent = 'How did that land?';
-          sub.textContent = 'Record this morning and your Restoration Twin appears.';
+          sub.textContent = 'Record this morning and the comparison appears.';
           return;
         }
       }
@@ -7317,7 +7317,7 @@
     function milestoneFor(record) {
       const mornings = realMornings();
       const count = mornings.length;
-      if (count === 1 && record.planSnapshot) return { title:'Your first Restoration Twin', body:'A plan and a morning are now paired. From here the app is comparing what you intended with what happened.' };
+      if (count === 1 && record.planSnapshot) return { title:'Your first paired night', body:'A plan and a morning are now paired. From here the app is comparing what you intended with what happened.' };
       if (count === 1) return { title:'First morning recorded', body:'Save a night plan tonight and tomorrow’s record will pair with it.' };
       if (count === 3) return { title:'Your compass is live', body:'Three mornings is enough to separate opportunity, regularity and restoration. My trends has opened up.' };
       if (count === 7) return { title:'A week of nights', body:'Seven nights on one axis is a shape rather than a list. My pattern now shows your week stacked.' };
@@ -7358,7 +7358,7 @@
     function renderTwin() {
       const records = trustedMornings();
       renderSignature(records);
-      $('#loadTwinDemo').textContent = twinDemoMode ? 'Return to my Restoration Twin' : 'Preview a labelled example twin';
+      $('#loadTwinDemo').textContent = twinDemoMode ? 'Return to my own nights' : 'Preview a labelled example';
       const example = {
         date:new Date().toISOString().slice(0,10), bedTime:'23:25', opportunityMinutes:425,
         rest:2, energy:2, focus:3, calm:2, fajr:'woke_tired', intent:'restore',
@@ -7393,7 +7393,7 @@
           $('#twinExplanation').textContent = 'Your check-in is recorded. Save a night plan and this screen will hold the two halves of the comparison.';
         } else {
           $('#twinStatus').textContent = 'Step 3 of 3 — record tomorrow morning';
-          $('#twinExplanation').textContent = `Tonight’s plan gives you ${formatDuration(plannedMinutes)} of sleep opportunity. Record how the morning actually felt and your first Restoration Twin appears here.`;
+          $('#twinExplanation').textContent = `Tonight’s plan gives you ${formatDuration(plannedMinutes)} of sleep opportunity. Record how the morning actually felt and the first comparison appears here.`;
         }
         return;
       }
@@ -8860,7 +8860,7 @@
 
       $('#flowInner').innerHTML = `<div class="reveal">
         <div class="reveal-ring" id="revealRing"><div class="reveal-num"><strong id="revealNum">0</strong><span>Estimated sleep</span></div></div>
-        <h2>${escapeHtml(paired ? 'Your Restoration Twin is ready' : 'Morning recorded')}</h2>
+        <h2>${escapeHtml(paired ? 'Your night and morning are paired' : 'Morning recorded')}</h2>
         <p>${escapeHtml(paired
           ? 'This morning is now paired with the night you planned, so you can see the gap between intention and real life.'
           : 'Recorded without judgement. Save a night plan tonight and tomorrow’s record will pair with it.')}</p>
@@ -8883,7 +8883,7 @@
           <p>A single night cannot tell you what causes what. SleepSphere waits for a pattern before suggesting anything, and it will keep showing you the arithmetic.</p>
         </div>
         <div class="reveal-actions">
-          <button type="button" class="btn primary" id="revealPattern">${paired ? 'See my Restoration Twin' : 'See my pattern'}</button>
+          <button type="button" class="btn primary" id="revealPattern">${paired ? 'See my rest' : 'See my pattern'}</button>
           <button type="button" class="btn ghost" id="revealMorningDetail">See the full record</button>
         </div>
       </div>`;
