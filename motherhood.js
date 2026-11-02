@@ -114,6 +114,8 @@
     return {
       v: VAULT_VERSION,
       stage: '',                 // 'pregnancy' | 'postpartum' | ''
+      scene: 'aurora',            // Encrypted preference; never stored outside vault
+      sceneChosen: false,         // Whether the person has actually picked one
       pregnancy: { dueDate: '' },
       postpartum: { birthDate: '', feeding: '' },
       entries: [],
@@ -253,7 +255,7 @@
      `state.morningRevisions`. Editing supersedes; it does not overwrite.
      ================================================================== */
 
-  const KINDS = ['night', 'day', 'feed', 'weight', 'appointment'];
+  const KINDS = ['night', 'day', 'feed', 'weight', 'appointment', 'babySleep', 'diaper'];
 
   /* Serialise entry writes. Two saves started close together each sealed a
      snapshot of the vault as it was when they began, and whichever finished
@@ -388,6 +390,38 @@
       const existing = record() || {};
       MH.set({ enabled: true, v: VAULT_VERSION, kdf: existing.kdf, cipher });
       session.vault = next;
+    });
+  }
+
+  /* Appearance is private: scene selection is encrypted alongside the vault,
+     never exposed as a separate browser preference or research field. */
+  const SCENES = ['aurora', 'starlake', 'firstlight', 'moonmeadow'];
+  function setScene(scene) {
+    if (!SCENES.includes(scene)) return Promise.reject(new Error('unknown scene'));
+    return queueVaultWrite(async () => {
+      if (!isUnlocked()) throw new Error('locked');
+      const generation = sessionGeneration;
+      const key = session.key, current = session.vault;
+      /* sceneChosen separates "we are showing you the default" from "you
+         picked this". Without it the setup flow has no way to tell
+         whether to offer the choice, and would either nag someone who
+         has already chosen or never ask at all. */
+      const next = { ...current, scene, sceneChosen: true };
+      const cipher = await sealVault(next, key);
+      /* Same pair of guards persist() carries, and for the same reason:
+         identity catches a different vault being swapped in, the counter
+         catches a lock-then-unlock that happened to land on the same
+         objects. This path seals and writes on its own rather than going
+         through persist(), so it has to carry them itself — a scene
+         saved across a lock would write the whole vault back from a
+         snapshot taken before it. */
+      if (generation !== sessionGeneration) throw new Error('locked');
+      if (session.key !== key || session.vault !== current) throw new Error('locked');
+      const existing = record();
+      if (!existing || !existing.kdf) throw new Error('vault erased');
+      MH.set({ enabled: true, v: VAULT_VERSION, kdf: existing.kdf, cipher });
+      session.vault = next;
+      return scene;
     });
   }
 
@@ -580,7 +614,7 @@
        unchanged; tracked() only counts them in and out. */
     createVault: tracked(createVault), unlock: tracked(unlock), lock, persist,
     vault: () => session.vault,
-    addEntry, removeEntry, setStage, liveEntries,
+    addEntry, removeEntry, setStage, setScene, SCENES, liveEntries,
     pregnancyProgress, postpartumProgress, summarise,
     buildExport,
     KINDS, SYMPTOMS, LESSONS, SEEK_CARE,

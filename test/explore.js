@@ -56,8 +56,16 @@ const text = p => p.evaluate(() => document.querySelector('.ex-body').innerText)
     const n = await p.evaluate(() => document.querySelectorAll('.ex-tile').length);
     /* The index became a hub with two groups, so the tile count grew:
        Flight Mode, Living Sky and the Sabat Compass were URL parameters
-       and a button on another screen before. */
-    check('Every experience is offered', n === 9, String(n));
+       and a button on another screen before. Meditation joined them
+       later, which is what took this from nine to ten.
+
+       The number is only worth asserting because of what follows it:
+       every tile is pressed below, and a tile that opens nothing is the
+       exact failure the brief names. Checked before changing it — all
+       ten open, and the list reads: Meditation, Flight Mode, Flight
+       wind-down, Living Sky, Body scan, Breathing, Sabat Compass,
+       Reflection, Gratitude, About sleep. */
+    check('Every experience is offered', n === 10, String(n));
 
     /* Press every one. A tile that opens nothing is the exact failure the
        brief names, and it is invisible until someone presses it. */

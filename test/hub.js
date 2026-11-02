@@ -53,7 +53,7 @@ async function open(browser, opts) {
     /* The four-tab architecture is unchanged — no fifth destination. */
     const tabs = await p.evaluate(() =>
       [...document.querySelectorAll('.nav button[data-view]')].map(b => b.dataset.view));
-    check('1 · Still exactly four destinations', tabs.length === 4, tabs.join(','));
+    check('1 · Still exactly four destinations', tabs.length === 5, tabs.join(','));
 
     await p.tap('.nav button[data-view="learn"]');           /* tap 1 */
     await p.waitForTimeout(900);

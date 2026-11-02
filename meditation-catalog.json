@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "source_note": "Original SleepSphere catalog organization inspired by Apple Fitness+ meditation themes; no Apple audio, scripts, branding or media included.",
+  "categories": [
+    {
+      "id": "sleep",
+      "title": "Deep Sleep",
+      "description": "Settle into rest",
+      "session_ids": [
+        "body-scan",
+        "sleep-wind-down"
+      ]
+    },
+    {
+      "id": "body",
+      "title": "Body Relaxation",
+      "description": "Release physical tension",
+      "session_ids": [
+        "body-scan"
+      ]
+    },
+    {
+      "id": "calm",
+      "title": "Calm",
+      "description": "Settle busy thoughts",
+      "session_ids": [
+        "gentle-breathing"
+      ]
+    },
+    {
+      "id": "breath",
+      "title": "Breathwork",
+      "description": "Follow an easy breath rhythm",
+      "session_ids": [
+        "gentle-breathing"
+      ]
+    },
+    {
+      "id": "gratitude",
+      "title": "Gratitude",
+      "description": "Notice moments worth remembering",
+      "session_ids": [
+        "gratitude-reflection"
+      ]
+    },
+    {
+      "id": "focus",
+      "title": "Focus",
+      "description": "Refresh attention",
+      "session_ids": [
+        "focus-reset"
+      ]
+    },
+    {
+      "id": "resilience",
+      "title": "Resilience",
+      "description": "Find steadiness after a demanding day",
+      "session_ids": [
+        "resilience-reset"
+      ]
+    },
+    {
+      "id": "awareness",
+      "title": "Mindful Awareness",
+      "description": "Notice the present without judgment",
+      "session_ids": [
+        "awareness-practice"
+      ]
+    }
+  ],
+  "sessions": [
+    {
+      "id": "body-scan",
+      "title": "Body Scan",
+      "status": "existing-guided-text",
+      "existing_entry": "SSExplore bodyScan",
+      "duration_minutes_approx": 7
+    },
+    {
+      "id": "gentle-breathing",
+      "title": "Gentle Breathing",
+      "status": "existing-guided-text",
+      "existing_entry": "SSExplore breathing"
+    },
+    {
+      "id": "gratitude-reflection",
+      "title": "Gratitude Reflection",
+      "status": "existing-writing",
+      "existing_entry": "SSExplore writing('gratitude')"
+    },
+    {
+      "id": "sleep-wind-down",
+      "title": "Sleep Wind Down",
+      "status": "planned",
+      "audio_available": false
+    },
+    {
+      "id": "focus-reset",
+      "title": "Focus Reset",
+      "status": "planned",
+      "audio_available": false
+    },
+    {
+      "id": "resilience-reset",
+      "title": "Resilience Reset",
+      "status": "planned",
+      "audio_available": false
+    },
+    {
+      "id": "awareness-practice",
+      "title": "Awareness Practice",
+      "status": "planned",
+      "audio_available": false
+    }
+  ],
+  "experience": {
+    "navigation": "Meditation within existing Explore tab; no new bottom tab",
+    "duration_options_minutes": [
+      5,
+      10,
+      20
+    ],
+    "narrator_preference": "ethereal female, neutral American English; not yet produced",
+    "background_sound": "optional; use existing sound mixer",
+    "auto_advance": "only after actual audio implementation and device testing",
+    "data_policy": "No new personal data collection; preserve all existing sleep and Motherhood data"
+  }
+}

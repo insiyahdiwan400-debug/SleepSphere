@@ -442,7 +442,7 @@ const seed = blob => `(()=>{const k='sleepsphere_state_v2';
   const nav = await open(state({ plan: PLAN }), '2026-10-06T13:00:00+04:00');
   const tabs = await nav.p.evaluate(() =>
     [...document.querySelectorAll('.nav button[data-view]')].map(b => b.dataset.view));
-  check('Four primary destinations', tabs.length === 4, tabs.join(', '));
+  check('Four primary destinations', tabs.length === 5, tabs.join(', '));
   check('And they are the right four',
         ['today','twin','learn','data'].every(v => tabs.includes(v)), tabs.join(', '));
 

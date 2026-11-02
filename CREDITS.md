@@ -92,3 +92,49 @@ format it *can* decode.
 
 It is a moving gradient. It is not sky footage, it is not shipped with the
 app, and it is not presented as a recording of anything.
+
+---
+
+## Motherhood scenery
+
+Four scenes in `media/motherhood/`. Each is a short clip of real
+footage plus a still, and the still is that clip own first frame — so
+the scene you see before the video decodes is the same scene, not a
+different photograph standing in for it.
+
+All four are from Pexels under the [Pexels License](https://www.pexels.com/license/),
+which permits free use and modification, including commercially,
+without attribution. They are credited anyway, because footage someone
+else shot should carry their name whether or not a licence compels it.
+
+| Scene | Source | Photographer |
+|---|---|---|
+| Aurora Sanctuary | [pexels.com/video/11860943](https://www.pexels.com/video/mountain-and-aurora-borealis-11860943/) | Cristian Manieri |
+| Celestial Lake | [pexels.com/video/13423306](https://www.pexels.com/video/stars-in-night-sky-over-mountain-lake-13423306/) | Dmitry Varennikov |
+| First Light | [pexels.com/video/4046335](https://www.pexels.com/video/the-sun-rising-behind-the-mountains-4046335/) | Taryn Elliott |
+| Moonlit Meadow | [pexels.com/video/12902487](https://www.pexels.com/video/low-angle-view-of-tall-wild-grass-and-the-moon-12902487/) | Camille Brodard |
+
+Each was trimmed to eight or ten seconds, cropped to 9:16 and
+re-encoded by this project as H.264 and VP9. Nothing was composited,
+relit, reversed or speed-ramped. What moves in them is what the camera
+recorded moving.
+
+### Photographs sourced earlier, now superseded
+
+Four Pexels stills were used before the footage existed: an aurora over
+a lake by Tobias Bjorkli, a star-filled lake by JackerKun, a valley
+above the cloud by Quang Nguyen Vinh, and a meadow under blue night by
+Dave Love. They are no longer in the repository — each scene now
+derives its still from its own clip, so that the still and the motion
+can never disagree.
+
+### Photographs that were supplied but not used
+
+An asset patch dated 19 October 2026 supplied `aurora.webp` and
+`firstlight.webp` cropped from the project owner own photographs
+(IMG_5769 and IMG_5767). Both were taken through an aircraft cabin
+window: the first keeps the window vignette and an aircraft wing and
+winglet in the lower right, the second is a full cabin window frame
+with a wing across the centre. The approved Motherhood design excludes
+aircraft imagery of any kind, so neither was installed. They are not in
+this repository.

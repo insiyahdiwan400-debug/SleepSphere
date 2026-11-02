@@ -60,10 +60,18 @@
   function openLayer() {
     if (layer) return layer;
     layer = el('div', 'mh-layer');
+    layer.dataset.scene = 'aurora';
     layer.setAttribute('role', 'dialog');
     layer.setAttribute('aria-modal', 'true');
     layer.setAttribute('aria-label', 'Private records');
+    /* Two plates, so changing scenery can cross-fade between the
+       outgoing photograph and the incoming one instead of cutting. They
+       sit under the scrim and under the body; which one is showing is a
+       class, and the paths stay in the stylesheet so there is still one
+       place that says where the photographs live. */
     layer.innerHTML =
+      '<div class="mh-scene-plate" data-plate="a"></div>' +
+      '<div class="mh-scene-plate" data-plate="b"></div>' +
       '<div class="mh-bar">' +
         '<button type="button" class="mh-close" aria-label="Close">Close</button>' +
         '<span class="mh-bar-title"></span>' +
@@ -363,7 +371,15 @@
             feeding: (detail._feeding && detail._feeding.value) || '' };
       await M.setStage(picked, d);
       toast('Saved.');
-      screenHome();
+      /* Choosing where you are is the last question of setting the module
+         up, so the scenery choice follows it — once, as the final step,
+         and only for someone who has just been through setup. Anyone
+         with a vault from before scenery existed goes straight to their
+         records; a full-screen wallpaper chooser standing between them
+         and what they came to read would be an interruption, not a
+         welcome. They can change it in Settings whenever they like. */
+      if (!M.vault().sceneChosen) screenScenery(true);
+      else screenHome();
     });
     c.appendChild(save);
     if (v.stage) c.appendChild(btn('Cancel', 'mh-quiet', screenHome));
@@ -373,10 +389,190 @@
   /* ==================================================================
      5 · HOME.
      ================================================================== */
+  /* The four landscapes, with what each one actually shows. The detail
+     line is not decoration: at 108px a thumbnail of a dark lake and a
+     thumbnail of a dark meadow are hard to tell apart, and someone
+     choosing with the screen dimmed at night should not have to squint. */
+  const SCENE_CHOICES = [
+    ['aurora', 'Aurora Sanctuary', 'Northern lights over a still lake'],
+    ['starlake', 'Celestial Lake', 'Stars and distant mountains'],
+    ['firstlight', 'First Light', 'A valley above the cloud at dawn'],
+    ['moonmeadow', 'Moonlit Meadow', 'A quiet meadow under blue night']
+  ];
+
+  /* Applying the chosen scene. One place, because the layer's attribute
+     is what every background in the stylesheet keys off, and a screen
+     that forgot to set it would silently show someone else's landscape. */
+  /* Whether this device should be shown moving footage at all.
+
+     Three reasons not to, and none of them is a preference we get to
+     override: the person asked their system for less movement; the
+     person asked their browser to save data; or the connection is slow
+     enough that a megabyte of video would cost them more than it gives.
+     In every case the still is the scene, and it is the first frame of
+     the same footage, so nothing is lost but the motion. */
+  function motionWanted() {
+    try {
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+      const net = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      if (net) {
+        if (net.saveData) return false;
+        if (/^(slow-2g|2g)$/.test(net.effectiveType || '')) return false;
+      }
+    } catch (e) {}
+    return true;
+  }
+
+  /* The moving scene. Authentic footage of the place the still shows —
+     the still is literally this clip's first frame — so the video is
+     the scene arriving, not a different one replacing it.
+
+     Loaded only for the scene actually showing, and only once it is
+     chosen: four clips eagerly fetched would be three wasted. */
+  function mountMotion(plate, scene) {
+    if (!plate || !motionWanted()) return;
+    if (plate.querySelector('video')) return;
+    const v = document.createElement('video');
+    v.className = 'mh-scene-motion';
+    v.muted = true; v.defaultMuted = true;
+    v.loop = true; v.autoplay = true;
+    v.setAttribute('muted', '');
+    v.setAttribute('loop', '');
+    v.setAttribute('autoplay', '');
+    v.setAttribute('playsinline', '');
+    v.setAttribute('webkit-playsinline', '');
+    v.setAttribute('aria-hidden', 'true');
+    v.preload = 'auto';
+    /* WebM first for engines that have it, H.264 for iOS. The poster is
+       the still underneath, so nothing flashes while this decodes. */
+    [['webm', 'video/webm'], ['mp4', 'video/mp4']].forEach(([ext, type]) => {
+      const s = document.createElement('source');
+      s.src = './media/motherhood/motion/' + scene + '.' + ext;
+      s.type = type;
+      v.appendChild(s);
+    });
+    /* Only reveal it once frames are actually running. A video that
+       never decodes — no codec, blocked autoplay, a 404 — simply stays
+       invisible and the still remains the scene. */
+    v.addEventListener('playing', () => { v.classList.add('on'); });
+    v.addEventListener('error', () => { v.remove(); });
+    plate.appendChild(v);
+    const play = v.play();
+    if (play && play.catch) play.catch(() => { /* still stands in */ });
+  }
+
+  function applyScene(scene) {
+    if (!layer) return 'aurora';
+    const safe = M.SCENES.includes(scene) ? scene : 'aurora';
+    layer.dataset.scene = safe;
+
+    /* Cross-fade, but only between two different photographs and only
+       when the person has just changed their mind. This is a transition
+       between two stills on a deliberate action — it is not the
+       landscape moving, and nothing fades while you sit on one scene. */
+    const plates = layer.querySelectorAll('.mh-scene-plate');
+    if (plates.length === 2) {
+      const showing = layer.querySelector('.mh-scene-plate.on');
+      /* Already on this scene: nothing to fade, but the clip may still
+         be missing — the first render of a screen gets here before any
+         video has been mounted. */
+      if (showing && showing.dataset.sceneName === safe) { mountMotion(showing, safe); return safe; }
+      const incoming = showing === plates[0] ? plates[1] : plates[0];
+      incoming.className = 'mh-scene-plate scene-' + safe;
+      incoming.dataset.sceneName = safe;
+      /* The outgoing plate stops costing anything the moment it is no
+         longer the scene — a paused clip still decodes on some engines,
+         and two running at once on a phone is exactly the battery
+         complaint the brief warns about. */
+      if (showing) {
+        const old = showing.querySelector('video');
+        if (old) { try { old.pause(); } catch (e) {} old.remove(); }
+      }
+      mountMotion(incoming, safe);
+      /* Let the new background-image land before the opacity changes,
+         or the browser batches both and the fade has nothing to fade
+         from. Two frames is enough and costs nothing. */
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        incoming.classList.add('on');
+        if (showing) showing.classList.remove('on');
+      }));
+    }
+    return safe;
+  }
+
+  /* The picker itself, built once and used in both places it belongs:
+     the first-run setup, and Settings. It is deliberately NOT on the
+     home screen — the home screen is for how you and the baby slept,
+     and a wallpaper chooser permanently above that is the kind of thing
+     that makes an app feel like a settings panel with a diary attached. */
+  function sceneryPicker(host, current, onPicked) {
+    const choices = el('div', 'mh-scenes');
+    SCENE_CHOICES.forEach(([id, title, detail]) => {
+      const button = btn('', 'mh-scene-choice', async () => {
+        if (button.disabled) return;
+        button.disabled = true;
+        try {
+          await M.setScene(id);
+          applyScene(id);
+          choices.querySelectorAll('.mh-scene-choice').forEach(n => {
+            n.setAttribute('aria-pressed', String(n.dataset.id === id));
+          });
+          toast('Scenery saved');
+          if (onPicked) onPicked(id);
+        } catch (err) {
+          toast(cancelled(err)
+            ? 'Locked before that saved. Unlock and try again.'
+            : 'Could not save scenery. Please try again.');
+        } finally { button.disabled = false; }
+      });
+      button.dataset.id = id;
+      button.setAttribute('aria-pressed', String((current || 'aurora') === id));
+      button.appendChild(el('span', 'mh-scene-preview mh-preview-' + id));
+      button.appendChild(el('strong', null, title));
+      button.appendChild(el('small', null, detail));
+      choices.appendChild(button);
+    });
+    host.appendChild(choices);
+    return choices;
+  }
+
+  /* ==================================================================
+     SCENERY. Shown once during setup, and from Settings after that.
+     ================================================================== */
+  function screenScenery(firstRun) {
+    const v = M.vault();
+    const b = screen(firstRun ? 'Your place' : 'Scenery', !firstRun);
+    const c = card(b, 'mh-dream-picker');
+    c.appendChild(el('span', 'mh-eyebrow', 'Your peaceful place'));
+    c.appendChild(el('h2', null, firstRun ? 'Choose your place' : 'Change your scenery'));
+    c.appendChild(el('p', 'mh-hint',
+      'Pick the landscape you would like behind this part of the app. ' +
+      'Your choice is kept inside your locked records, and you can change ' +
+      'it whenever you like without affecting anything you have written.'));
+    sceneryPicker(c, v.scene, firstRun ? null : null);
+    if (firstRun) {
+      const go = btn('Continue', 'mh-primary', async () => {
+        /* Continuing without touching a tile is still a choice: it means
+           the default. Recording it stops this screen reappearing every
+           time they come back, without pretending they picked it. */
+        go.disabled = true;
+        try { if (!M.vault().sceneChosen) await M.setScene(M.vault().scene || 'aurora'); }
+        catch (err) { /* Home still works; the screen will offer again. */ }
+        finally { go.disabled = false; }
+        route();
+      });
+      c.appendChild(go);
+    } else {
+      c.appendChild(btn('Done', 'mh-primary', () => screenPrivacy()));
+    }
+    return b;
+  }
+
   function screenHome() {
     const v = M.vault();
     const b = screen('Motherhood', true);
     const stage = v.stage;
+    applyScene(v.scene);
 
     /* Where you are — derived from a date the participant typed, and
        silent when they did not type one. */
@@ -405,6 +601,22 @@
       }
     }
 
+    /* Changing the background, on the screen the background is on.
+       It was reachable only from a button labelled "Privacy", at the
+       foot of the last card — which is a fair place for the privacy
+       explanation and no place at all for a wallpaper. Nobody looking
+       to change a picture taps Privacy.
+
+       It sits under the photograph rather than in a menu because the
+       thing it changes is right there, and quiet rather than primary
+       because recording the night is what this screen is for. */
+    const sceneNow = SCENE_CHOICES.find(c => c[0] === (v.scene || 'aurora'));
+    const look = btn(sceneNow ? 'Scenery · ' + sceneNow[1] : 'Change scenery',
+      'mh-quiet mh-scenery-link', () => screenScenery(false));
+    look.setAttribute('aria-label',
+      'Change scenery. Currently ' + (sceneNow ? sceneNow[1] : 'Aurora Sanctuary') + '.');
+    b.appendChild(look);
+
     /* Record. The actions, in the order they are actually wanted. */
     const rec = card(b);
     rec.appendChild(el('h3', null, 'Record'));
@@ -412,7 +624,11 @@
     const add = (label, kind) => grid.appendChild(btn(label, 'mh-tile', () => screenEntry(kind)));
     add(stage === 'postpartum' ? 'Last night’s rest' : 'Last night', 'night');
     add('How today is', 'day');
-    if (stage === 'postpartum') add('A feed', 'feed');
+    if (stage === 'postpartum') {
+      add('A feed', 'feed');
+      add('Baby’s sleep', 'babySleep');
+      add('Diaper change', 'diaper');
+    }
     add('Weight', 'weight');
     add('Appointment', 'appointment');
     rec.appendChild(grid);
@@ -495,7 +711,10 @@
       downloadJson(name, payload);
       toast('Saved to your downloads.');
     }));
-    actions.appendChild(btn('Privacy', 'mh-quiet', screenPrivacy));
+    /* That screen is Settings now — scenery, then the privacy
+       explanation, then the data controls. Labelling it "Privacy" hid
+       the other two behind a word people only tap when worried. */
+    actions.appendChild(btn('Settings', 'mh-quiet', screenPrivacy));
     actions.appendChild(btn('Delete everything', 'mh-danger', screenDelete));
     data.appendChild(actions);
     return b;
@@ -553,6 +772,8 @@
       if ((e.symptoms || []).length) parts.push(e.symptoms.join(', '));
       return parts.length ? parts.join(' · ') : 'Day recorded';
     }
+    if (e.kind === 'babySleep') return 'Baby rested ' + (e.from || '?') + '–' + (e.to || '?');
+    if (e.kind === 'diaper') return 'Diaper: ' + (e.type || 'change') + (e.at ? ' · ' + e.at : '');
     if (e.kind === 'feed') {
       const parts = [e.at || '', e.method || ''].filter(Boolean);
       if (e.minutes) parts.push(e.minutes + ' min');
@@ -570,6 +791,7 @@
   function screenEntry(kind) {
     const v = M.vault();
     const titles = { night: 'Last night', day: 'Today', feed: 'A feed',
+                     babySleep: 'Baby’s sleep', diaper: 'Diaper change',
                      weight: 'Weight', appointment: 'Appointment' };
     const b = screen(titles[kind] || 'Record', true);
     const c = card(b);
@@ -581,6 +803,8 @@
     if (kind === 'night') buildNight(c, draft, v);
     if (kind === 'day') buildDay(c, draft, v);
     if (kind === 'feed') buildFeed(c, draft, v);
+    if (kind === 'babySleep') buildBabySleep(c, draft);
+    if (kind === 'diaper') buildDiaper(c, draft);
     if (kind === 'weight') buildWeight(c, draft, v);
     if (kind === 'appointment') buildAppointment(c, draft);
 
@@ -588,9 +812,14 @@
       const problem = validate(kind, draft);
       if (problem) { toast(problem); return; }
       save.disabled = true;
-      await M.addEntry(draft);
-      toast('Saved.');
-      screenHome();
+      try {
+        await M.addEntry(draft);
+        toast('Saved.');
+        screenHome();
+      } catch (err) {
+        save.disabled = false;
+        toast('Could not save. Your answers are still here.');
+      }
     });
     c.appendChild(save);
     c.appendChild(btn('Cancel', 'mh-quiet', screenHome));
@@ -600,6 +829,7 @@
   function validate(kind, d) {
     if (kind === 'weight' && !(d.value > 0)) return 'Enter a weight, or cancel.';
     if (kind === 'appointment' && !d.title) return 'Give the appointment a name.';
+    if (kind === 'babySleep' && (!d.from || !d.to)) return 'Enter the start and end times.';
     if (kind === 'night' && (d.restIntervals || []).some(iv => !iv.from || !iv.to))
       return 'Each rest interval needs a start and an end.';
     return null;
@@ -682,6 +912,33 @@
     notes.placeholder = 'In your own words…';
     field(c, 'Notes (optional)', notes)
       .addEventListener('input', e => { draft.notes = e.target.value; });
+  }
+
+  function buildBabySleep(c, draft) {
+    c.appendChild(el('p', 'mh-hint',
+      'Record only the times you observed. No automatic sleep estimates.'));
+    field(c, 'Started resting', input('time'))
+      .addEventListener('change', e => { draft.from = e.target.value; });
+    field(c, 'Woke up', input('time'))
+      .addEventListener('change', e => { draft.to = e.target.value; });
+    const notes = el('textarea');
+    notes.rows = 2;
+    notes.placeholder = 'Optional notes…';
+    field(c, 'Notes', notes).addEventListener('input', e => { draft.note = e.target.value; });
+  }
+
+  function buildDiaper(c, draft) {
+    const sel = el('select');
+    [['wet', 'Wet'], ['dirty', 'Dirty'], ['both', 'Both']].forEach(([id, title]) => {
+      const o = el('option', null, title); o.value = id; sel.appendChild(o);
+    });
+    draft.type = 'wet';
+    field(c, 'Change type', sel).addEventListener('change', e => { draft.type = e.target.value; });
+    const t = input('time', { value: new Date().toTimeString().slice(0, 5) });
+    draft.at = t.value;
+    field(c, 'Time', t).addEventListener('change', e => { draft.at = e.target.value; });
+    const notes = el('textarea'); notes.rows = 2;
+    field(c, 'Notes (optional)', notes).addEventListener('input', e => { draft.note = e.target.value; });
   }
 
   function buildFeed(c, draft, v) {
@@ -797,7 +1054,17 @@
   }
 
   function screenPrivacy() {
-    const b = screen('Privacy', true);
+    const b = screen('Settings', true);
+
+    /* Appearance first, because it is the one thing on this screen
+       someone opens it to change. Everything below it is reference. */
+    const look = card(b);
+    look.appendChild(el('h2', null, 'Your scenery'));
+    const now = SCENE_CHOICES.find(c => c[0] === (M.vault().scene || 'aurora'));
+    look.appendChild(el('p', 'mh-hint',
+      now ? now[1] + ' — ' + now[2].toLowerCase() + '.' : 'Choose a landscape for this part of the app.'));
+    look.appendChild(btn('Change scenery', 'mh-quiet', () => screenScenery(false)));
+
     const c = card(b);
     c.appendChild(el('h2', null, 'Where your Motherhood records are'));
     [
@@ -866,21 +1133,39 @@
      disclosing anything about whoever is holding the phone.
      ================================================================== */
   function mountEntry() {
-    const host = document.getElementById('data');
+    /* The Private destination, which exists on every device. Falls back
+       to the Me tab if that section is ever absent, so an older shell
+       served from the service-worker cache still has a way in rather
+       than losing the module entirely. */
+    const host = document.getElementById('private') || document.getElementById('data');
     if (!host || document.getElementById('mhEntry')) return;
 
     const section = el('section', 'card mh-entrycard');
-    section.appendChild(el('h3', null, 'Private modules'));
+    section.appendChild(el('h3', null, 'Pregnancy and after birth'));
     section.appendChild(el('p', null,
-      'Optional parts of SleepSphere that keep their records separately from ' +
-      'your study data, encrypted on this device.'));
-    const b = btn('Pregnancy and after birth', 'mh-entry-btn', () => {
+      'Rest, feeding, appointments and how you are doing, through pregnancy ' +
+      'and the months after. Off until you turn it on, and kept behind its ' +
+      'own passcode.'));
+    const b = btn('Open', 'mh-entry-btn', () => {
       openLayer();
       route();
     });
     b.id = 'mhEntry';
     section.appendChild(b);
-    host.appendChild(section);
+
+    /* Above any grid the host already has, so it is the first thing on
+       the destination rather than the last.
+
+       Appended to the end of the Me tab this used to land 3312px down —
+       four screens past every export and dictionary card — and was
+       reported, accurately, as the feature not being in the app.
+       Discretion was never supposed to cost findability: what protects
+       whoever holds the phone is that this card is byte-identical on
+       every device, on or off, and that has nothing to do with how far
+       down it sits. */
+    const grid = host.querySelector('.grid');
+    if (grid) host.insertBefore(section, grid);
+    else host.appendChild(section);
   }
 
   function refreshEntry() { /* the entry point never changes; kept for clarity */ }

@@ -1,4 +1,4 @@
-const CACHE = 'sleepsphere-v13-navigation-20261015';
+const CACHE = 'sleepsphere-v14-network-first-20261019';
 /* The Arabic face is shell, not an extra. The dua is read at bedtime, which
    is exactly when a phone is likeliest to be in a basement, on aeroplane
    mode, or out of data — so it is fetched on install with everything else
@@ -38,12 +38,44 @@ self.addEventListener('fetch', event => {
       : Response.error()));
     return;
   }
-  event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {
-    if (response.ok) caches.open(CACHE).then(cache => cache.put(event.request, response.clone()));
+  // The font is content-addressed: if the Arabic changes the file is recut
+  // and renamed, so a cached copy can never be the wrong one. Everything
+  // else has a stable name and changes under it, which is the whole
+  // problem below.
+  if (/\/fonts\/.*\.woff2$/.test(new URL(event.request.url).pathname)) {
+    event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {
+      if (response.ok) caches.open(CACHE).then(cache => cache.put(event.request, response.clone()));
+      return response;
+    }).catch(() => Response.error())));
+    return;
+  }
+
+  // Network first for code, cache only as the offline fallback.
+  //
+  // This was cache-first, and index.html above is network-first, which
+  // meant a deploy reached a returning phone as NEW HTML RUNNING OLD
+  // SCRIPTS. That is not staleness, it is a version mismatch the app has
+  // no way to detect: the markup had a Private destination and the
+  // cached motherhood-ui.js was still mounting its entry card into the
+  // Me tab, so the new screen rendered empty and the feature looked
+  // missing. Reported exactly that way, twice.
+  //
+  // Bumping CACHE does not fix it on its own. skipWaiting/clients.claim
+  // only help once the new worker activates, and the page that is
+  // already open was served by the old one — so the first load after
+  // every deploy is the broken one.
+  //
+  // Offline is unaffected: the cache is still written on every success
+  // and is still what answers when the network is gone.
+  event.respondWith(fetch(event.request).then(response => {
+    if (response.ok) {
+      const copy = response.clone();
+      event.waitUntil(caches.open(CACHE).then(cache => cache.put(event.request, copy)));
+    }
     return response;
-  }).catch(() => {
+  }).catch(() => caches.match(event.request).then(cached =>
     // Never send cached index.html as JavaScript, CSS, JSON, or MP4.
     // A network error lets the caller show an honest offline fallback.
-    return Response.error();
-  })));
+    cached || Response.error()
+  )));
 });

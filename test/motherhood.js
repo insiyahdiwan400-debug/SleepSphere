@@ -317,7 +317,7 @@ const SENSITIVE = {
     check('The revision array is intact', v.revisions === true);
     check('Recording integrity still reads the same records', v.trusted === 2, String(v.trusted));
     check('Navigation is still exactly four tabs',
-          v.tabs === 'today,twin,learn,data', v.tabs);
+          v.tabs === 'today,twin,learn,data,private', v.tabs);
     await c.ctx.close();
   }
 

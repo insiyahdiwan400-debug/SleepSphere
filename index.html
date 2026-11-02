@@ -2798,6 +2798,16 @@
         <button data-view="twin"><span class="nav-icon">◎</span><span>My pattern</span></button>
         <button data-view="learn"><span class="nav-icon">◌</span><span>Explore</span></button>
         <button data-view="data"><span class="nav-icon">◍</span><span>Me</span></button>
+        <!-- A fifth destination, and the only one whose name is doing a
+             job. "Private" says nothing about pregnancy, and the button
+             is here on every device whether or not anyone has turned
+             anything on — which is the whole point. A tab that appeared
+             when Motherhood was enabled would tell anyone glancing at
+             the phone that its owner tracks a pregnancy or a postpartum
+             recovery, and that is precisely what the passcode, the
+             separate vault and B4 exist to prevent. Identical
+             everywhere discloses nothing. -->
+        <button data-view="private"><span class="nav-icon">◉</span><span>Private</span></button>
       </nav>
       <div class="side-note"><strong>Private by design.</strong><br />Your entries stay in this browser unless you export them. SleepSphere supports reflection; it does not diagnose.</div>
     </aside>
@@ -3546,6 +3556,15 @@
               </div>
             </article>
           </div>
+        </section>
+
+        <!-- The Private destination. Empty in the markup on purpose:
+             motherhood-ui.js mounts its entry card here at load, on
+             every device, and anything else private-by-design goes here
+             later. The section and its heading are byte-identical
+             whether or not the person has ever enabled a thing. -->
+        <section class="view" id="private">
+          <div class="section-head"><div><div class="eyebrow">Kept separately</div><h2>Private modules</h2></div><p>Optional parts of SleepSphere that keep their records apart from your study data, encrypted on this device with a passcode only you have. Nothing here is included in a research export.</p></div>
         </section>
 
         <section class="view" id="data">
@@ -4730,6 +4749,7 @@
       experiment: ['Try one change', 'Test one small action.', 'Choose what success means first, then compare cautiously.'],
       learn: ['Sleep guide', 'Understand sleep without fear or guilt.', 'Clear research, faith-aware context and safety boundaries.'],
       data: ['My records', 'Your entries belong to you.', 'Export, print, back up, import or erase them.'],
+      private: ['Private modules', 'Kept apart from the study.', 'Encrypted on this device, behind a passcode only you have.'],
       test: ['Give feedback', 'Tell me what deserves to stay.', 'Your honest experience will shape the next version.']
     };
 
@@ -5041,6 +5061,11 @@
       if (!ratings.rest || !ratings.energy || !ratings.focus || !ratings.calm) { toast('Rate restoration, energy, concentration and mental calm first'); return; }
       const date = $('#logDate').value;
       if (!date) { toast('Choose the night you are recording'); return; }
+      /* Lazy completion is written as ONE final record, never as an ordinary
+         record followed by a second save. This also makes storage failure
+         leave the unfinished night and the confirmation sheet intact. */
+      const lazyCompletion = finishingLazyNight && lazyAnswer && state.lazyNight?.date === date
+        ? { ...state.lazyNight, answer: lazyAnswer, rating: ratings.rest } : null;
       const existing = state.mornings.find(item => !item.demo && item.date === date);
       if (existing && !supersedeWithoutAsking
           && !window.confirm('A record already exists for this date. Replace it? The version you are replacing is kept in your backup.')) return;
@@ -5097,23 +5122,58 @@
         verified: sleepUnknown ? 'times-only'
                 : (state.lazyNight && state.lazyNight.date === date ? 'corrected' : 'entered')
       };
-      /* Archive first, then replace. The order matters only for clarity:
-         archiveMorning copies the record, so nothing depends on it still
-         being in the array. */
+      if (finishingQuickWake) Object.assign(record, {
+        calm: null, quick: true,
+        measured: [],
+        estimated: ['bedTime', 'sleepTime', 'wakeTime', 'awakeMinutes']
+      });
+      if (lazyCompletion) Object.assign(record, {
+        lazy: true,
+        energy: null, focus: null, calm: null,
+        measured: ['bedTime', lazyCompletion.stale ? null : 'wakeTime'].filter(Boolean),
+        estimated: ['sleepTime', 'awakeMinutes'].concat(lazyCompletion.stale ? ['wakeTime'] : []),
+        verified: lazyCompletion.answer,
+        wakeSource: lazyCompletion.wakeSource || null,
+        bedSource: lazyCompletion.bedSource || null
+      });
+      /* Keep the pre-write objects until storage confirms the new record.
+         A failed write must not erase an unfinished night, archive a
+         correction, or silently rewrite experiment baseline references. */
+      const previousMornings = state.mornings;
+      const previousRevisions = state.morningRevisions;
+      const previousLazyNight = state.lazyNight;
+      const baselineSnapshots = [state.activeExperiment, ...(state.experimentHistory || [])]
+        .filter(experiment => experiment && Array.isArray(experiment.baselineIds))
+        .map(experiment => ({ experiment, baselineIds: experiment.baselineIds }));
       if (existing) archiveMorning(existing, record.id);
       state.mornings = state.mornings.filter(item => item.id !== existing?.id);
       state.mornings.push(record);
       state.mornings.sort((a,b) => String(a.date).localeCompare(String(b.date)));
-      /* A corrected night is a closed night. Without this the provisional
-         lazyNight would still be open and the morning card would come back
-         tomorrow offering the times the participant has just rejected. */
-      if (state.lazyNight && state.lazyNight.date === date && !finishingLazyNight) {
+      /* A corrected night is a closed night only after it is saved. */
+      if (state.lazyNight && state.lazyNight.date === date && (!finishingLazyNight || lazyCompletion)) {
         state.lazyNight = null;
       }
-      saveState(); clearMorningForm(); renderAll();
+      let saved = false;
+      try { saved = saveState(); }
+      catch (error) { console.error('SleepSphere morning save failed', error); }
+      if (!saved) {
+        state.mornings = previousMornings;
+        state.morningRevisions = previousRevisions;
+        state.lazyNight = previousLazyNight;
+        baselineSnapshots.forEach(({ experiment, baselineIds }) => {
+          experiment.baselineIds = baselineIds;
+        });
+        toast('Could not save this morning. Your answers are still here; please try again.');
+        return;
+      }
+      if (lazyCompletion) {
+        lazyAnswer = null;
+        $('#lazyMorningVeil').hidden = true;
+      }
+      clearMorningForm(); renderAll();
       /* Says what changed and what did not, in the participant's terms. The
          word "supersede" appears nowhere a participant can see it. */
-      toast(existing
+      toast(lazyCompletion ? lazyVerdict(record, lazyCompletion.rating) : existing
         ? 'Updated. Your patterns now use these times; the earlier version is kept in your backup.'
         : 'Morning record saved without judgement');
     });
@@ -5347,6 +5407,8 @@
        participant is answering a card, not overwriting a record they came
        looking for. */
     let supersedeWithoutAsking = false;
+    /* Quick wake answers must be annotated BEFORE the single durable write. */
+    let finishingQuickWake = false;
 
     /* Said in the participant's own terms, never with the word "flag". */
     const FLAG_TEXT = Object.freeze({
@@ -8713,18 +8775,11 @@
          immediately tell the truth about what was actually asked. The
          placeholder below never survives this function. */
       flowPicks.calm = flowPicks.calm || '3';
-      finishMorning();
-      const date = $('#logDate').value;
-      const saved = state.mornings.find(item => !item.demo && item.date === date);
-      if (!saved) return;
-      // Calm was not asked. An unasked question is null, not yesterday's answer.
-      saved.calm = null;
-      saved.quick = true;
-      /* The times came from the night plan, not from the person. Naming them
-         keeps `value_basis` in the research export truthful. */
-      saved.measured = [];
-      saved.estimated = ['bedTime', 'sleepTime', 'wakeTime', 'awakeMinutes'];
-      saveState();
+      finishingQuickWake = true;
+      try { finishMorning(); }
+      finally { finishingQuickWake = false; }
+      /* The shared save handler writes quick provenance and ratings in one
+         atomic transaction. A failed write leaves the prior night intact. */
     }
 
     /* One acknowledgement. Never a score, never a diagnosis, and never a
@@ -9514,8 +9569,11 @@
               factors: answers.factors || [],
               morningNote: answers.morningNote || ''
             });
+            const beforeIds = new Set(realMornings().map(item => item.id));
             if (opts.quick) finishWake(); else finishMorning();
-            return realMornings().at(-1) || null;
+            /* A rejected or failed write leaves the old list in place. Never
+               report yesterday's record as a newly saved check-in. */
+            return realMornings().find(item => !beforeIds.has(item.id)) || null;
           },
 
           /* The journal, as the one write path a second interface may use.
@@ -9874,18 +9932,29 @@
        it was — so the October 8 audit could not establish how 18:17 was
        stamped, only that it had been. */
     function startLazyNight(source = 'goodnight') {
+      // An open night belongs to the participant; repeated taps must not replace it.
+      const previousNight = state.lazyNight;
+      if (previousNight?.startedAt) {
+        toast('A night is already open. Finish it when you wake.');
+        return false;
+      }
       const now = new Date();
       state.lazyNight = { startedAt: now.toISOString(), bedTime: clockString(now), bedSource: source };
-      saveState();
+      // Storage can fail in embedded or private browsers. The session should
+      // remain usable in memory, but never be described as saved to disk.
+      const persisted = saveState();
       const wake = state.plan?.wakeTime || $('#continuousWake')?.value || '';
-      $('#lazyNote').textContent = wake
-        ? `Bed time noted as ${formatTime(toMinutes(clockString(now)))}. Wake anchor ${formatTime(toMinutes(wake))}. Nothing else to do.`
-        : `Bed time noted as ${formatTime(toMinutes(clockString(now)))}. Nothing else to do — open the app when you wake.`;
+      $('#lazyNote').textContent = !persisted
+        ? 'Bedtime is held only in this open session — NOT saved to this device. Check the storage warning before leaving.'
+        : wake
+          ? `Bed time noted as ${formatTime(toMinutes(clockString(now)))}. Wake anchor ${formatTime(toMinutes(wake))}. Nothing else to do.`
+          : `Bed time noted as ${formatTime(toMinutes(clockString(now)))}. Nothing else to do — open the app when you wake.`;
       $('#lazyVeil').hidden = false;
       // The screen closes itself. Requiring a tap to leave a screen whose
       // whole point is that you have nothing left would be a joke.
       window.setTimeout(() => { $('#lazyVeil').hidden = true; }, 6500);
       renderAll();
+      return persisted;
     }
 
     /** Offer the one-tap morning if a lazy night is open and enough of one
@@ -10040,42 +10109,12 @@
 
       finishingLazyNight = true;
       supersedeWithoutAsking = true;
-      $('#saveMorning').click();
-      supersedeWithoutAsking = false;
-      finishingLazyNight = false;
+      try { $('#saveMorning').click(); }
+      finally { supersedeWithoutAsking = false; finishingLazyNight = false; }
 
-      /* Now make the record tell the truth about itself.
-
-         The save path needs all four ratings, but only ONE was given, and
-         "how was it" is the restoration question — not three more. Mirroring
-         it into energy, focus and calm would put three judgements in the
-         record that nobody made, and they would then show up in the compass
-         and the exports as if they had. So they are cleared.
-
-         The same for the times. Bed and wake were measured; sleep onset is
-         bed plus this person's median latency, and night waking is their
-         median too. Those are estimates, and the record names them rather
-         than sitting them beside the measured values looking identical. */
-      const saved = state.mornings.find(item => !item.demo && item.date === night.date);
-      if (saved) {
-        saved.lazy = true;
-        saved.energy = null; saved.focus = null; saved.calm = null;
-        saved.measured = ['bedTime', night.stale ? null : 'wakeTime'].filter(Boolean);
-        saved.estimated = ['sleepTime', 'awakeMinutes'].concat(night.stale ? ['wakeTime'] : []);
-        /* What the participant actually said, and where the wake time came
-           from. These two fields are the whole difference between a record
-           the app believes and a record the app is merely reporting. */
-        saved.verified = lazyAnswer;
-        saved.wakeSource = night.wakeSource || null;
-        saved.bedSource = night.bedSource || null;
-      }
-      lazyAnswer = null;
-      state.lazyNight = null;
-      saveState();
-      $('#lazyMorningVeil').hidden = true;
-      clearMorningForm();
-      renderAll();
-      toast(lazyVerdict(saved, rating));
+      /* #saveMorning now saves the fully annotated lazy record and closes
+         the night in one storage write. If that write fails, the participant
+         can retry without losing the provisional night or their answer. */
     }
 
     /** One sentence. Not a dashboard, and never a scolding. */
@@ -11453,6 +11492,7 @@
   <!-- Explore. Six practices that each do something; audio is opt-in,
        synthesised rather than sampled, and stops when you leave. -->
   <script src="explore.js"></script>
+  <script src="meditation-chooser.js"></script>
   <!-- Living Sky. Recorded footage where a licensed clip exists for the
        daypart; the drawn sky stays and shows wherever one does not. -->
   <script src="living-sky.js"></script>

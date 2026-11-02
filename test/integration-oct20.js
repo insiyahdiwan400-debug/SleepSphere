@@ -372,6 +372,31 @@ async function open(browser, opts) {
       /const CACHE = '[^']*v1[0-9]/.test(sw), (sw.match(/const CACHE = '([^']*)'/) || [])[1]);
     check('11 · Motherhood files are still precached offline',
       /motherhood\.js/.test(sw) && /motherhood-ui\.js/.test(sw));
+
+    /* The checks above all passed while the bug was live, because they
+       ask what the worker contains rather than which way round it tries
+       things. Code used to be cache-first while index.html was
+       network-first, so a deploy reached a returning phone as new HTML
+       running old scripts: the markup had a Private destination and the
+       cached motherhood-ui.js was still mounting its entry card into
+       the Me tab, so the new screen rendered empty. Reported as the
+       feature not being there.
+
+       These pin the order. The last respondWith — everything that is
+       not a navigation and not the content-addressed font — must open
+       with fetch, and may only reach the cache from the failure path. */
+    const subresource = sw.slice(sw.lastIndexOf('event.respondWith'));
+    check('11 · Code is fetched before it is remembered',
+      /^event\.respondWith\(fetch\(/.test(subresource.trim()),
+      subresource.trim().slice(0, 46));
+    check('11 · And the cache answers only when the network does not',
+      /catch\(\(\) => caches\.match/.test(subresource));
+    check('11 · A successful fetch still refreshes the cache for offline',
+      /cache\.put\(event\.request, copy\)/.test(subresource));
+    /* The font is the one thing allowed to stay cache-first: it is
+       content-addressed, so a cached copy can never be the wrong one. */
+    check('11 · The content-addressed font may still come from cache',
+      /fonts\/.*woff2[\s\S]*?caches\.match\(event\.request\)/.test(sw));
     await 0;
   }
 
