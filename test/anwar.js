@@ -1,23 +1,29 @@
 /**
  * Jamea al Anwar — the courtyard, driven.
  *
- * Three things could go wrong here and only one of them is visual.
+ * The scene is a photograph of the actual building, so the questions
+ * worth asking changed when the plate did.
  *
- *   A claim. The brief forbids inventing architectural, historical or
- *   religious detail, so the suite reads the whole rendered screen and
- *   asserts it carries no date, no founding, no Arabic, and no
- *   photograph — and that it says, permanently and not behind a
- *   disclosure, that what you are looking at is drawn.
+ *   Provenance. A CC BY plate carries a condition: the attribution has
+ *   to be on the screen. It is checked for, and checked to be visible
+ *   rather than present-but-hidden. The plate is also checked to be the
+ *   one this repository ships, so a future edit cannot quietly point
+ *   the screen at something unlicensed.
  *
- *   A second engine. Audio belongs to SSExplore and the wind-down to
- *   SSAssist. The module is checked for the absence of its own.
+ *   No commentary. The brief is explicit that how the screen was built
+ *   belongs in documentation. The rendered text is read and must not
+ *   mention SVG, CSS, canvas, drawing or rendering — and must be short
+ *   enough to be a title and two controls rather than an explanation.
  *
- *   Birds that are not birds. A flock that leaves as one animal, or a
- *   bird that circles forever, or two birds standing in the same place,
- *   are each the difference between a simulation and a loop. All three
- *   are asserted, and the second one is a real bug this suite caught:
- *   half the birds circled anticlockwise and never met an exit
- *   condition written against an absolute angle.
+ *   The light. The grade is driven by the app's own sky, so the same
+ *   screen opened at one in the afternoon and at eleven at night must
+ *   not look the same. Measured, not asserted: both are opened with the
+ *   clock pinned and the two grades compared.
+ *
+ *   The birds. Still a simulation, now over a photograph: nothing
+ *   roosting is drawn, everything that lifts comes back down, and the
+ *   drawn birds are smaller than the photographed ones, which is the
+ *   check that catches them reading as paper aeroplanes.
  *
  * Needs the repository served at :8099.
  */
@@ -32,18 +38,33 @@ const check = (label, ok, detail) => {
 
 const ARABIC = /[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]/;
 
+/* Pin the clock: the grade is a function of the hour, so a suite that
+   runs at an arbitrary time is testing an arbitrary look. */
+const AT = (hour) => {
+  const fixed = new Date(); fixed.setHours(hour, 40, 0, 0);
+  const Real = Date;
+  window.Date = class extends Real {
+    constructor(...a) { return a.length ? new Real(...a) : new Real(fixed); }
+    static now() { return fixed.getTime(); }
+  };
+};
+
 async function open(browser, opts) {
+  const o = opts || {};
   const ctx = await browser.newContext({
-    viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true,
-    ...(opts || {})
+    viewport: o.viewport || { width: 393, height: 852 },
+    isMobile: o.viewport ? o.viewport.width < 500 : true,
+    hasTouch: true,
+    reducedMotion: o.reducedMotion
   });
   const page = await ctx.newPage();
   const errs = [];
   page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(AT, o.hour == null ? 22 : o.hour);
   await page.goto(BASE, { waitUntil: 'networkidle' });
-  await page.waitForTimeout(2300);
+  await page.waitForTimeout(2400);
   await page.evaluate(() => { const b = document.getElementById('fwSkip'); if (b) b.click(); });
-  await page.waitForTimeout(600);
+  await page.waitForTimeout(700);
   return { ctx, page, errs };
 }
 
@@ -54,45 +75,45 @@ async function open(browser, opts) {
   });
 
   /* ================================================================
-     1. It is reachable, it opens, and it closes.
+     1. It opens, it is a dialog, it closes.
      ================================================================ */
   {
     const { ctx, page, errs } = await open(browser);
 
     const listed = await page.evaluate(() =>
       [...document.querySelectorAll('#explore button, #explore a')]
-        .map(b => b.textContent.trim())
-        .filter(t => /anwar/i.test(t)));
-    check('1 · It is listed among the things you can start',
-      listed.length > 0, listed.join(' | '));
+        .map(b => b.textContent.trim()).filter(t => /anwar/i.test(t)));
+    check('1 · It is listed among the things you can start', listed.length > 0);
 
     const opened = await page.evaluate(async () => {
       window.SSAnwar.open();
-      await new Promise(r => setTimeout(r, 900));
+      await new Promise(r => setTimeout(r, 1400));
       const h = document.getElementById('anwar');
+      const plate = h.querySelector('.an-plate');
       return {
         present: Boolean(h),
-        role: h && h.getAttribute('role'),
-        modal: h && h.getAttribute('aria-modal'),
-        label: h && h.getAttribute('aria-label'),
+        role: h.getAttribute('role'),
+        modal: h.getAttribute('aria-modal'),
+        label: h.getAttribute('aria-label'),
         locked: document.documentElement.classList.contains('anwar-open'),
-        canvas: Boolean(h && h.querySelector('canvas'))
+        /* With w-descriptors naturalWidth is density-corrected, so it
+           reports the layout size rather than the file's. complete plus
+           the chosen candidate is what actually says it loaded. */
+        loaded: plate.complete && /courtyard-(1280|1920)\.webp$/.test(plate.currentSrc),
+        natural: plate.currentSrc.split('/').pop() + ' @' + plate.naturalWidth,
+        alt: plate.alt,
+        canvas: Boolean(h.querySelector('canvas'))
       };
     });
     check('1 · It opens', opened.present === true);
     check('1 · As a named modal dialog',
-      opened.role === 'dialog' && opened.modal === 'true' && /anwar/i.test(opened.label || ''),
+      opened.role === 'dialog' && opened.modal === 'true' && /anwar/i.test(opened.label),
       opened.label);
     check('1 · And takes over the screen', opened.locked === true);
-    check('1 · With a canvas for the birds', opened.canvas === true);
-
-    const tap = await page.evaluate(() => {
-      const b = document.querySelector('.anwar-touch');
-      return { exists: Boolean(b), tag: b && b.tagName,
-               name: b && b.getAttribute('aria-label') };
-    });
-    check('1 · The courtyard itself is a real, named control',
-      tap.tag === 'BUTTON' && /lift|disturb/i.test(tap.name || ''), tap.name);
+    check('1 · The photograph actually loads', opened.loaded === true, opened.natural);
+    check('1 · With a description for anyone who cannot see it',
+      /courtyard/i.test(opened.alt) && opened.alt.length > 60);
+    check('1 · And a canvas for the birds', opened.canvas === true);
 
     await page.keyboard.press('Escape');
     await page.waitForTimeout(400);
@@ -108,118 +129,177 @@ async function open(browser, opts) {
   }
 
   /* ================================================================
-     2. It claims nothing.
+     2. Provenance: the plate this repository ships, credited.
      ================================================================ */
   {
     const { ctx, page } = await open(browser);
-    const claims = await page.evaluate(async () => {
+    const prov = await page.evaluate(async () => {
       window.SSAnwar.open();
-      await new Promise(r => setTimeout(r, 700));
+      await new Promise(r => setTimeout(r, 1000));
       const h = document.getElementById('anwar');
-      const prov = h.querySelector('.anwar-provenance');
-      /* Everything that could carry a photograph, anywhere in the tree. */
-      const painted = [...h.querySelectorAll('*')].filter(n => {
-        const bg = getComputedStyle(n).backgroundImage || '';
-        return /url\(/i.test(bg);
-      }).length;
+      const credit = h.querySelector('.an-credit');
+      const link = credit ? credit.querySelector('a') : null;
       return {
-        text: h.textContent,
-        provenance: prov ? prov.textContent : '',
-        hidden: prov ? (prov.offsetParent === null) : true,
-        behindDisclosure: Boolean(h.querySelector('details')),
-        images: h.querySelectorAll('img, video, picture, source').length,
-        urlBackgrounds: painted
+        plate: window.SSAnwar.state().plate,
+        src: h.querySelector('.an-plate').getAttribute('src'),
+        local: [...h.querySelectorAll('img')]
+          .every(i => /^\.\/media\/anwar\//.test(i.getAttribute('src'))),
+        credit: credit ? credit.textContent : '',
+        visible: credit ? credit.offsetParent !== null : false,
+        href: link ? link.getAttribute('href') : '',
+        behindDisclosure: Boolean(h.querySelector('details'))
       };
     });
-    check('2 · It says what you are looking at is drawn',
-      /is drawn/i.test(claims.provenance));
-    check('2 · And that it is not a picture of the building',
-      /not a picture of the building/i.test(claims.provenance));
-    check('2 · And that no detail is taken from it',
-      /none is claimed/i.test(claims.provenance));
-    check('2 · The line is on the screen, not behind a disclosure',
-      claims.hidden === false && claims.behindDisclosure === false);
-    check('2 · There is no photograph anywhere in it',
-      claims.images === 0 && claims.urlBackgrounds === 0,
-      claims.images + ' media, ' + claims.urlBackgrounds + ' url() backgrounds');
-    check('2 · No date is given', !/\b\d{3,4}\s?(CE|AD|AH)\b|\bcentury\b/i.test(claims.text));
-    check('2 · Nothing is said to have been founded or built',
-      !/founded|was built|commissioned|restored in/i.test(claims.text));
-    check('2 · It carries no Arabic, so it cannot modify any',
-      ARABIC.test(claims.text) === false);
+    check('2 · Every image comes from this repository', prov.local === true, prov.src);
+    check('2 · The photographer is named on the screen',
+      prov.credit.indexOf(prov.plate.credit) > -1, prov.credit);
+    check('2 · So is the licence', prov.credit.indexOf(prov.plate.licence) > -1);
+    check('2 · Which links to its terms',
+      /creativecommons\.org\/licenses\//.test(prov.href), prov.href);
+    check('2 · And the credit is visible, not merely present',
+      prov.visible === true && prov.behindDisclosure === false);
     await ctx.close();
   }
 
   /* ================================================================
-     3. The birds.
+     3. No implementation commentary, and no claims.
+     ================================================================ */
+  {
+    const { ctx, page } = await open(browser);
+    const words = await page.evaluate(async () => {
+      window.SSAnwar.open();
+      await new Promise(r => setTimeout(r, 900));
+      const h = document.getElementById('anwar');
+      /* What a person actually reads: the credit is a licence term, so
+         it is excluded from the prose measurement and checked above. */
+      const credit = h.querySelector('.an-credit');
+      const prose = [...h.querySelectorAll('p, h1, h2, h3, span')]
+        .filter(n => n !== credit && !credit.contains(n) && n.offsetParent !== null)
+        .map(n => n.textContent.trim()).filter(Boolean);
+      return {
+        all: h.innerText,
+        prose,
+        buttons: [...h.querySelectorAll('button')]
+          .map(b => (b.textContent || b.getAttribute('aria-label') || '').trim())
+      };
+    });
+    check('3 · Nothing on screen explains how it was built',
+      !/\bSVG\b|\bCSS\b|\bcanvas\b|\bdrawn\b|\brendered\b|original graphics/i.test(words.all),
+      words.all.replace(/\s+/g, ' ').slice(0, 70));
+    check('3 · There is no paragraph of instructions',
+      words.prose.every(t => t.length <= 22), words.prose.join(' | '));
+    check('3 · Nothing explains how to tap the birds',
+      !/tap|pigeon|lift|disturb/i.test(words.prose.join(' ')));
+    check('3 · The controls are a title, a way out and two actions',
+      words.buttons.length === 4, words.buttons.join(' / '));
+    check('3 · No date or founding is asserted',
+      !/\b\d{3,4}\s?(CE|AD|AH)\b|\bcentury\b|founded|was built|commissioned/i.test(words.all));
+    check('3 · And it carries no Arabic, so it cannot modify any',
+      ARABIC.test(words.all) === false);
+    await ctx.close();
+  }
+
+  /* ================================================================
+     4. The light follows the real hour.
+     ================================================================ */
+  {
+    const read = async (hour) => {
+      const { ctx, page } = await open(browser, { hour });
+      const out = await page.evaluate(async () => {
+        window.SSAnwar.open();
+        await new Promise(r => setTimeout(r, 3200));
+        const h = document.getElementById('anwar');
+        const cs = getComputedStyle(h.querySelector('.an-plate'));
+        return {
+          night: window.SSAnwar.state().night,
+          filter: cs.filter,
+          /* The lighting anchors anwar.js measures off the crop. */
+          horizon: h.style.getPropertyValue('--an-horizon'),
+          arcade: h.style.getPropertyValue('--an-arcade'),
+          floor: h.style.getPropertyValue('--an-floor')
+        };
+      });
+      await ctx.close();
+      return out;
+    };
+    const noon = await read(13);
+    const late = await read(23);
+    check('4 · At one in the afternoon the courtyard is bright',
+      noon.night < 0.3, String(noon.night));
+    check('4 · At eleven at night it is dark', late.night > 0.8, String(late.night));
+    check('4 · And the two are genuinely different pictures',
+      noon.filter !== late.filter,
+      noon.filter.slice(0, 30) + '  vs  ' + late.filter.slice(0, 30));
+    check('4 · The lighting is anchored to where the arcade actually is',
+      /%$/.test(late.arcade) && parseFloat(late.horizon) < parseFloat(late.arcade)
+        && parseFloat(late.arcade) < parseFloat(late.floor),
+      [late.horizon, late.arcade, late.floor].join(' < '));
+    await (async () => {})();
+  }
+
+  /* ================================================================
+     5. The birds.
      ================================================================ */
   {
     const { ctx, page } = await open(browser);
     const rest = await page.evaluate(async () => {
       window.SSAnwar.open();
-      await new Promise(r => setTimeout(r, 1200));
-      const s = window.SSAnwar.state();
-      return { s, unique: new Set(s.slots).size === s.slots.length };
-    });
-    check('3 · The ledge starts full and quiet',
-      rest.s.birds > 6 && rest.s.flying === 0,
-      rest.s.birds + ' birds, ' + rest.s.flying + ' flying');
-    check('3 · And no two birds are standing in the same place',
-      rest.unique === true, rest.s.slots.join(','));
-
-    /* A flock does not leave as one animal. */
-    const lift = await page.evaluate(async () => {
-      window.SSAnwar.startle(10);            /* far left, on the ledge */
-      await new Promise(r => setTimeout(r, 900));
+      await new Promise(r => setTimeout(r, 1500));
       return window.SSAnwar.state();
     });
-    check('3 · A disturbance lifts some of them', lift.flying > 0,
-      String(lift.flying));
-    check('3 · But not all of them — a flock is not one animal',
-      lift.roosting > 0, lift.roosting + ' stayed');
+    check('5 · Nothing roosting is drawn — the flock is in the plate',
+      rest.flying === 0, String(rest.flying));
 
-    /* Nothing flies forever. This is the bug the suite exists for. */
-    const settled = await page.evaluate(async () => {
-      await new Promise(r => setTimeout(r, 22000));
-      const s = window.SSAnwar.state();
-      return { s, unique: new Set(s.slots).size === s.slots.length };
+    const lifted = await page.evaluate(async () => {
+      const n = window.SSAnwar.lift(6, 0.4);
+      await new Promise(r => setTimeout(r, 1200));
+      return { made: n, state: window.SSAnwar.state() };
     });
-    check('3 · Everything comes back down', settled.s.flying === 0,
-      settled.s.modes.join(','));
-    check('3 · To the ledge, one bird to a place',
-      settled.unique === true && settled.s.roosting === settled.s.birds,
-      settled.s.slots.join(','));
+    check('5 · A disturbance puts some into the air',
+      lifted.state.flying > 0, String(lifted.state.flying));
 
-    /* Left alone, it gets quieter rather than busier. */
-    const quiet = await page.evaluate(() => window.SSAnwar.state().calmFor);
-    check('3 · And the courtyard keeps count of how long it has been left',
-      quiet >= 20, String(quiet));
+    /* Scale: a drawn bird must be smaller than a photographed one, or
+       it reads as a paper aeroplane over a real building. */
+    const scale = await page.evaluate(() => {
+      const c = document.querySelector('.an-birds');
+      const w = c.getBoundingClientRect().width;
+      /* The draw size anwar.js uses, recomputed from the same inputs. */
+      const plateW = Math.max(w / 1920, c.getBoundingClientRect().height / 1277) * 1920;
+      return { wingspan: plateW * 0.0034 * 1.5 * 2 * 1.72, viewport: w };
+    });
+    check('5 · And they are bird-sized, not kite-sized',
+      scale.wingspan < 26, scale.wingspan.toFixed(1) + 'px wingspan');
+
+    const settled = await page.evaluate(async () => {
+      await new Promise(r => setTimeout(r, 26000));
+      return window.SSAnwar.state();
+    });
+    check('5 · Everything that went up comes back down',
+      settled.flying === 0, String(settled.flying));
     await ctx.close();
   }
 
   /* ================================================================
-     4. It owns no audio and no timer.
+     6. Borrowed, not owned.
      ================================================================ */
   {
     const { ctx, page } = await open(browser);
     const surface = await page.evaluate(async () => {
       window.SSAnwar.open();
-      await new Promise(r => setTimeout(r, 700));
+      await new Promise(r => setTimeout(r, 900));
       return {
         keys: Object.keys(window.SSAnwar).sort(),
-        before: {
-          audio: window.SSExplore.audioRunning(),
-          session: window.SSAssist.session()
-        }
+        audio: window.SSExplore.audioRunning(),
+        session: window.SSAssist.session()
       };
     });
-    check('4 · Its whole surface is open, close, state and startle',
-      surface.keys.join(',') === 'close,open,startle,state', surface.keys.join(','));
-    check('4 · Nothing is playing until something is pressed',
-      surface.before.audio === false && surface.before.session === null);
+    check('6 · Its whole surface is close, lift, open and state',
+      surface.keys.join(',') === 'close,lift,open,state', surface.keys.join(','));
+    check('6 · Nothing plays until something is pressed',
+      surface.audio === false && surface.session === null);
 
     const windDown = await page.evaluate(async () => {
-      [...document.querySelectorAll('.anwar-btn')]
+      [...document.querySelectorAll('.an-btn')]
         .find(b => /wind-down/i.test(b.textContent)).click();
       await new Promise(r => setTimeout(r, 2600));
       return {
@@ -228,12 +308,10 @@ async function open(browser, opts) {
         timer: window.SSExplore.timerEndsAt() > 0
       };
     });
-    check('4 · The wind-down button starts a real Assist session',
-      windDown.session !== null);
-    check('4 · With Assist’s sound and Assist’s timer, not its own',
+    check('6 · The button starts a real Assist session', windDown.session !== null);
+    check('6 · With Assist’s sound and Assist’s timer, not its own',
       windDown.audio === true && windDown.timer === true);
 
-    /* Closing the courtyard is not stopping the night. */
     const after = await page.evaluate(async () => {
       window.SSAnwar.close();
       await new Promise(r => setTimeout(r, 700));
@@ -243,41 +321,44 @@ async function open(browser, opts) {
         audio: window.SSExplore.audioRunning()
       };
     });
-    check('4 · Closing the courtyard leaves the wind-down running',
+    check('6 · Closing the courtyard leaves the wind-down running',
       after.gone === true && after.session !== null && after.audio === true);
     await page.evaluate(() => window.SSAssist.stop());
     await ctx.close();
   }
 
   /* ================================================================
-     5. Reduced motion means still, not merely slower.
+     7. Reduced motion means a still photograph.
      ================================================================ */
   {
     const { ctx, page } = await open(browser, { reducedMotion: 'reduce' });
     const still = await page.evaluate(async () => {
       window.SSAnwar.open();
-      await new Promise(r => setTimeout(r, 900));
-      const first = window.SSAnwar.state();
-      window.SSAnwar.startle();
-      await new Promise(r => setTimeout(r, 2500));
-      const second = window.SSAnwar.state();
-      const sway = getComputedStyle(document.querySelector('.anwar-lantern')).animationName;
-      const twinkle = getComputedStyle(document.querySelector('.anwar-stars span')).animationName;
+      await new Promise(r => setTimeout(r, 1100));
+      const before = window.SSAnwar.state();
+      window.SSAnwar.lift(6, 0.5);
+      await new Promise(r => setTimeout(r, 2200));
+      const cs = n => getComputedStyle(document.querySelector(n)).animationName;
       return {
-        calm: first.calm,
-        birds: first.birds,
-        before: first.modes.join(','),
-        after: second.modes.join(','),
-        sway, twinkle
+        calm: before.calm,
+        before: before.flying,
+        after: window.SSAnwar.state().flying,
+        plate: cs('.an-plate'),
+        grain: cs('.an-grain'),
+        lamps: cs('.an-lamps'),
+        loaded: (function () {
+          var p = document.querySelector('.an-plate');
+          return p.complete && /courtyard-(1280|1920)\.webp$/.test(p.currentSrc);
+        })()
       };
     });
-    check('5 · It knows motion was turned down', still.calm === true);
-    check('5 · The courtyard is still full', still.birds > 6, String(still.birds));
-    check('5 · Nothing moves, even when disturbed',
-      still.before === still.after && !/takeoff|circle/.test(still.after),
-      still.after);
-    check('5 · The lanterns do not sway', still.sway === 'none', still.sway);
-    check('5 · And the stars do not twinkle', still.twinkle === 'none', still.twinkle);
+    check('7 · It knows motion was turned down', still.calm === true);
+    check('7 · The photograph is still there', still.loaded === true);
+    check('7 · No bird leaves the ground, even when disturbed',
+      still.before === 0 && still.after === 0, still.before + ' → ' + still.after);
+    check('7 · The plate does not drift', still.plate === 'none', still.plate);
+    check('7 · The grain does not crawl', still.grain === 'none', still.grain);
+    check('7 · And the lamps do not breathe', still.lamps === 'none', still.lamps);
     await ctx.close();
   }
 

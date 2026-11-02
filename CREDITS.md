@@ -138,3 +138,58 @@ winglet in the lower right, the second is a full cabin window frame
 with a wing across the centre. The approved Motherhood design excludes
 aircraft imagery of any kind, so neither was installed. They are not in
 this repository.
+
+## Jamea al Anwar
+
+### The plate
+
+`media/anwar/courtyard-1920.webp` and `courtyard-1280.webp` are the same
+photograph at two widths; `courtyard-wash.webp` is a heavily blurred
+640px derivative of it, used only to carry colour to the edges of
+screen shapes the frame does not fill.
+
+| | |
+|---|---|
+| Subject | The sahn (courtyard) of al-Jami al-Anwar, the Mosque of al-Hakim, Cairo |
+| Photographer | Francisco Anzola |
+| Licence | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/) |
+| Source | [Wikimedia Commons](https://commons.wikimedia.org/w/index.php?curid=92830979), original 6016 × 4000 |
+| Retrieved | 2 November 2026, via the Commons 1920px rendition |
+| Changes | Re-encoded to WebP; a 1280px rendition and a blurred 640px wash derived from it. The frame is not cropped, retouched, or composited. |
+
+CC BY 2.0 permits commercial use and modification and requires
+attribution. The attribution appears on the screen itself, on one line
+beside the controls — `anwar.js` builds it from the same `PLATE` record
+this table is written from, so the credit cannot drift from the file.
+
+The photograph carries no watermark. It was inspected before use.
+
+### What is drawn, and what is not
+
+Nothing architectural is drawn. The arcade, the stepped crenellation,
+the marble, the minaret and the several dozen pigeons standing in the
+courtyard are all in the photograph.
+
+What SleepSphere adds is light and a handful of birds in the air: a
+grade from day to night driven by the app's own sky engine, atmospheric
+haze on the band the far arcade occupies, lamp light positioned on the
+arcade's measured position in the frame, film grain, a vignette, and
+between zero and about a dozen small drawn birds that lift out of the
+courtyard and settle back into it. No roosting bird is drawn, because
+the roosting flock is photographic.
+
+### Architectural references consulted
+
+Used only to confirm what the photograph shows — that the mosque is
+also known as al-Anwar, that the minaret heads are of the mabkhara
+type, and that the stone facades and minarets stand against largely
+brick secondary structure. No architectural claim is made anywhere in
+the interface, and no detail was reconstructed from these sources.
+
+- Archnet / Aga Khan Documentation Center, Mosque of al-Hakim
+- *Art and Architecture of the Middle Ages* (artofthemiddleages.com), Mosque of al-Hakim
+- Islamic Architectural Heritage, Al-Hakim Mosque
+
+Accounts of the original state of the minarets and of the 1010–11
+bastions differ between sources. Nothing turning on that disagreement
+is asserted by this app.

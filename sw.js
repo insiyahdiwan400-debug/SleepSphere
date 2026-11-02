@@ -1,4 +1,4 @@
-const CACHE = 'sleepsphere-v15-assist-20261102';
+const CACHE = 'sleepsphere-v16-anwar-20261102';
 /* The Arabic face is shell, not an extra. The dua is read at bedtime, which
    is exactly when a phone is likeliest to be in a basement, on aeroplane
    mode, or out of data — so it is fetched on install with everything else
@@ -15,7 +15,12 @@ const SHELL = ['./', './manifest.webmanifest', './favicon.svg', './apple-touch-i
      when the phone is likeliest to have no network. Neither file loads
      anything further — Anwar draws its courtyard rather than fetching
      one — so caching them makes the whole of both available offline. */
-  './assist.js', './assist-ui.js', './assist.css', './anwar.js', './anwar.css'];
+  './assist.js', './assist-ui.js', './assist.css', './anwar.js', './anwar.css',
+  /* The courtyard's plate. 224 KB for the three renditions, and the
+     screen is nothing without them — a photographic environment that
+     fails to load offline is a black rectangle, not a degraded one. */
+  './media/anwar/courtyard-1920.webp', './media/anwar/courtyard-1280.webp',
+  './media/anwar/courtyard-wash.webp'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));

@@ -1,68 +1,89 @@
 /**
- * Jamea al Anwar — the courtyard at night.
+ * Jamea al Anwar — the courtyard.
  *
- * WHAT THIS IS, SAID FIRST AND SAID ON SCREEN.
+ * THE PLATE
  *
- * Every mark in here is drawn: original SVG, CSS and canvas written for
- * SleepSphere. Nothing is photographed, nothing is traced from a
- * photograph, and no measurement, proportion or ornament is taken from
- * the real building. It is a courtyard at night in the general language
- * of the architecture — arches, a ledge, lanterns, a sky — and it is
- * labelled as that on the screen, permanently, not in a credit nobody
- * opens. When verified photographs are supplied they replace the
- * drawing; until then this makes no claim it cannot support.
+ * The scene is a photograph of the actual building: the sahn of
+ * al-Jami al-Anwar, the Mosque of al-Hakim, in Cairo. The arcade of
+ * pointed arches, the stepped crenellation along the parapet, the
+ * marble of the courtyard and the minaret with its mabkhara head rising
+ * behind the north-west riwaq are all in the frame because they are
+ * there, not because anyone drew them. Nothing about the architecture
+ * is invented, because nothing about it is authored.
  *
- * So the module carries no history and no religious text. Both would be
- * claims, and the brief is explicit: do not invent historical or
- * religious claims, do not invent architectural details. What it carries
- * instead is a place to be, and the thing that actually makes such a
- * place feel alive at night, which is the birds.
+ * It is Francisco Anzola's, CC BY 2.0, carrying no watermark, and the
+ * attribution the licence requires is in CREDITS.md and on one short
+ * line beside the controls. See ANWAR.md for the sourcing and for what
+ * replaces it if a higher-resolution plate is cleared.
  *
- * THE PIGEONS.
+ * WHAT IS DONE TO IT
  *
- * Each bird is a small state machine, and the behaviour is modelled on
- * what pigeons actually do rather than on what looks busy:
+ * Grading, not drawing. The plate is a bright morning; the courtyard is
+ * opened at night. So the whole stack is graded towards the hour it
+ * actually is, using the same continuously interpolated sky the rest of
+ * the app runs on — `--stars` is the app's own day-to-night number, and
+ * the courtyard reads it rather than keeping a clock of its own. At
+ * three in the afternoon it is a bright courtyard; at eleven at night
+ * it is a dark one, and it crosses between them over the evening
+ * without a step.
  *
- *   ROOST    sitting. Still, mostly. Occasional head bob, occasional
- *            preen. This is where a bird spends almost all of its time
- *            at night, and the restraint is the point.
- *   SHUFFLE  a short sidestep along the ledge, which is what they do
- *            when a neighbour crowds them. Birds keep an individual
- *            distance and move to restore it.
- *   TAKEOFF  steep, with fast wingbeats. Expensive, so it is rare and
- *            needs a reason.
- *   CIRCLE   a loop out over the courtyard: beats, then a glide, then
- *            beats again.
- *   LAND     back to a free place on the ledge, not necessarily the one
- *            it left.
+ * Above it: a pre-blurred wash of the same frame so the colour runs to
+ * every edge, atmospheric haze over the far arcade, a slow drift, film
+ * grain, and a vignette whose weight follows the app's own light
+ * position. All of it is light on the photograph. None of it adds
+ * architecture.
  *
- * A startle spreads. Tap the courtyard and the birds nearest the tap go
- * first, the others follow with a delay proportional to distance, and
- * some never go at all — a flock does not leave as one animal, and one
- * that does reads as an animation rather than as birds.
+ * THE BIRDS
  *
- * Left alone, the courtyard gets quieter: the chance of a spontaneous
- * move decays the longer nothing has disturbed it. That is the whole
- * reason this screen exists at bedtime.
+ * The flock is already in the photograph — several dozen real pigeons,
+ * standing on real marble. So nothing roosting is drawn, which is the
+ * whole reason this reads as a place rather than as an illustration.
+ * What is drawn is the few that are in the air: small, soft-edged,
+ * dust-coloured rather than black, fading with distance, lifting out of
+ * the courtyard and settling back into it. They are far away and there
+ * are rarely more than a handful.
  *
  * WHAT IT DOES NOT OWN: audio and the wind-down. Sound comes from
- * SSExplore and the wind-down from SSAssist, both through their public
+ * SSExplore and the wind-down from SSAssist, through their public
  * surfaces. There is no second audio engine and no second timer here.
  */
 (function () {
   'use strict';
 
+  /* ------------------------------------------------------------------
+     THE PLATE, and where things are in it.
+
+     The fractions are measured off the frame, not guessed, and the
+     birds are placed against them: anything flying is in the sky band,
+     anything landing goes back to the floor the real flock is standing
+     on. Swapping the photograph means re-measuring these four numbers
+     and nothing else.
+     ------------------------------------------------------------------ */
+  var PLATE = {
+    src: './media/anwar/courtyard-1920.webp',
+    srcset: './media/anwar/courtyard-1280.webp 1280w, ./media/anwar/courtyard-1920.webp 1920w',
+    wash: './media/anwar/courtyard-wash.webp',
+    w: 1920, h: 1277,
+    credit: 'Francisco Anzola',
+    licence: 'CC BY 2.0',
+    licenceUrl: 'https://creativecommons.org/licenses/by/2.0/',
+    /* Fractions of the plate's height, measured off this frame.
+       Swapping the photograph means re-measuring these and nothing
+       else: every bird is placed against them. */
+    skyTop: 0.05,
+    parapet: 0.40,          /* where the arcade's crenellation begins */
+    floorLine: 0.65,        /* the base of the columns */
+    floorFar: 0.71,         /* the nearest the real flock stands */
+    minaretX: 0.495
+  };
+
   var host = null, canvas = null, ctx = null, raf = 0;
-  var birds = [], lastFrame = 0, calmFor = 0;
-  var W = 0, H = 0, DPR = 1;
-  /* Where the ledge sits, as a fraction of the stage height. The
-     near silhouette's height in anwar.css is 1 - LEDGE, so the
-     birds stand on the band the SVG draws rather than near it. */
-  var LEDGE = 0.58;
+  var flock = [], lastFrame = 0, sinceLift = 0, grade = 0;
+  var W = 0, H = 0, box = null;      /* where the plate actually sits */
 
   function calm() {
-    return window.matchMedia &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    return Boolean(window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   }
 
   function el(tag, cls, text) {
@@ -79,268 +100,223 @@
   }
 
   /* ------------------------------------------------------------------
-     THE LEDGE
+     THE HOUR.
 
-     Birds roost in slots. Slots rather than free positions because that
-     is how a ledge actually fills: a bird lands in a gap, and the gaps
-     are set by how much room the birds beside it leave. Modelling the
-     gap directly is less code than modelling the avoidance that creates
-     it, and it cannot produce two birds in the same place.
+     --stars is the app's own day-to-night number, interpolated
+     continuously from the real clock by the sky engine. Reading it
+     rather than keeping a second clock means the courtyard can never
+     disagree with the rest of the app about what time it is.
      ------------------------------------------------------------------ */
-  var SLOTS = 14;
-  function slotX(i) { return (0.08 + (0.84 * i) / (SLOTS - 1)) * W; }
-  function ledgeY() { return H * LEDGE; }
+  /* --stars is tuned for how many stars to show, and peaks well below
+     1 even at midnight. The courtyard needs the same curve mapped onto
+     a full day-to-night swing, so it is scaled rather than re-derived:
+     one clock, one interpolation, one place to change the response. */
+  var NIGHT_GAIN = 2.1;
 
-  function freeSlot(except) {
-    var taken = {};
-    birds.forEach(function (b) {
-      if (b !== except && (b.mode === 'roost' || b.mode === 'shuffle' || b.mode === 'land')) {
-        taken[b.slot] = true;
-      }
-    });
-    var open = [];
-    for (var i = 0; i < SLOTS; i++) if (!taken[i]) open.push(i);
-    if (!open.length) return except ? except.slot : 0;
-    return open[(Math.random() * open.length) | 0];
+  function nightness() {
+    try {
+      var v = parseFloat(getComputedStyle(document.documentElement)
+        .getPropertyValue('--stars'));
+      if (isFinite(v)) return Math.min(1, Math.max(0, v * NIGHT_GAIN));
+    } catch (e) {}
+    var h = new Date().getHours();
+    return (h >= 20 || h < 5) ? 1 : (h >= 18 || h < 7) ? 0.55 : 0;
   }
 
-  function makeBirds(n) {
-    birds = [];
-    var used = {};
-    for (var i = 0; i < n; i++) {
-      var slot;
-      do { slot = (Math.random() * SLOTS) | 0; } while (used[slot]);
-      used[slot] = true;
-      birds.push({
-        slot: slot,
-        x: slotX(slot), y: ledgeY(),
-        tx: slotX(slot), ty: ledgeY(),
-        mode: 'roost',
-        /* Which way it faces. Pigeons on a ledge do not all face the
-           same way, and a row that does looks printed. */
-        dir: Math.random() < 0.5 ? -1 : 1,
-        t: 0,                     /* time in the current mode */
-        wait: 2 + Math.random() * 8,
+  function applyGrade(instant) {
+    if (!host) return;
+    grade = nightness();
+    host.style.setProperty('--an-night', grade.toFixed(3));
+    if (instant) host.style.setProperty('--an-settle', '0ms');
+    else host.style.removeProperty('--an-settle');
+  }
+
+  /* ------------------------------------------------------------------
+     THE PLATE'S GEOMETRY ON SCREEN.
+
+     The photograph is covered into the viewport, so where the horizon
+     lands depends on the device. The birds have to know, or they fly
+     through the arcade on a phone and above the sky on a tablet.
+     ------------------------------------------------------------------ */
+  function measure() {
+    if (!canvas) return;
+    var DPR = Math.min(2, window.devicePixelRatio || 1);
+    var r = canvas.getBoundingClientRect();
+    W = r.width; H = r.height;
+    canvas.width = Math.round(W * DPR);
+    canvas.height = Math.round(H * DPR);
+    ctx = canvas.getContext('2d');
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+    /* object-fit: cover, worked out rather than assumed. */
+    var scale = Math.max(W / PLATE.w, H / PLATE.h);
+    var dw = PLATE.w * scale, dh = PLATE.h * scale;
+    /* object-position: 50% var(--an-focus). Read it back so the two
+       cannot drift apart. */
+    var focus = 0.46;
+    try {
+      var fv = parseFloat(getComputedStyle(host).getPropertyValue('--an-focus'));
+      if (isFinite(fv)) focus = fv / 100;
+    } catch (e) {}
+    box = {
+      x: (W - dw) / 2,
+      y: (H - dh) * focus,
+      w: dw, h: dh,
+      at: function (fx, fy) { return { x: this.x + fx * this.w, y: this.y + fy * this.h }; }
+    };
+
+    /* Where the architecture lands, in viewport percent, so the lighting
+       can sit ON the arcade instead of near it. The crop moves with the
+       device; these move with the crop, and the CSS reads them. One
+       measurement, used by both halves. */
+    var pct = function (f) {
+      return (((box.y + f * box.h) / H) * 100).toFixed(2) + '%';
+    };
+    host.style.setProperty('--an-horizon', pct(PLATE.parapet));
+    host.style.setProperty('--an-arcade', pct((PLATE.parapet + PLATE.floorLine) / 2));
+    host.style.setProperty('--an-floor', pct(PLATE.floorLine));
+  }
+
+  /* ------------------------------------------------------------------
+     THE BIRDS IN THE AIR.
+
+     Nothing roosting is drawn — the flock on the marble is in the
+     photograph. A bird exists only between leaving it and returning.
+     ------------------------------------------------------------------ */
+  function lift(count, atX) {
+    if (calm()) return 0;
+    var made = 0;
+    for (var i = 0; i < count; i++) {
+      if (flock.length > 30) break;
+      var from = box.at(
+        atX != null ? atX + (Math.random() - 0.5) * 0.18
+                    : 0.12 + Math.random() * 0.76,
+        PLATE.floorFar + Math.random() * 0.26);
+      var ceiling = box.at(0.5, PLATE.skyTop + Math.random() * 0.26).y;
+      flock.push({
+        x: from.x, y: from.y,
+        /* Where it will wheel, and how big it is there. Birds that end
+           up higher in the frame are further away, so they are smaller
+           and thinner — which is the only honest way to sit a drawn
+           thing on a photograph. */
+        cx: box.at(0.2 + Math.random() * 0.6, 0).x,
+        cy: ceiling,
+        r: box.w * (0.08 + Math.random() * 0.14),
+        a: Math.random() * Math.PI * 2,
+        spin: (Math.random() < 0.5 ? -1 : 1) * (0.5 + Math.random() * 0.5),
+        phase: 'up',
+        t: 0,
+        /* Staggered, because a flock does not leave on one frame. */
+        hold: i * (0.06 + Math.random() * 0.14),
+        life: 9 + Math.random() * 11,
         beat: Math.random() * Math.PI * 2,
-        bob: 0,
-        /* Individual nerve. Some birds go at the first sign of
-           anything; some sit through it. */
-        jumpy: 0.25 + Math.random() * 0.7,
-        size: 0.86 + Math.random() * 0.3
+        rate: 9 + Math.random() * 4,
+        glide: 0,
+        size: 0.8 + Math.random() * 0.5,
+        fade: 0
       });
+      made++;
+    }
+    sinceLift = 0;
+    return made;
+  }
+
+  function stepBird(b, dt) {
+    b.t += dt;
+    if (b.hold > 0) { b.hold -= dt; return; }
+
+    /* Beats, then a glide. A bird that flaps without pause is a moth. */
+    b.glide = (b.t * 0.85) % 1 > 0.58 ? 1 : 0;
+    if (!b.glide) b.beat += dt * b.rate;
+
+    if (b.phase === 'up') {
+      var target = b.cy;
+      b.y += (target - b.y) * Math.min(1, dt * 1.5);
+      b.x += (b.cx + Math.cos(b.a) * b.r - b.x) * Math.min(1, dt * 1.1);
+      b.fade = Math.min(1, b.fade + dt * 1.6);
+      if (Math.abs(b.y - target) < box.h * 0.012) { b.phase = 'wheel'; b.t = 0; }
+    } else if (b.phase === 'wheel') {
+      b.a += b.spin * dt;
+      /* An ellipse, because the circle is being seen almost edge on. */
+      b.x = b.cx + Math.cos(b.a) * b.r;
+      b.y = b.cy + Math.sin(b.a) * b.r * 0.22;
+      if (b.t > b.life) {
+        b.phase = 'down'; b.t = 0;
+        var home = box.at(0.1 + Math.random() * 0.8,
+                          PLATE.floorFar + Math.random() * 0.26);
+        b.toX = home.x; b.toY = home.y;
+        b.fromX = b.x; b.fromY = b.y;
+      }
+    } else {
+      /* A flared descent, fading as it reaches the flock that is
+         already standing there — so a drawn bird is never seen to
+         become a photographed one. */
+      var k = Math.min(1, b.t / 2.2);
+      var e = 1 - Math.pow(1 - k, 3);
+      b.x = b.fromX + (b.toX - b.fromX) * e;
+      b.y = b.fromY + (b.toY - b.fromY) * e;
+      b.glide = k > 0.5 ? 1 : b.glide;
+      b.fade = Math.max(0, 1 - Math.max(0, (k - 0.72) / 0.28));
+      if (k >= 1) b.dead = true;
     }
   }
 
-  /* ------------------------------------------------------------------
-     BEHAVIOUR
-     ------------------------------------------------------------------ */
-  function startle(x, y) {
-    /* Someone who asked for no motion gets a still picture, and a tap
-       does not quietly rearrange it behind their back. */
-    if (calm()) return;
-    calmFor = 0;
-    birds.forEach(function (b) {
-      if (b.mode !== 'roost' && b.mode !== 'shuffle') return;
-      /* Distance along the ledge, mostly. The birds are all at one
-         height, so vertical distance says little about who is near the
-         disturbance — and weighting it equally meant a tap anywhere
-         above the ledge was already too far away to reach anyone,
-         which made most of the screen a dead control. */
-      var dx = (b.x - x) / W;
-      var dy = ((b.y - y) / H) * 0.45;
-      var d = Math.sqrt(dx * dx + dy * dy);
-      var near = Math.max(0, 1 - d * 1.5);
-      /* Near birds go, far birds mostly don't, and the nervous ones
-         lower the bar for themselves. The floor is what makes a far
-         corner of the flock occasionally go anyway. */
-      if (Math.random() > near * b.jumpy + 0.06) return;
-      b.mode = 'wait-takeoff';
-      b.t = 0;
-      /* The delay is the spread: it travels outward rather than
-         everything leaving on the same frame. */
-      b.wait = d * (0.9 + Math.random() * 0.8);
-    });
-  }
-
-  function step(bird, dt) {
-    bird.t += dt;
-    bird.beat += dt * (bird.mode === 'circle' || bird.mode === 'takeoff' ? 13 : 0);
-
-    switch (bird.mode) {
-      case 'roost':
-        /* Almost nothing, which is correct. A head bob, a preen, and
-           the occasional decision to move one place along — and all of
-           it gets rarer the longer the courtyard has been left alone. */
-        bird.bob = Math.max(0, bird.bob - dt * 3);
-        if (bird.t > bird.wait) {
-          bird.t = 0;
-          var settled = Math.min(1, calmFor / 90);
-          bird.wait = (3 + Math.random() * 9) * (1 + settled * 3);
-          var roll = Math.random();
-          if (roll < 0.5) { bird.bob = 1; }
-          else if (roll < 0.72) { bird.dir = -bird.dir; }
-          else if (roll < 0.82 - settled * 0.2 && !calm()) {
-            var next = freeSlot(bird);
-            if (next !== bird.slot) {
-              bird.slot = next;
-              bird.tx = slotX(next);
-              bird.dir = bird.tx > bird.x ? 1 : -1;
-              bird.mode = 'shuffle';
-            }
-          }
-        }
-        break;
-
-      case 'shuffle': {
-        /* A walk, not a glide: pigeons step, and the step is visible. */
-        var vx = bird.tx - bird.x;
-        var move = Math.sign(vx) * Math.min(Math.abs(vx), dt * 26);
-        bird.x += move;
-        bird.bob = 0.4 + 0.4 * Math.abs(Math.sin(bird.t * 11));
-        if (Math.abs(bird.tx - bird.x) < 0.6) {
-          bird.x = bird.tx; bird.mode = 'roost'; bird.t = 0; bird.bob = 0;
-          bird.wait = 3 + Math.random() * 9;
-        }
-        break;
-      }
-
-      case 'wait-takeoff':
-        if (bird.t >= bird.wait) {
-          bird.mode = 'takeoff'; bird.t = 0;
-          bird.vx = (Math.random() - 0.5) * 60;
-          bird.vy = -(150 + Math.random() * 70);
-          bird.dir = bird.vx >= 0 ? 1 : -1;
-          /* Where it will turn into the circle. */
-          bird.apex = H * (0.16 + Math.random() * 0.18);
-        }
-        break;
-
-      case 'takeoff':
-        bird.x += bird.vx * dt;
-        bird.y += bird.vy * dt;
-        bird.vy += 150 * dt;                 /* the climb costs it */
-        if (bird.y <= bird.apex || bird.t > 1.6) {
-          bird.mode = 'circle'; bird.t = 0;
-          bird.cx = W * (0.25 + Math.random() * 0.5);
-          bird.cy = bird.y;
-          bird.r = W * (0.14 + Math.random() * 0.16);
-          bird.a = Math.atan2(bird.y - bird.cy, bird.x - bird.cx);
-          bird.spin = bird.dir * (0.9 + Math.random() * 0.7);
-          bird.loops = 0.7 + Math.random() * 1.1;
-          /* Angle TRAVELLED, not angle reached. Half the birds circle
-             anticlockwise, and against an absolute threshold their
-             angle only ever decreased — so they flew until the screen
-             was closed. */
-          bird.turned = 0;
-        }
-        break;
-
-      case 'circle': {
-        bird.a += bird.spin * dt;
-        bird.turned += Math.abs(bird.spin) * dt;
-        bird.x = bird.cx + Math.cos(bird.a) * bird.r;
-        bird.y = bird.cy + Math.sin(bird.a) * bird.r * 0.42;
-        bird.dir = Math.sin(bird.a) * bird.spin >= 0 ? -1 : 1;
-        /* Beats, then a glide, then beats. A bird that flaps without
-           pause is a moth. */
-        var phase = (bird.t * 0.9) % 1;
-        bird.gliding = phase > 0.55;
-        if (bird.gliding) bird.beat = 0;
-        /* The cap is a second lock on the same thing: whatever the
-           arithmetic does, no bird stays in the air for half a minute. */
-        if (bird.turned > Math.PI * 2 * bird.loops || bird.t > 26) {
-          bird.mode = 'land'; bird.t = 0;
-          bird.slot = freeSlot(bird);
-          bird.tx = slotX(bird.slot);
-          bird.ty = ledgeY();
-          bird.fromX = bird.x; bird.fromY = bird.y;
-          bird.dir = bird.tx > bird.x ? 1 : -1;
-        }
-        break;
-      }
-
-      case 'land': {
-        /* A flared approach: fast at first, then almost stopped, which
-           is what the braking looks like. */
-        var k = Math.min(1, bird.t / 1.25);
-        var e = 1 - Math.pow(1 - k, 3);
-        bird.x = bird.fromX + (bird.tx - bird.fromX) * e;
-        bird.y = bird.fromY + (bird.ty - bird.fromY) * e;
-        bird.gliding = k > 0.45;
-        if (k >= 1) {
-          bird.mode = 'roost'; bird.t = 0; bird.bob = 1;
-          bird.wait = 4 + Math.random() * 8;
-        }
-        break;
-      }
-    }
-  }
-
-  /* ------------------------------------------------------------------
-     DRAWING
-
-     A silhouette, because at this size that is all a pigeon is. The
-     shape is drawn from primitives rather than a traced path: a traced
-     path would be traced from something.
-     ------------------------------------------------------------------ */
   function drawBird(b) {
-    var s = 11 * b.size;
-    var flying = b.mode === 'takeoff' || b.mode === 'circle' || b.mode === 'land';
-    ctx.save();
-    ctx.translate(b.x, b.y);
-    ctx.scale(b.dir, 1);
-    ctx.fillStyle = 'rgba(16, 24, 36, .92)';
+    if (b.hold > 0 || b.fade <= 0.01) return;
+    /* Distance: high in the frame is far away. Far birds are smaller,
+       paler and softer, which is atmospheric perspective and is the
+       difference between a bird in the scene and a sticker on it. */
+    var depth = Math.min(1, Math.max(0,
+      (b.y - box.y - box.h * PLATE.skyTop) / (box.h * (PLATE.floorLine - PLATE.skyTop))));
+    /* Scale checked against the flock already in the frame: a pigeon
+       standing on the marble is about eight CSS pixels across, and one
+       in the air above the arcade is further away, so it is smaller.
+       The first cut was three times that and read as paper aeroplanes. */
+    var s = box.w * 0.0034 * b.size * (0.62 + depth * 0.8);
+    var air = 0.30 + depth * 0.30;
 
-    if (flying && !b.gliding) {
-      var lift = Math.sin(b.beat) * s * 1.05;
+    ctx.save();
+    ctx.globalAlpha = b.fade * air * (0.80 + grade * 0.2);
+    ctx.translate(b.x, b.y);
+    if (b.spin < 0) ctx.scale(-1, 1);
+    /* Dust, not ink. At night a bird over a city is lighter than the
+       sky behind it; by day it is darker than the marble. Near-black on
+       near-black was the first cut and it was invisible. */
+    ctx.fillStyle = grade > 0.5 ? '#8e8b84' : '#4b4536';
+    ctx.shadowColor = ctx.fillStyle;
+    /* Just enough to soften the edge. A wide bloom turned the glide
+       pose into a lit disc with a bar across it. */
+    ctx.shadowBlur = s * 0.3;
+
+    /* Two swept wings meeting at a short body — no separate blob for
+       the body, because at this distance a pigeon is wings and a dot,
+       and an ellipse under two straight wings reads as a saucer. */
+    var open = b.glide ? -0.22 : Math.sin(b.beat);
+    var tip = s * (b.glide ? 1.72 : 1.45 + open * 0.75);
+    var rise = -open * s * 1.15;          /* where the wingtips are */
+    var bend = s * 0.34;                  /* the wrist, so wings curve */
+
+    function wing(dir) {
       ctx.beginPath();
-      ctx.moveTo(0, -s * 0.1);
-      ctx.quadraticCurveTo(-s * 0.9, -s * 0.2 - lift, -s * 1.7, -lift * 0.6);
-      ctx.quadraticCurveTo(-s * 0.8, s * 0.2, 0, s * 0.18);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(0, -s * 0.1);
-      ctx.quadraticCurveTo(s * 0.9, -s * 0.2 - lift, s * 1.7, -lift * 0.6);
-      ctx.quadraticCurveTo(s * 0.8, s * 0.2, 0, s * 0.18);
-      ctx.fill();
-    } else if (flying) {
-      /* The glide: wings out and still. */
-      ctx.beginPath();
-      ctx.moveTo(0, -s * 0.08);
-      ctx.quadraticCurveTo(-s * 1.1, -s * 0.5, -s * 1.9, -s * 0.1);
-      ctx.quadraticCurveTo(-s * 0.9, s * 0.16, 0, s * 0.18);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(0, -s * 0.08);
-      ctx.quadraticCurveTo(s * 1.1, -s * 0.5, s * 1.9, -s * 0.1);
-      ctx.quadraticCurveTo(s * 0.9, s * 0.16, 0, s * 0.18);
+      ctx.moveTo(0, -s * 0.06);
+      /* out to the wrist, then swept back and down to the tip */
+      ctx.quadraticCurveTo(dir * tip * 0.42, rise * 0.55 - bend * 0.2,
+                           dir * tip * 0.78, rise * 0.86);
+      ctx.quadraticCurveTo(dir * tip * 0.96, rise * 0.98,
+                           dir * tip, rise * 0.72 + s * 0.14);
+      /* and back along the trailing edge */
+      ctx.quadraticCurveTo(dir * tip * 0.5, rise * 0.34 + s * 0.3,
+                           0, s * 0.2);
+      ctx.closePath();
       ctx.fill();
     }
-
-    /* Body: the deep chest and the up-tilted tail that make a pigeon a
-       pigeon rather than a generic bird. */
-    var sit = flying ? 0 : -s * 0.42;
+    wing(-1);
+    wing(1);
+    /* The body: a short taper, not a disc. */
     ctx.beginPath();
-    ctx.ellipse(0, sit, s * 0.78, s * 0.52, flying ? 0 : -0.12, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(-s * 0.5, sit - s * 0.1);
-    ctx.lineTo(-s * 1.5, sit - (flying ? s * 0.12 : s * 0.42));
-    ctx.lineTo(-s * 0.5, sit + s * 0.3);
-    ctx.closePath();
-    ctx.fill();
-
-    /* Head, on a neck that shortens when it hunches — which is what a
-       roosting bird does, and what the bob animates. */
-    var neck = flying ? s * 0.52 : s * (0.5 - b.bob * 0.22);
-    ctx.beginPath();
-    ctx.arc(s * 0.62, sit - neck * 0.62, s * 0.3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(s * 0.86, sit - neck * 0.66);
-    ctx.lineTo(s * 1.18, sit - neck * 0.58);
-    ctx.lineTo(s * 0.86, sit - neck * 0.5);
-    ctx.closePath();
+    ctx.moveTo(-s * 0.46, s * 0.04);
+    ctx.quadraticCurveTo(0, -s * 0.2, s * 0.5, -s * 0.02);
+    ctx.quadraticCurveTo(0, s * 0.3, -s * 0.46, s * 0.04);
     ctx.fill();
     ctx.restore();
   }
@@ -349,110 +325,22 @@
     raf = requestAnimationFrame(frame);
     var dt = lastFrame ? Math.min(0.05, (now - lastFrame) / 1000) : 0.016;
     lastFrame = now;
-    calmFor += dt;
+    if (!box) return;
 
     ctx.clearRect(0, 0, W, H);
-    if (!calm()) birds.forEach(function (b) { step(b, dt); });
-    birds.forEach(drawBird);
-  }
-
-  function resize() {
-    if (!canvas) return;
-    DPR = Math.min(2, window.devicePixelRatio || 1);
-    var rect = canvas.getBoundingClientRect();
-    W = rect.width; H = rect.height;
-    canvas.width = Math.round(W * DPR);
-    canvas.height = Math.round(H * DPR);
-    ctx = canvas.getContext('2d');
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    /* Keep roosting birds on the ledge after a rotation. */
-    birds.forEach(function (b) {
-      if (b.mode === 'roost' || b.mode === 'shuffle') {
-        b.x = slotX(b.slot); b.y = ledgeY(); b.tx = b.x;
+    if (!calm()) {
+      sinceLift += dt;
+      /* Left alone, the courtyard stays still for a long time and then
+         something small happens. Not a metronome: the chance builds. */
+      if (sinceLift > 26 && Math.random() < dt * (sinceLift - 26) * 0.012) {
+        lift(2 + Math.floor(Math.random() * 4));
       }
-    });
-  }
-
-  /* ------------------------------------------------------------------
-     THE COURTYARD — drawn, and said on screen to be drawn.
-
-     Two silhouettes. The far one keeps its aspect ratio, because a
-     stretched dome is a claim about a shape; the near one does not,
-     because an arcade reads as an arcade at any width and it has to
-     meet both edges of the screen.
-     ------------------------------------------------------------------ */
-  function svgNode(cls, viewBox, ratio, markup) {
-    var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    s.setAttribute('class', cls);
-    s.setAttribute('viewBox', viewBox);
-    s.setAttribute('preserveAspectRatio', ratio);
-    s.setAttribute('aria-hidden', 'true');
-    s.innerHTML = markup;
-    return s;
-  }
-
-  function farScenery() {
-    /* A dome between two slender towers. Generic forms in the broad
-       language of the architecture, at proportions chosen to sit
-       quietly behind the birds — not measured from anything. */
-    var m =
-      '<g fill="#0a1120">' +
-      '<rect x="6" y="38" width="9" height="62" rx="1.4"/>' +
-      '<path d="M6 40 Q10.5 30 15 40 Z"/>' +
-      '<circle cx="10.5" cy="31" r="2.1"/>' +
-      '<rect x="85" y="34" width="9" height="66" rx="1.4"/>' +
-      '<path d="M85 36 Q89.5 25 94 36 Z"/>' +
-      '<circle cx="89.5" cy="27" r="2.1"/>' +
-      '<rect x="22" y="62" width="56" height="38"/>' +
-      '<path d="M27 62 A 23 25 0 0 1 50 37 A 23 25 0 0 1 73 62 Z"/>' +
-      '<path d="M48.7 38 Q50 29 51.3 38 Z"/>' +
-      '<path d="M49.1 31 h1.8 v-8 h-1.8 Z"/>' +
-      '</g>';
-    return svgNode('anwar-far', '0 0 100 100', 'xMidYMax meet', m);
-  }
-
-  function nearScenery() {
-    /* A wall with arched openings cut into it, not a row of pillars.
-       The first cut drew the piers as solid shapes and left the sky
-       showing between them, which made the ledge look as though it were
-       floating above nothing. */
-    var openings = '';
-    for (var i = -1; i < 9; i++) {
-      var x = 1 + i * 13;
-      openings +=
-        '<path d="M' + x + ' 100 L' + x + ' 44 Q' + (x + 4) + ' 25 ' + (x + 8) +
-        ' 44 L' + (x + 8) + ' 100 Z" fill="#03060c"/>';
+      for (var i = flock.length - 1; i >= 0; i--) {
+        stepBird(flock[i], dt);
+        if (flock[i].dead) flock.splice(i, 1);
+      }
     }
-    var m =
-      '<rect x="-2" y="9" width="104" height="91" fill="#0a1222"/>' +
-      '<g>' + openings + '</g>' +
-      '<rect x="-2" y="0" width="104" height="9" fill="#101b2d"/>' +
-      '<rect x="-2" y="9" width="104" height="1.6" fill="#05090f"/>';
-    return svgNode('anwar-near', '0 0 100 100', 'none', m);
-  }
-
-  function lantern(left, delay, scale) {
-    var l = el('div', 'anwar-lantern');
-    l.style.left = left;
-    l.style.setProperty('--anwar-delay', delay);
-    l.style.setProperty('--anwar-scale', scale);
-    l.appendChild(el('span', 'anwar-cord'));
-    l.appendChild(el('span', 'anwar-glass'));
-    return l;
-  }
-
-  function stars(n) {
-    var box = el('div', 'anwar-stars');
-    for (var i = 0; i < n; i++) {
-      var s = el('span');
-      s.style.left = (Math.random() * 100).toFixed(2) + '%';
-      s.style.top = (Math.random() * 52).toFixed(2) + '%';
-      s.style.setProperty('--anwar-twinkle', (3 + Math.random() * 5).toFixed(1) + 's');
-      s.style.setProperty('--anwar-delay', (Math.random() * 5).toFixed(1) + 's');
-      s.style.opacity = (0.25 + Math.random() * 0.6).toFixed(2);
-      box.appendChild(s);
-    }
-    return box;
+    flock.forEach(drawBird);
   }
 
   /* ------------------------------------------------------------------
@@ -467,165 +355,180 @@
     say.handle = setTimeout(function () { t.classList.remove('show'); }, 3200);
   }
 
-  var SOUND = 'night';             /* an SSExplore layer, not a file here */
+  var SOUND = 'night';
 
   function soundAvailable() {
     var E = window.SSExplore;
     return Boolean(E && E.LAYERS && E.LAYERS.some(function (l) { return l.id === SOUND; }));
   }
-
   function paintSound(button) {
     var E = window.SSExplore;
     var on = Boolean(E && E.playing && E.playing().indexOf(SOUND) > -1);
     button.setAttribute('aria-pressed', String(on));
-    button.textContent = on ? 'Night air playing' : 'Night air';
   }
 
   /* ------------------------------------------------------------------
      OPEN / CLOSE
      ------------------------------------------------------------------ */
+  var ticker = 0;
   function onKey(e) { if (e.key === 'Escape') close(); }
-
   function onVisibility() {
     if (document.hidden) { if (raf) { cancelAnimationFrame(raf); raf = 0; } }
     else if (host && !raf) { lastFrame = 0; raf = requestAnimationFrame(frame); }
   }
+  function onResize() { measure(); }
 
   function close() {
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
-    window.removeEventListener('resize', resize);
+    if (ticker) { clearInterval(ticker); ticker = 0; }
+    window.removeEventListener('resize', onResize);
+    window.removeEventListener('orientationchange', onResize);
     document.removeEventListener('keydown', onKey);
     document.removeEventListener('visibilitychange', onVisibility);
     if (host && host.parentNode) host.parentNode.removeChild(host);
-    host = null; canvas = null; ctx = null; birds = [];
+    host = null; canvas = null; ctx = null; box = null; flock = [];
     document.documentElement.classList.remove('anwar-open');
   }
 
   function open() {
     if (host) return host;
-    host = el('div', 'anwar');
+    host = el('div', 'an');
     host.id = 'anwar';
     host.setAttribute('role', 'dialog');
     host.setAttribute('aria-modal', 'true');
-    host.setAttribute('aria-label', 'Jamea al Anwar — the courtyard at night');
+    host.setAttribute('aria-label', 'Jamea al Anwar');
 
-    var stage = el('div', 'anwar-stage');
-    stage.appendChild(el('div', 'anwar-sky'));
-    stage.appendChild(stars(46));
-    stage.appendChild(el('div', 'anwar-moon'));
-    stage.appendChild(farScenery());
-    stage.appendChild(nearScenery());
-    /* The arcade is the nearest thing on the screen and the darkest, so
-       the eye stays on the ledge and the sky. Without this it reads as a
-       flat band taking a quarter of the screen. */
-    stage.appendChild(el('div', 'anwar-court'));
-    stage.appendChild(lantern('16%', '0s', '1'));
-    stage.appendChild(lantern('50%', '-1.9s', '1.18'));
-    stage.appendChild(lantern('83%', '-3.4s', '.92'));
+    var stage = el('div', 'an-stage');
 
-    canvas = el('canvas', 'anwar-birds');
+    /* 1 — the wash: the same frame, pre-blurred, so the colour reaches
+       every edge of every screen shape without a 50px CSS blur on a
+       full-screen element. */
+    var wash = el('img', 'an-wash');
+    wash.src = PLATE.wash;
+    wash.alt = '';
+    wash.setAttribute('aria-hidden', 'true');
+    wash.decoding = 'async';
+    stage.appendChild(wash);
+
+    /* 2 — the photograph. */
+    var plate = el('img', 'an-plate');
+    plate.src = PLATE.src;
+    plate.srcset = PLATE.srcset;
+    /* A phone has no use for the 1920 plate and a tablet does. */
+    plate.sizes = '100vw';
+    plate.decoding = 'async';
+    plate.alt = 'The courtyard of al-Jami al-Anwar in Cairo: an arcade of ' +
+      'pointed arches under a stepped parapet, a minaret rising behind it, ' +
+      'and pigeons standing across the marble.';
+    stage.appendChild(plate);
+
+    /* 3 — the hour, the air, and the grain. Light on the photograph;
+       none of it adds anything that is not there. */
+    stage.appendChild(el('div', 'an-haze'));
+    stage.appendChild(el('div', 'an-grade'));
+    stage.appendChild(el('div', 'an-lamps'));
+
+    canvas = el('canvas', 'an-birds');
     canvas.setAttribute('aria-hidden', 'true');
     stage.appendChild(canvas);
 
-    /* The tap target is the courtyard itself. A button marked "scare
-       the birds" would be a toy; reaching into the space is the
-       interaction. */
-    var touch = el('button', 'anwar-touch');
+    stage.appendChild(el('div', 'an-grain'));
+    stage.appendChild(el('div', 'an-vignette'));
+
+    /* The courtyard is the control. No instructions: a tap near the
+       flock does what a tap near a flock does. */
+    var touch = el('button', 'an-touch');
     touch.type = 'button';
-    touch.setAttribute('aria-label', 'Disturb the courtyard — the nearest birds will lift');
+    touch.setAttribute('aria-label', 'Cross the courtyard');
     touch.addEventListener('click', function (e) {
       var r = canvas.getBoundingClientRect();
-      var x = e.clientX ? e.clientX - r.left : W * Math.random();
-      var y = e.clientY ? e.clientY - r.top : H * LEDGE;
-      startle(x, y);
+      var fx = box ? (e.clientX - r.left - box.x) / box.w : 0.5;
+      lift(2 + Math.floor(Math.random() * 4), Math.min(0.9, Math.max(0.1, fx)));
     });
     stage.appendChild(touch);
-
-    var shut = btn('\u00d7', 'anwar-close', close);
-    shut.setAttribute('aria-label', 'Close the courtyard');
-    stage.appendChild(shut);
     host.appendChild(stage);
 
-    /* ---- the panel ---- */
-    var panel = el('div', 'anwar-panel');
-    panel.appendChild(el('p', 'anwar-eyebrow', 'Jamea al Anwar'));
-    panel.appendChild(el('h2', 'anwar-title', 'The courtyard, after dark'));
-    panel.appendChild(el('p', 'anwar-note',
-      'Tap anywhere in the courtyard and the birds nearest you will lift. ' +
-      'Left alone, they settle, and the longer you leave them the less they move.'));
+    /* ---- the interface: a title, a way out, two controls ---- */
+    var title = el('p', 'an-title', 'Jamea al Anwar');
+    host.appendChild(title);
 
-    var row = el('div', 'anwar-row');
-    var sound = btn('Night air', 'anwar-btn', function () {
+    var shut = btn('×', 'an-close', close);
+    shut.setAttribute('aria-label', 'Close');
+    host.appendChild(shut);
+
+    var bar = el('div', 'an-bar');
+    var sound = btn('Night air', 'an-btn', function () {
       var E = window.SSExplore;
       if (!E || !soundAvailable()) { say('That sound is not available on this build.'); return; }
       try { E.toggleSound(SOUND); } catch (err) { say('The sound could not start.'); }
       setTimeout(function () { paintSound(sound); }, 120);
     });
-    if (!soundAvailable()) { sound.disabled = true; sound.textContent = 'No sound on this build'; }
-    row.appendChild(sound);
+    sound.setAttribute('aria-pressed', 'false');
+    if (!soundAvailable()) sound.disabled = true;
+    bar.appendChild(sound);
 
-    var wind = btn('Start my wind-down', 'anwar-btn anwar-primary', async function () {
+    var wind = btn('Start wind-down', 'an-btn an-primary', async function () {
       if (!window.SSAssist) { say('The wind-down is not loaded on this page.'); return; }
       wind.disabled = true;
       var was = wind.textContent;
       wind.textContent = 'Starting…';
       try {
         /* Awaited inside the tap. Assist owns the sound, the timer and
-           the duʿāʾ; this screen owns none of them and starts none of
-           them itself. */
+           the duʿāʾ; this screen owns none of them. */
         await window.SSAssist.start();
-        wind.textContent = 'Wind-down running';
-        say('Your wind-down is running. The courtyard stays where it is.');
+        wind.textContent = 'Running';
       } catch (err) {
         wind.textContent = was;
         say(err && err.message ? err.message : 'The wind-down could not start.');
       } finally { wind.disabled = false; }
     });
-    row.appendChild(wind);
-    panel.appendChild(row);
+    bar.appendChild(wind);
+    host.appendChild(bar);
 
-    /* Permanent, not a credit nobody opens. */
-    panel.appendChild(el('p', 'anwar-provenance',
-      'Everything you can see here is drawn — original SVG, CSS and canvas ' +
-      'made for SleepSphere. It is a courtyard at night, not a picture of ' +
-      'the building: no proportion, ornament or detail is taken from it, and ' +
-      'none is claimed. Verified photographs will replace this drawing.'));
-    host.appendChild(panel);
+    /* The attribution CC BY requires. One line, small, and it is a
+       licence term rather than a note about how the screen was built. */
+    var credit = el('p', 'an-credit');
+    credit.appendChild(document.createTextNode('Photograph ' + PLATE.credit + ' · '));
+    var a = document.createElement('a');
+    a.href = PLATE.licenceUrl;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.textContent = PLATE.licence;
+    credit.appendChild(a);
+    host.appendChild(credit);
 
     document.body.appendChild(host);
     document.documentElement.classList.add('anwar-open');
-    requestAnimationFrame(function () { host.classList.add('on'); });
 
-    resize();
-    makeBirds(calm() ? 9 : 11);
-    paintSound(sound);
-    lastFrame = 0; calmFor = 0;
+    measure();
+    applyGrade(true);
+    requestAnimationFrame(function () {
+      host.classList.add('on');
+      applyGrade(false);
+    });
+
+    lastFrame = 0; sinceLift = 14;
     raf = requestAnimationFrame(frame);
+    /* The hour moves while the courtyard is open, and the light follows
+       it. Once a minute is far more often than it needs. */
+    ticker = setInterval(function () { applyGrade(false); }, 60000);
 
-    window.addEventListener('resize', resize);
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
     document.addEventListener('keydown', onKey);
     document.addEventListener('visibilitychange', onVisibility);
-    setTimeout(function () { wind.focus({ preventScroll: true }); }, 360);
+    setTimeout(function () { wind.focus({ preventScroll: true }); }, 420);
     return host;
   }
 
-  /* What is true right now, for anything that needs to ask — and for
-     the suite, which checks behaviour rather than pixels. */
   function snapshot() {
     return {
       open: Boolean(host),
-      birds: birds.length,
-      roosting: birds.filter(function (b) {
-        return b.mode === 'roost' || b.mode === 'shuffle';
-      }).length,
-      flying: birds.filter(function (b) {
-        return b.mode === 'takeoff' || b.mode === 'circle' || b.mode === 'land';
-      }).length,
-      modes: birds.map(function (b) { return b.mode; }),
-      slots: birds.filter(function (b) { return b.mode === 'roost'; })
-                  .map(function (b) { return b.slot; }),
+      flying: flock.length,
+      night: Number(grade.toFixed(3)),
       calm: calm(),
-      calmFor: Math.round(calmFor)
+      sinceLift: Math.round(sinceLift),
+      plate: { src: PLATE.src, credit: PLATE.credit, licence: PLATE.licence }
     };
   }
 
@@ -633,14 +536,11 @@
     open: open,
     close: close,
     state: snapshot,
-    /* So a test can disturb the courtyard without synthesising a tap at
-       a pixel, which would be testing the hit box rather than the
-       flock. */
-    startle: function (x, y) {
-      if (!host) return false;
-      startle(typeof x === 'number' ? x : W / 2,
-              typeof y === 'number' ? y : H * LEDGE);
-      return true;
+    /* So a test can disturb the flock without synthesising a tap at a
+       pixel, which would be testing the hit box rather than the birds. */
+    lift: function (n, atX) {
+      if (!host) return 0;
+      return lift(n || 3, typeof atX === 'number' ? atX : 0.5);
     }
   };
 })();
