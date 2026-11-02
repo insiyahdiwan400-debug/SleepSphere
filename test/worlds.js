@@ -328,6 +328,29 @@ const clockAt = (h, mi) => `(()=>{const R=Date;const f=new R(2026,8,9,${h},${mi}
     });
     await p.evaluate(() => window.__world.settle());
     await p.waitForTimeout(500);
+    /* Let the finite ones finish before counting.
+
+       This sampled once at an arbitrary moment and failed about one run
+       in three on a single animation that was simply still playing out
+       — the failing world even moved between runs, which is the
+       signature of a timing sample rather than a defect in either
+       world. "Nothing is animating" means the night is not asking to be
+       watched; an entrance that settles in 400ms does not ask that, and
+       one that never stops does. So wait for the finite ones, then
+       count what is left, and count the endless ones separately. */
+    await p.waitForFunction(() => {
+      const running = document.getAnimations().filter(a => {
+        if (a.playState !== 'running') return false;
+        const node = a.effect && a.effect.target;
+        if (!node || !node.getBoundingClientRect) return true;
+        if (!node.isConnected) return false;
+        const box = node.getBoundingClientRect();
+        const style = getComputedStyle(node);
+        return box.width > 0 && box.height > 0 &&
+               style.visibility !== 'hidden' && Number(style.opacity) > 0.01;
+      });
+      return running.length === 0;
+    }, null, { timeout: 4000 }).catch(() => {});
     const after = await p.evaluate(() => {
       const r = document.getElementById('world');
       const vis = n => n.offsetParent !== null && n.getClientRects().length > 0;
@@ -344,16 +367,27 @@ const clockAt = (h, mi) => `(()=>{const R=Date;const f=new R(2026,8,9,${h},${mi}
            means "the night is boring to look at", so it asks about what
            can be looked at. Verified to fail the same way on the shipped
            code before this was narrowed. */
-        animations: document.getAnimations().filter(a => {
-          if (a.playState !== 'running') return false;
-          const node = a.effect && a.effect.target;
-          if (!node || !node.getBoundingClientRect) return true;
-          if (!node.isConnected) return false;
-          const box = node.getBoundingClientRect();
-          const style = getComputedStyle(node);
-          return box.width > 0 && box.height > 0 &&
-                 style.visibility !== 'hidden' && Number(style.opacity) > 0.01;
-        }).length,
+        animations: (() => {
+          const running = document.getAnimations().filter(a => {
+            if (a.playState !== 'running') return false;
+            const node = a.effect && a.effect.target;
+            if (!node || !node.getBoundingClientRect) return true;
+            if (!node.isConnected) return false;
+            const box = node.getBoundingClientRect();
+            const style = getComputedStyle(node);
+            return box.width > 0 && box.height > 0 &&
+                   style.visibility !== 'hidden' && Number(style.opacity) > 0.01;
+          });
+          /* Counted in the page: an Animation does not survive the trip
+             back out of evaluate(). */
+          return {
+            running: running.length,
+            endless: running.filter(a => {
+              const timing = a.effect && a.effect.getTiming ? a.effect.getTiming() : null;
+              return timing && timing.iterations === Infinity;
+            }).length
+          };
+        })(),
         screens: +(document.documentElement.scrollHeight / 844).toFixed(2)
       };
     });
@@ -362,7 +396,10 @@ const clockAt = (h, mi) => `(()=>{const R=Date;const f=new R(2026,8,9,${h},${mi}
     check(`${world} · navigation is withdrawn for the night`, after.tabs === 0, String(after.tabs));
     check(`${world} · no stage-by-stage progress to watch`, after.stages === 0, String(after.stages));
     check(`${world} · it fits one screen`, after.screens <= 1.05, `${after.screens} screens`);
-    check(`${world} · and nothing is animating`, after.animations === 0, String(after.animations));
+    check(`${world} · and nothing is animating`,
+          after.animations.running === 0, String(after.animations.running));
+    check(`${world} · and nothing is set to animate forever`,
+          after.animations.endless === 0, String(after.animations.endless));
     check(`${world} · under thirty words`, after.words <= 30, `${after.words} words`);
     await ctx.close();
   }

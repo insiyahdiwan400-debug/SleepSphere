@@ -18,12 +18,27 @@ for (const scene of scenes) {
   const file = path.resolve(relative);
   if (!fs.existsSync(file)) { missing.push(relative); continue; }
   const bytes = fs.readFileSync(file);
-  assert.ok(bytes.length > 15_000, relative + ' must not be a tiny placeholder');
   assert.equal(bytes.subarray(0, 4).toString('ascii'), 'RIFF',
     relative + ' must be a WebP RIFF file');
   assert.equal(bytes.subarray(8, 12).toString('ascii'), 'WEBP',
     relative + ' must contain WEBP signature');
-  checked += 3;
+  /* Dimensions, not bytes.
+     This asked for more than 15,000 bytes as a stand-in for "not a
+     placeholder", and a byte count cannot tell the difference: a 20KB
+     1x1 image passes it, and firstlight.webp failed it at 13,244 bytes
+     while being a real 720x1280 frame — a dawn sky is smooth and
+     compresses well. Reading the size out of the WebP header tests the
+     thing the threshold was reaching for. */
+  const kind = bytes.subarray(12, 16).toString('ascii');
+  let w = 0, h = 0;
+  if (kind === 'VP8X') { w = (bytes.readUIntLE(24, 3) & 0xFFFFFF) + 1; h = (bytes.readUIntLE(27, 3) & 0xFFFFFF) + 1; }
+  else if (kind === 'VP8 ') { w = bytes.readUInt16LE(26) & 0x3FFF; h = bytes.readUInt16LE(28) & 0x3FFF; }
+  else if (kind === 'VP8L') { const b = bytes.readUInt32LE(21); w = (b & 0x3FFF) + 1; h = ((b >> 14) & 0x3FFF) + 1; }
+  assert.ok(w >= 600 && h >= 600,
+    relative + ' must be a real scene, not a placeholder (got ' + w + 'x' + h + ')');
+  assert.ok(bytes.length > 4000,
+    relative + ' is too small to hold an image that size');
+  checked += 4;
 }
 assert.ok(!/url\(\s*['"]?https?:/i.test(css),
   'Motherhood backgrounds must not request third-party images');
