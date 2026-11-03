@@ -16,7 +16,7 @@ It proposes no visuals and changes no behaviour.
 
 **SleepSphere already has a footage integration layer, built and tested.**
 It is `living-sky.js`, it takes licensed video per daypart, it fails
-closed to the drawn sky, and 55 assertions cover it. Approved assets do
+closed to the drawn sky, and 63 assertions cover it. Approved assets do
 not need new code to land — they need to satisfy the contract in §5 and
 be added to one manifest.
 
@@ -376,7 +376,7 @@ as unverified in any report rather than assumed.
 
 | suite | assertions | what it holds |
 |---|---|---|
-| `test/living-sky.js` | 55 | the shipped files really are H.264 (read from the `avc1` sample-description box, not the filename); the adapter builds the right element for iPhone; it actually plays a real video (via a WebM fixture); **every failure path degrades to the drawn sky** |
+| `test/living-sky.js` | 63 | the shipped files really are H.264 (read from the `avc1` sample-description box, not the filename); the adapter builds the right element for iPhone; it actually plays a real video (via a WebM fixture); **every failure path degrades to the drawn sky** |
 | `test/starfield.js` | 25 | the drawn field's density, rotation and parking |
 | `test/sky-cycle.js` | 27 | the keyframe interpolation across the day |
 | `test/night.js` | 65 | nothing animates on a screen whose purpose is to be put down |
@@ -400,6 +400,41 @@ As of commit `6e070aa` on `build/smart-assist-nov18`:
   is referenced by `index.html`, the service worker, or any test.
 - The current sky implementation — gradient, starfield and the footage
   adapter — is untouched and is not to be replaced.
-- Full regression state is recorded alongside this document.
+
+### Regression at the freeze, 3 November 2026
+
+Both suite directories, against the tree at `4eb04ae`:
+
+```
+67 suites passed, 2529 assertions
+ 1 suite  failed: test/explore.js
+```
+
+`test/explore.js` **passes on its own** and fails only under the load of
+a full parallel run. It is a known race, documented earlier in its own
+file: Flight's wind-down reloads the page and the suite's teardown can
+beat the reload. It is a test-harness defect, not an application one,
+and it is the only red in the run.
+
+The six suites that guard the sky were all green:
+
+| | |
+|---|---|
+| `test/today.js` | 120 |
+| `test/living-night.js` | 94 |
+| `test/living-sky.js` | 63 |
+| `test/night.js` | 65 |
+| `test/sky-cycle.js` | 27 |
+| `test/starfield.js` | 25 |
+
+Two suites are excluded from the run by the runner, deliberately:
+`test/trailer.js` (regenerates a tracked MP4) and
+`test/verify-prayer-times.js` (hits the Aladhan API; the offline
+transcription in `praytimes-reference.js` runs in its place and passes).
+
+The 2529 figure counts assertions that print a `PASS` line. The nineteen
+`node:assert` suites in `tests/` mostly print nothing and pass by exiting
+zero, so they are counted as suites rather than as individual
+assertions.
 
 Nothing has been merged or deployed.
