@@ -245,6 +245,13 @@
 
     const box = el('div', 'ss-assist-effort');
     box.id = 'assistEffort';
+    /* The chooser belongs to the wind-down button, and the home screen
+       offers that button in the evening only. Mounting can happen either
+       side of the render that decides this, so the box starts in the state
+       the page is already in; renderActions keeps it there afterwards. */
+    if (host.closest('.night-console')) {
+      box.hidden = document.documentElement.dataset.phase !== 'EVENING';
+    }
     const label = el('p', 'ss-assist-label', 'How much effort tonight');
     label.id = 'ssAssistEffortLabel';
     box.appendChild(label);

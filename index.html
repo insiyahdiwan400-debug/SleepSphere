@@ -216,6 +216,31 @@
     :root[data-study="off"] [data-study-only] { display: none !important; }
     :root[data-study="on"] [data-product-only] { display: none !important; }
 
+    /* Quiet navigation. Not a call to action, and not competing with
+       the one thing the screen is actually for. */
+    .console-quiet { display:flex; flex-wrap:wrap; gap:18px; margin-top:16px; justify-content:center; }
+    .btn-quiet {
+      min-height:44px; padding:0; border:0; background:none;
+      color:var(--gold-soft,#d8b968); font:inherit; font-size:13.5px;
+      letter-spacing:.01em; cursor:pointer;
+    }
+    .btn-quiet:hover { text-decoration:underline; text-underline-offset:4px; }
+    .btn-quiet:focus-visible { outline:2px solid var(--gold); outline-offset:3px; border-radius:6px; }
+    @media (min-width:900px) { .console-quiet { justify-content:flex-start; } }
+
+    /* Clear my mind is one route, and the Living Night already carries it
+       when it is on screen. Two of the same word in the same evening read
+       as two different places. */
+    :root[data-living="on"] #today .console-quiet [data-go="unload"] { display:none; }
+
+    /* On a tablet the moment above is a centred column and the Living
+       Night was a full-bleed left margin underneath it, which read as two
+       pages joined. It takes the same measure and the same axis. */
+    @media (min-width:900px) {
+      .living { max-width:760px; margin-inline:auto; text-align:center; }
+      .living-actions { justify-content:center; }
+    }
+
     .privacy-pill { border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; color: var(--muted); background: rgba(255,255,255,.64); font-size: 12px; white-space: nowrap; }
     .icon-button { width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 13px; background: var(--card); color: var(--ink); }
 
@@ -644,7 +669,11 @@
     .source-card a, .history-item a { color: var(--teal); }
 
     .night-console {
-      position: relative; min-height: 620px; overflow: hidden; margin-bottom: 18px; padding: clamp(24px,4vw,56px);
+      /* No min-height. These were sized for a two-column console with a
+         390px sphere in the left half; with the night drawn instead, a
+         floor of 620px (820 on a tablet) left a void under the content
+         rather than a composition. Content sets the height. */
+      position: relative; overflow: hidden; margin-bottom: 18px; padding: clamp(24px,4vw,56px);
       border: 1px solid rgba(181,255,243,.15); border-radius: 34px;
       background:
         radial-gradient(circle at 72% 40%, rgba(111,225,211,.12), transparent 24rem),
@@ -663,7 +692,7 @@
     .live-signal { display: inline-flex; align-items: center; gap: 8px; color: #a9c2c6; font-size: 12px; letter-spacing: .6px; text-transform: uppercase; }
     .live-signal::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--teal); box-shadow:0 0 18px var(--teal); }
     .console-date { color:#6f898f; font-size:12px; }
-    .console-main { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(330px,.9fr) 1.1fr; gap: clamp(28px,6vw,88px); align-items: center; min-height: 390px; }
+    .console-main { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(330px,.9fr) 1.1fr; gap: clamp(28px,6vw,88px); align-items: center; }
     .sabat-sphere { --gap-angle: 220deg; width: min(390px,78vw); aspect-ratio:1; position:relative; margin:auto; display:grid; place-items:center; border-radius:50%; background:conic-gradient(from -40deg,var(--teal) 0 var(--gap-angle),rgba(111,225,211,.08) var(--gap-angle) 360deg); box-shadow:0 0 0 1px rgba(181,255,243,.1),0 0 95px rgba(57,183,172,.12); }
     .sabat-sphere::before { content:""; position:absolute; inset:15px; border-radius:50%; background:radial-gradient(circle at 35% 28%,#173943,#07171d 55%,#030b0f); box-shadow:inset -35px -35px 65px rgba(0,0,0,.55); }
     .sabat-sphere::after { content:""; position:absolute; inset:-24px; border:1px solid rgba(233,199,111,.18); border-radius:50%; transform:rotate(-12deg); }
@@ -679,8 +708,18 @@
     .intent-pill.active { color:#031115; border-color:var(--teal); background:var(--teal); }
     .intent-result { min-height:24px; margin-top:10px; color:#8ca6aa; font-size:13px; }
     .console-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:25px; }
-    .console-metrics { position:relative; z-index:2; display:grid; grid-template-columns:repeat(4,1fr); gap:1px; overflow:hidden; border:1px solid var(--line); border-radius:18px; background:var(--line); }
-    .console-metric { min-width:0; padding:16px 18px; background:rgba(5,17,22,.92); }
+    /* Tonight is drawn once. When the Living Night is on screen it is the
+       drawing — curve, times, wind-down, opportunity — so the console below
+       does not repeat all four underneath it. */
+    :root[data-living="on"] #today .night-arc,
+    :root[data-living="on"] #today .arc-legend,
+    :root[data-living="on"] #today .console-metrics { display:none; }
+
+    /* Flex rather than four fixed columns: tiles with nothing in them are
+       not rendered at all, and a four-track grid kept drawing the empty
+       fourth cell as a panel whether or not anything lived in it. */
+    .console-metrics { position:relative; z-index:2; display:flex; flex-wrap:wrap; gap:1px; overflow:hidden; border:1px solid var(--line); border-radius:18px; background:var(--line); }
+    .console-metric { flex:1 1 150px; min-width:0; padding:16px 18px; background:rgba(5,17,22,.92); }
     .console-metric span { display:block; color:#718b91; font-size:10px; font-weight:850; letter-spacing:.9px; text-transform:uppercase; }
     .console-metric strong { display:block; overflow:hidden; margin-top:5px; color:#eaf8f5; font-size:18px; text-overflow:ellipsis; white-space:nowrap; }
 
@@ -836,10 +875,12 @@
       .brand small, .nav-icon { display:none; }
       .sidebar { gap:10px; }
       .nav button { padding-inline:9px; }
-      .console-main { grid-template-columns:1fr; text-align:center; }
+      /* One column, so the generous two-column gutter becomes a vertical
+         void between the drawing, its key and the copy. */
+      .console-main { grid-template-columns:1fr; gap:20px; text-align:center; }
       .console-copy > p { margin-inline:auto; }
+      .arc-legend { justify-content:center; }
       .intent-row, .console-actions { justify-content:center; }
-      .night-console { min-height:820px; }
     }
     @media (max-width: 760px) {
       .sidebar { top:auto; bottom:calc(12px + env(safe-area-inset-bottom)); left:10px; right:10px; height:70px; padding:8px 9px; border-radius:20px; }
@@ -849,20 +890,18 @@
       .nav-icon { display:block; font-size:16px; }
       .topbar { padding:28px 20px 20px; }
       main { padding:6px 14px calc(106px + env(safe-area-inset-bottom)); }
-      .night-console { min-height:760px; padding:22px 18px; border-radius:25px; }
-      .console-main { min-height:550px; gap:18px; }
+      .night-console { padding:22px 18px; border-radius:25px; }
+      .console-main { gap:18px; }
       .sabat-sphere { width:min(280px,74vw); }
       .console-copy h2 { font-size:42px; letter-spacing:-2.5px; }
       .console-copy > p { font-size:14px; }
-      .console-metrics { grid-template-columns:1fr 1fr; }
+      .console-metric { flex-basis:40%; }
       .twin-delta { grid-template-columns:1fr 1fr; }
       .card { border-radius:17px; }
       .top-actions .privacy-pill:nth-child(2) { display:none; }
       .top-actions .privacy-pill { display:none; }
       .share-button { padding:8px 11px; font-size:12px; }
       .guide-strip { grid-template-columns:1fr; }
-      .night-console { min-height:0; }
-      .console-main { min-height:0; }
       .sabat-sphere { display:none; }
       .console-copy h2 { font-size:38px; }
       .console-metrics { margin-top:24px; }
@@ -2468,7 +2507,13 @@
     .arc-overlay { position:absolute; inset:0; }
     .arc-overlay > svg { position:absolute; inset:0; width:100%; height:100%; }
 
-    /* Planned is an outline — an intention. Actual is solid — a fact. */
+    /* Three weights, in order of how much they claim. Usual is dashed — it is
+       where their nights tend to fall, not a decision. Planned is a solid
+       outline — an intention. Actual is filled — a fact. */
+    .arc-usual {
+      fill:rgba(195,160,104,.09); stroke:var(--gold-soft,#d8b968); stroke-width:1;
+      stroke-dasharray:5 4; vector-effect:non-scaling-stroke; opacity:.75;
+    }
     .arc-planned { fill:rgba(195,160,104,.18); stroke:var(--gold); stroke-width:1; vector-effect:non-scaling-stroke; }
     .arc-actual { fill:var(--gold-soft); opacity:.94; }
     :root[data-mode="light"] .arc-actual { fill:var(--gold); }
@@ -2502,6 +2547,7 @@
     .arc-legend { display:flex; flex-wrap:wrap; gap:7px 14px; margin:2px 2px 0; }
     .arc-key { display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-size:12.5px; }
     .arc-key::before { content:""; width:14px; height:8px; border-radius:3px; }
+    .arc-key.usual::before { border:1px dashed var(--gold-soft,#d8b968); background:rgba(195,160,104,.09); }
     .arc-key.planned::before { border:1px solid var(--gold); background:rgba(195,160,104,.18); }
     .arc-key.actual::before { background:var(--gold-soft); }
     :root[data-mode="light"] .arc-key.actual::before { background:var(--gold); }
@@ -2797,7 +2843,7 @@
 
   <div class="app-shell">
     <aside class="sidebar">
-      <div class="brand"><div class="brand-mark">☾</div><div><strong>SleepSphere</strong><small>The Sabat Loop</small></div></div>
+      <div class="brand"><div class="brand-mark">☾</div><div><strong>SleepSphere</strong></div></div>
       <nav class="nav" aria-label="Main navigation">
         <!-- Four destinations. Everything that used to have a tab is still
              here and still reachable; it is reached from the screen it
@@ -2949,40 +2995,42 @@
             <button class="btn primary" id="nudgeSave">Save</button>
           </section>
 
-          <!-- A missing observation costs the study more than a little
-               persistence costs the participant, so the morning stays
-               visible — quietly, and never blocking Brain Day. -->
-          <section class="nudge" id="morningPending" hidden>
-            <div>
-              <strong>This morning isn’t recorded yet.</strong>
-              <span>Takes about twenty seconds.</span>
-            </div>
-            <button class="btn ghost" id="pendingGo">Record morning</button>
-          </section>
-
           <article class="night-console" data-phase="DAY EVENING">
             <canvas class="console-stars" aria-hidden="true"></canvas>
-            <div class="console-status"><span class="live-signal">Night console ready</span><span class="console-date" id="consoleDate">Tonight</span></div>
+            <div class="console-status"><span class="console-date" id="consoleDate">Tonight</span></div>
             <div class="console-main">
               <figure class="night-arc" id="nightArc" aria-label="Tonight, drawn against the real sky"></figure>
               <figcaption class="arc-legend" id="arcLegend"></figcaption>
               <div class="console-copy">
+                <!-- The greeting and the daypart belong to the moment above;
+                     this card speaks only about tonight. It said both for a
+                     while and the screen had two headlines. -->
                 <h2 id="heroStatus">Ready when you are</h2>
                 <p id="heroSub">Take tonight’s check-in to see where your body actually is.</p>
                 <div class="console-actions">
-                  <button class="btn primary" id="guideNext" data-go="flow" hidden>Start tonight’s check-in</button>
                   <!-- One tap: the soundscape they like, the timer they
                        like, and the dua. Everything behind it already
                        existed and was four screens apart. -->
                   <button class="btn primary ss-assist-start" id="assistStart">Start my wind-down</button>
                   <button class="btn ghost" id="lazyStart">Too tired — just go to bed</button>
-                  <button class="btn ghost" data-go="rhythm">See my rhythm</button>
                 </div>
-                <div class="guide-strip" aria-label="Your SleepSphere progress" hidden>
-                  <div class="guide-step" id="guideBio"><span class="guide-number">1</span><div><strong>Check today</strong><span id="guideBioText">Not started</span></div></div>
-                  <div class="guide-step" id="guidePlan"><span class="guide-number">2</span><div><strong>Plan tonight</strong><span id="guidePlanText">Waiting</span></div></div>
-                  <div class="guide-step" id="guideMorning"><span class="guide-number">3</span><div><strong>Record tomorrow</strong><span id="guideMorningText">Waiting</span></div></div>
+                <!-- Four quiet routes, in the weight of something available
+                     rather than asked for. They are where the 1-2-3 strip's
+                     destinations went, and where the evening's second and
+                     third primary buttons went. -->
+                <div class="console-quiet">
+                  <button class="btn-quiet" id="consolePlan" data-go="plan">Build my night</button>
+                  <button class="btn-quiet" data-go="unload">Clear my mind</button>
+                  <button class="btn-quiet" data-go="rhythm">See my day</button>
+                  <button class="btn-quiet" data-go="sabat">Sabat</button>
                 </div>
+                <!-- The numbered 1-2-3 strip that used to sit here is gone.
+                     A checklist is what a product shows when it does not
+                     trust you to find your way, and this one spent most of
+                     its life reading "Not started / Waiting / Waiting".
+                     Its three destinations are all still reachable: the
+                     check-in from the action above, the plan from the
+                     night, the morning from the morning. -->
               </div>
             </div>
             <div class="console-metrics">
@@ -2992,6 +3040,21 @@
               <div class="console-metric"><span>Live experiment</span><strong id="todayExperiment">None</strong></div>
             </div>
           </article>
+
+          <!-- A night nobody recorded is a night the week strip cannot
+               draw and the comparison cannot use, so the morning stays
+               reachable all day — quietly, and below tonight rather than
+               above it. It used to sit at the top of the screen, which
+               meant the first thing the evening said was that something
+               from this morning was missing. -->
+          <section class="nudge" id="morningPending" hidden>
+            <div>
+              <strong>This morning isn’t recorded yet.</strong>
+              <span>Takes about twenty seconds.</span>
+            </div>
+            <button class="btn ghost" id="pendingGo">Record morning</button>
+          </section>
+
           <div class="grid">
 
             <article class="card span-12" id="healthCard" data-phase="DAY EVENING" hidden>
@@ -6581,9 +6644,12 @@
            tap away — it just stops being the loudest thing on an evening
            whose message is that nothing needs deciding.
 
-           Without a plan the evening still asks, and still offers the same
-           two things it always did. */
-        alt.hidden = planned;
+           It is now quiet in the unplanned evening too. Build my night was
+           competing with the wind-down and with Clear my mind in the same
+           three inches of screen, and Clear my mind reads as a route rather
+           than a decision: it sits in the night console's quiet row with
+           the other three. */
+        alt.hidden = true;
         alt.textContent = 'Clear my mind';
         alt.onclick = () => navigate('unload');
         return;
@@ -7580,17 +7646,44 @@
       strip.hidden = !(state.study?.onboarded && !state.settings?.usualWake);
     }
 
+    /* One value, one tile, and the tile is simply not there when the
+       value is not. The metrics row goes with its last tile. */
+    function setMetric(id, value) {
+      const node = $('#' + id);
+      if (!node) return;
+      const tile = node.closest('.console-metric');
+      const has = value != null && value !== '' && value !== '—';
+      if (tile) tile.hidden = !has;
+      if (has) node.textContent = value;
+      const row = node.closest('.console-metrics');
+      if (row) {
+        row.hidden = [...row.querySelectorAll('.console-metric')].every(t => t.hidden);
+      }
+    }
+
     function renderToday() {
       const today = new Date().toISOString().slice(0,10);
       $('#consoleDate').textContent = new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
       renderIntent();
+      /* A tile with an em-dash in it is a hole where a number should be,
+         and four of them was the first thing a new person saw. A value
+         appears when there is one; the row goes when there are none.
+
+         Without a saved plan there is still plenty that is true — the
+         usual start of day, and the hour the night would reach if it
+         began now — so the row is populated from phaseAnchors(), which
+         is the same source the rest of the app plans against. */
       if (state.plan) {
         const currentPlan = Number.isFinite(Number(state.plan.windStart)) ? state.plan : readPlanForm();
-        $('#todayWinddown').textContent = formatTime(currentPlan.windStart);
-        $('#todayOpportunity').textContent = formatDuration(currentPlan.total || currentPlan.target);
-        $('#todayWake').textContent = formatTime(toMinutes(planFinalWake(currentPlan)));
+        setMetric('todayWinddown', formatTime(currentPlan.windStart));
+        setMetric('todayOpportunity', formatDuration(currentPlan.total || currentPlan.target));
+        setMetric('todayWake', formatTime(toMinutes(planFinalWake(currentPlan))));
       } else {
-        $('#todayWinddown').textContent = 'Not planned'; $('#todayOpportunity').textContent = '—'; $('#todayWake').textContent = '—';
+        const anchors = phaseAnchors();
+        const known = anchors.source !== 'default';
+        setMetric('todayWinddown', known ? formatTime(anchors.windDown) : null);
+        setMetric('todayOpportunity', known ? formatDuration(forwardGap(anchors.sleep, anchors.wake)) : null);
+        setMetric('todayWake', known ? formatTime(anchors.wake) : null);
       }
       // The sphere's reading now lives on the Bio Harmony screen; the
       // Tonight hero shows the night itself instead.
@@ -7600,31 +7693,59 @@
       renderScheduleNudge();
       renderHeroStatus();
       renderNightArc();
+      renderActions();
       renderRestoration();
 
-      const hasBio = state.bioCheckins.some(item => item.date === today);
-      const hasPlan = Boolean(state.plan && state.plan.savedDate === today);
-      const hasMorning = state.mornings.some(item => !item.demo && item.date === today);
-      const steps = [
-        ['#guideBio','#guideBioText',hasBio,hasBio ? 'Complete' : 'Start here'],
-        ['#guidePlan','#guidePlanText',hasPlan,hasPlan ? 'Ready for tonight' : (hasBio ? 'Up next' : 'Waiting')],
-        ['#guideMorning','#guideMorningText',hasMorning,hasMorning ? 'Recorded' : (hasPlan ? 'Return tomorrow' : 'Waiting')]
-      ];
-      steps.forEach(([stepId,textId,complete,label]) => {
-        $(stepId).classList.toggle('complete',complete);
-        $(textId).textContent = label;
+      /* Tonight is drawn once.
+
+         In a planned evening the Living Night above IS the drawing — the
+         journey curve, the two times, the wind-down and the opportunity —
+         and the console was repeating all four underneath it, in a second
+         picture, with a settle time that read a quarter of an hour apart
+         from the one above because the two drawings label different
+         moments. The arc is how the console shows a night that has no
+         Living Night: an unplanned evening, or the middle of the day. */
+      /* Carried on the root rather than set on each element, because the
+         metrics row's own visibility is recomputed by setMetric from three
+         other renders — the active experiment among them — and whichever
+         of those ran last used to win. */
+      document.documentElement.dataset.living =
+        (resolvePhase().phase === 'EVENING' && tonightsPlan()) ? 'on' : 'off';
+    }
+
+    /* The wind-down is an evening action, so it is an evening control.
+
+       Three primaries used to stand here at every hour of the day — a
+       check-in, a wind-down and a going-to-bed — under a sentence that
+       pointed at none of them. During the daytime the one thing worth
+       deciding is what tomorrow is for, and the moment card above asks
+       that; the night's own controls appear when the night is near. */
+    function renderActions() {
+      const evening = resolvePhase().phase === 'EVENING';
+      /* The effort chooser belongs to the wind-down button — Smart Assist
+         mounts it into this row — so it travels with it rather than
+         standing alone as a settings panel on the home screen. */
+      [$('#assistStart'), $('#lazyStart'), $('#assistEffort')].forEach(node => {
+        if (node) node.hidden = !evening;
       });
-      const next = $('#guideNext');
-      if (!hasBio) { next.textContent = 'Start tonight’s check-in'; next.dataset.go = 'flow'; }
-      else if (!hasPlan) { next.textContent = 'Plan tonight'; next.dataset.go = 'plan'; }
-      else if (!hasMorning) { next.textContent = 'Record this morning'; next.dataset.go = 'morningFlow'; }
-      else { next.textContent = 'See my pattern'; next.dataset.go = 'twin'; }
+      /* An unplanned evening already offers Build my night as the moment's
+         one action, and the same words twice on one screen read as two
+         different things. The quiet route is for the hours when the moment
+         card is asking about something else. */
+      const planLink = $('#consolePlan');
+      if (planLink) planLink.hidden = evening && !tonightsPlan();
     }
 
     /* The one line on the home screen is about tonight, not about the app.
        It moves through the day on its own, so opening SleepSphere always
        shows something live without asking for anything. */
     function renderHeroStatus() {
+      const phaseNow = resolvePhase().phase;
+      /* "Build my night" and "Change tonight's plan" are the same route;
+         which of the two it is depends on whether there is a night yet. */
+      const planLink = $('#consolePlan');
+      if (planLink) planLink.textContent = tonightsPlan() ? 'Change tonight’s plan' : 'Build my night';
+
       const status = $('#heroStatus');
       const sub = $('#heroSub');
       if (!status || !sub) return;
@@ -7688,11 +7809,23 @@
 
       if (bio) {
         status.textContent = `Tonight reads ${bio.harmony}`;
-        sub.textContent = `${bioStatus(bio.harmony)[0]}. Build a night plan around it.`;
+        sub.textContent = phaseNow === 'EVENING'
+          ? `${bioStatus(bio.harmony)[0]}. Start the wind-down whenever you are ready.`
+          : `${bioStatus(bio.harmony)[0]}. Build a night plan around it.`;
         return;
       }
+      /* The last line has to agree with what is actually underneath it, and
+         renderActions decides that by the same test. It used to ask for the
+         check-in in the evening, where the button said wind-down, and in the
+         daytime, where the button was not there at all. */
       status.textContent = 'Ready when you are';
-      sub.textContent = 'Take tonight’s check-in to see where your body actually is.';
+      if (phaseNow === 'EVENING') {
+        sub.textContent = 'Start the wind-down and the sounds, the timer and the duʿāʾ follow it.';
+      } else {
+        sub.textContent = phaseAnchors().source === 'default'
+          ? 'Nothing is set for tonight yet.'
+          : 'Nothing is set for tonight yet. The dashed band is where your nights usually fall.';
+      }
     }
 
     /* ------------------------------------------------------------------
@@ -7734,8 +7867,19 @@
 
       const marks = [];
       const band = [];
+      const planned = Boolean(plan && Number.isFinite(Number(plan.sleepStart)));
 
-      if (plan && Number.isFinite(Number(plan.sleepStart))) {
+      /* Before this, an unplanned night drew nothing: the largest element on
+         the home screen was an empty gradient whose only content was a
+         sentence explaining its own emptiness. But the app already knows
+         when their night usually falls — phaseAnchors says so, and names
+         which source it used. So draw that, dashed and labelled as usual
+         rather than planned, and keep the hole only for the one case where
+         nothing is actually known. */
+      const anchors = phaseAnchors();
+      const showUsual = !planned && anchors.source !== 'default';
+
+      if (planned) {
         const wakeAt = toMinutes(planFinalWake(plan));
         const from = arcPos(Number(plan.sleepStart));
         const to = arcPos(wakeAt);
@@ -7745,6 +7889,14 @@
         marks.push({ at:Number(plan.sleepStart), label:'Settle', key:'settle' });
         if (plan.mode === 'fajr' && plan.fajr) marks.push({ at:toMinutes(plan.fajr), label:'Fajr', key:'fajr' });
         marks.push({ at:wakeAt, label:'Wake', key:'wake' });
+      } else if (showUsual) {
+        const from = arcPos(anchors.sleep);
+        const to = arcPos(anchors.wake);
+        const width = Math.max(1.5, to - from);
+        band.push(`<rect class="arc-usual" x="${from}%" y="26%" width="${width}%" height="28%" rx="7"/>`);
+        marks.push({ at:anchors.windDown, label:'Wind down', key:'wind' });
+        marks.push({ at:anchors.sleep, label:'Settle', key:'settle' });
+        marks.push({ at:anchors.wake, label:'Wake', key:'wake' });
       }
 
       if (morning) {
@@ -7789,8 +7941,15 @@
 
       const legend = $('#arcLegend');
       if (!legend) return;
-      if (!plan) {
-        legend.innerHTML = '<span class="arc-key empty">Tonight is unplanned — the band appears once you save a night plan.</span>';
+      if (!planned) {
+        const usual = showUsual
+          ? `<span class="arc-key usual">Usual ${formatDuration(forwardGap(anchors.sleep, anchors.wake))}</span>`
+          : '';
+        const actual = morning && recordTrusted(morning)
+          ? `<span class="arc-key actual">Last night ${formatDuration(Number(morning.opportunityMinutes || 0))}</span>`
+          : '';
+        legend.innerHTML = usual + actual ||
+          '<span class="arc-key empty">Set when your day usually starts and your night appears here.</span>';
       } else if (morning && !recordTrusted(morning)) {
         /* A comparison is a claim about both halves. With the recorded half
            unconfirmed there is nothing to compare, and printing "+7h 4m"
@@ -8239,7 +8398,7 @@
     function renderActiveExperiment() {
       const experiment = state.activeExperiment;
       if (!experiment) {
-        $('#todayExperiment').textContent = 'None';
+        setMetric('todayExperiment', null);
         $('#activeExperimentTitle').textContent = 'No experiment running';
         $('#activeExperimentText').textContent = 'Choose one small change and define what “helpful” would mean before testing it.';
         $('#activeExperimentProgress').style.width = '0%';
@@ -8249,7 +8408,7 @@
       }
       const testRecords = state.mornings.filter(item => item.experimentId === experiment.id);
       const adherent = testRecords.filter(item => item.adherence === 'yes').length;
-      $('#todayExperiment').textContent = experiment.name;
+      setMetric('todayExperiment', experiment.name);
       $('#activeExperimentTitle').textContent = experiment.name;
       $('#activeExperimentText').textContent = experiment.action;
       $('#activeExperimentProgress').style.width = `${clamp(testRecords.length / experiment.days * 100,0,100)}%`;
