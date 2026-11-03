@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SleepSphere Night</title>
+<meta name="description" content="One art-directed night: a luminous moonlit sky, cloud as sculpted shadow with a lit edge, and stars on a measured magnitude curve.">
+<style>
+  :root{
+    --display:ui-serif,"New York","Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --text:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;
+    --ink:#f3f0ea; --ink-soft:rgba(243,240,234,.78); --accent:#c9ae79;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;margin:0;background:#0b1a28;overscroll-behavior:none}
+  body{font-family:var(--text);color:var(--ink);-webkit-font-smoothing:antialiased}
+  #c{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0}
+
+  /* Nothing between the viewer and the sky but the words. No controls,
+     no readouts, no panels. */
+  .ui{position:fixed;inset:0;z-index:2;display:grid;grid-template-rows:auto 1fr auto;
+      pointer-events:none;
+      padding:max(22px,env(safe-area-inset-top)) 22px calc(30px + env(safe-area-inset-bottom))}
+  .veil{position:fixed;left:0;right:0;top:0;height:34%;z-index:1;pointer-events:none;
+        background:linear-gradient(to bottom,rgba(6,13,22,.42),rgba(6,13,22,.1) 56%,transparent)}
+  .veil-b{position:fixed;left:0;right:0;bottom:0;height:34%;z-index:1;pointer-events:none;
+          background:linear-gradient(to top,rgba(6,13,22,.52),rgba(6,13,22,.12) 56%,transparent)}
+
+  .top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+  .top .d{font-size:13px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+  .top .p{font-size:10px;font-weight:700;letter-spacing:.19em;text-transform:uppercase;color:var(--accent)}
+
+  .say{align-self:start;margin-top:40px}
+  h1{margin:0;font-family:var(--display);font-weight:400;font-size:clamp(31px,8.6vw,39px);
+     line-height:1.1;letter-spacing:-.016em;max-width:14ch;text-wrap:balance}
+  .sub{margin:11px 0 0;color:var(--ink-soft);font-size:15px;line-height:1.5;max-width:28ch}
+  .top,h1,.sub{text-shadow:0 1px 20px rgba(6,13,22,.6),0 1px 3px rgba(6,13,22,.45)}
+
+  .act{display:grid;gap:16px;justify-items:start}
+  .btn{pointer-events:auto;min-height:52px;padding:0 30px;border:0;border-radius:999px;
+       background:var(--ink);color:#16140f;font:inherit;font-size:15.5px;font-weight:650;cursor:pointer}
+  .ways{display:flex;flex-wrap:wrap;gap:8px 20px}
+  .way{pointer-events:auto;border:0;background:none;padding:6px 0;cursor:pointer;
+       color:rgba(243,240,234,.6);font:inherit;font-size:12.5px}
+  @media (min-width:760px){
+    .ui{padding:34px 48px calc(40px + env(safe-area-inset-bottom))}
+    .col{width:min(680px,100%)}
+    h1{font-size:clamp(44px,4.8vw,58px);max-width:15ch}
+    .sub{font-size:17px}
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="veil"></div><div class="veil-b"></div>
+<div class="ui">
+  <div class="top col"><span class="d">Tuesday 3 November</span><span class="p">Tonight</span></div>
+  <div class="say col"><h1>Wind down at 10:00.</h1><p class="sub">Asleep by 10:45, up at 6:45.</p></div>
+  <div class="act col">
+    <button class="btn">Start wind-down</button>
+    <div class="ways">
+      <button class="way">My Rhythm</button><button class="way">Smart Assist</button>
+      <button class="way">My Rest</button><button class="way">Sabat</button><button class="way">Explore</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   SLEEPSPHERE — ONE NIGHT
+
+   Art direction first, and it came from measuring photographs rather
+   than from a scattering model. Three numbers decided everything here:
+
+     1. A moonlit sky is BLUE AND LUMINOUS, not black. Measured off
+        W. carter's Brofjorden moonlight (CC0): zenith #286ba0 at
+        luminance 0.136, falling to #0a3455 at 0.032. The previous
+        engine rendered night at luminance 0.002 — fifty times too dark,
+        and desaturated, which is why it read as a black screen with
+        dots on it.
+
+     2. CLOUD IS DARKER THAN SKY AT NIGHT. In the same references cloud
+        occupies the bottom decile of luminance (0.006) while open sky
+        sits in the top (0.15). The previous engine painted bright cloud
+        on a dark sky, which is the relationship upside down, and is
+        most of why it looked synthetic. Cloud here is a soft shadow
+        with one delicately lit edge.
+
+     3. STAR MAGNITUDES ARE STEEP. Counted off two dark-site Milky Way
+        exposures: brilliant : bright : mid : faint ran about
+        1 : 6 : 24 : 90. The previous engine made them roughly uniform,
+        which is precisely what digital noise is — many dots of one
+        brightness. Magnitude here is r^6, so the faint vastly
+        outnumber the bright, and only a handful carry a glint.
+
+   The cloud is NOT fBm. It is an authored silhouette — eleven soft
+   ellipses composed into three masses — and noise is used only to erode
+   its edge. That is the difference between a cloud with a shape
+   somebody chose and a field of grey turbulence.
+   ===================================================================== */
+const canvas = document.getElementById('c');
+const CAPTURE = new URLSearchParams(location.search).has('capture');
+const gl = canvas.getContext('webgl', { antialias:false, alpha:false, depth:false,
+            powerPreference:'high-performance', preserveDrawingBuffer:CAPTURE });
+
+const VERT = `attribute vec2 a; void main(){ gl_Position=vec4(a,0.,1.); }`;
+
+const FRAG = `
+precision highp float;
+uniform vec2 uRes; uniform float uT; uniform float uMotion;
+
+float h21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123); }
+vec2  h22(vec2 p){ return fract(sin(vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))))*43758.5453); }
+float vn(vec2 p){
+  vec2 i=floor(p),f=fract(p); f=f*f*(3.-2.*f);
+  return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y);
+}
+float fbm(vec2 p,int oct){
+  float v=0.,a=.5;
+  for(int i=0;i<6;i++){ if(i>=oct) break; v+=a*vn(p); p=p*2.07+13.1; a*=.5; }
+  return v;
+}
+
+/* ---------------------------------------------------------------------
+   CLOUD = SHAPE FROM NOISE, FORM FROM LIGHT.
+
+   Two failed attempts taught the same lesson from opposite ends. Pure
+   fBm gave shapes nobody chose, and reads as turbulence. Authored
+   ellipses gave placement but no form, and read as clip art. Neither
+   had the thing that actually makes a cloud look like a cloud:
+
+       LIGHT TRAVELLING THROUGH IT.
+
+   So the silhouette comes from noise inside a composed vertical
+   envelope — the band is placed, the shape is natural — and the
+   shading comes from marching four steps toward the moon and
+   accumulating density. Where little cloud lies between a point and
+   the moon, that point glows; where a lot does, it goes dark. That one
+   integral is the whole of the dimensionality, and it is why the
+   interior has gradients rather than a flat fill with a bright rim
+   painted along one side.
+
+   The relationship is the measured one. At night cloud is the DARK end
+   of the frame and open sky is the bright end, so the body sits at
+   about a quarter of the sky's luminance and only the thin moonward
+   parts come above it.
+   ------------------------------------------------------------------ */
+const vec2 MOON = vec2(0.150, 0.305);
+
+vec3 skyAt(vec2 p){
+  float dm = length((p - MOON)*vec2(1.0,1.18));
+  float pool = exp(-dm*4.5);
+  float up = smoothstep(-0.52, 0.50, p.y);
+
+  vec3 high = vec3(0.0042,0.0098,0.0210);   // the top, away from the moon
+  vec3 mid  = vec3(0.0092,0.0186,0.0330);
+  vec3 low  = vec3(0.0165,0.0236,0.0330);   // hazier near the horizon
+
+  vec3 c = mix(low, mid, smoothstep(-0.5,0.0,p.y));
+  c = mix(c, high, smoothstep(0.0,0.5,p.y));
+  c = mix(c, vec3(0.0530,0.0870,0.1290), pool*0.94);
+  c += vec3(0.0150,0.0098,0.0048)*pow(1.0-up,5.0);
+  return c;
+}
+
+/* The envelope places the band; the noise decides its shape. */
+float cloudAt(vec2 p, float drift, float yc, float yh, float cover, float sc, int oct){
+  float y = (p.y - yc)/yh;
+  if(abs(y) > 1.45) return 0.0;
+  float fall = 1.0 - smoothstep(0.42, 1.42, abs(y));
+  float w = uT*uMotion;
+  vec2 q = vec2((p.x - drift)*sc, y*sc*0.46) + vec2(w*0.0019, w*0.0008);
+  float n = fbm(q, oct);
+  /* Softer vertically than horizontally: cloud decks are wide and thin,
+     and sampling them isotropically is why the first build's cloud
+     looked like smoke rather than like a sky. */
+  return smoothstep(cover, cover+0.26, n) * fall;
+}
+
+/* Four steps toward the moon. This is the shading. */
+float transmit(vec2 p, float drift, float yc, float yh, float cover, float sc){
+  vec2 dir = normalize(MOON - p);
+  float acc = 0.0;
+  for(int i=1;i<=4;i++){
+    acc += cloudAt(p + dir*(float(i)*0.020), drift, yc, yh, cover, sc, 3);
+  }
+  return exp(-acc*1.15);
+}
+
+/* ---------------------------------------------------------------------
+   STARS
+
+   Magnitude is r^6 — counted off two dark-site plates, where brilliant,
+   bright, mid and faint ran about 1 : 6 : 24 : 90. Radius is computed
+   in PIXELS, so a star is a star at any density and on any screen; an
+   earlier build sized them in cell units and produced thirteen-pixel
+   squares clipped at the cell boundaries.
+   ------------------------------------------------------------------ */
+vec3 starLayer(vec2 sp, float cell, float prob, float gain, float pxp){
+  vec2 id = floor(sp/cell);
+  vec2 f  = fract(sp/cell) - 0.5;
+  vec2 r  = h22(id);
+  if(r.x > prob) return vec3(0.0);
+  vec2 r2 = h22(id + 71.3);
+
+  float mag = pow(r2.y, 6.0);
+  vec2 off = (r2 - 0.5)*0.46;
+  float d = length(f - off) * cell;
+
+  float rad = pxp*(0.55 + mag*1.05);
+  float core = 1.0 - smoothstep(0.0, rad, d);
+  float halo = exp(-d/(rad*2.1))*0.13;
+
+  /* Its own rate, its own phase, its own depth — and restrained: five
+     to fifteen per cent, not a third. */
+  float tw = 1.0 + (0.05+0.10*r.y)*sin(uT*uMotion*(0.45+1.5*r2.x) + r.x*61.0);
+
+  /* A glint on the brightest few only, and two soft spikes rather than
+     a cross: a four-point star is a graphic, not a light. */
+  float gl = 0.0;
+  if(mag > 0.55){
+    vec2 v = (f - off)*cell;
+    float sx = exp(-abs(v.y)/(rad*0.5))*exp(-abs(v.x)/(rad*3.4));
+    float sy = exp(-abs(v.x)/(rad*0.5))*exp(-abs(v.y)/(rad*2.6));
+    gl = (sx + sy*0.55)*(mag-0.55)*0.55;
+  }
+
+  vec3 tint = mix(vec3(1.0,0.93,0.84), vec3(0.84,0.90,1.0), r2.x);
+  float amp = 0.030 + 1.05*mag;
+  return (core + halo + gl) * amp * gain * max(tw,0.3) * mix(vec3(1.0), tint, 0.55);
+}
+
+vec3 aces(vec3 x){ return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.,1.); }
+
+void main(){
+  vec2 frag = gl_FragCoord.xy;
+  vec2 p = (frag - 0.5*uRes)/uRes.y;      // y: -0.5 .. 0.5
+  float pxp = 1.0/uRes.y;
+
+  vec3 col = skyAt(p);
+
+  /* --- stars ------------------------------------------------------- */
+  /* The sky turns: a slow rotation about a pole off the left edge.
+     Imperceptible as motion, and the difference between a night sky
+     and a wallpaper. */
+  float a = uT*uMotion*0.00032;
+  vec2 piv = vec2(-0.62, 0.46);
+  vec2 d0 = p - piv;
+  vec2 sp = piv + vec2(d0.x*cos(a)-d0.y*sin(a), d0.x*sin(a)+d0.y*cos(a));
+
+  vec3 st = starLayer(sp, 0.0195, 0.090, 1.00, pxp)
+          + starLayer(sp, 0.0108, 0.078, 0.55, pxp)
+          + starLayer(sp, 0.0058, 0.064, 0.28, pxp);
+  float lowHaze = smoothstep(-0.50, -0.10, p.y);
+  float glare   = 1.0 - exp(-length((p-MOON)*vec2(1.0,1.2))*4.6)*0.88;
+  col += st * lowHaze * glare;
+
+  /* --- the moon ---------------------------------------------------- */
+  float dm = length(p-MOON);
+  col += vec3(0.84,0.87,0.95) * exp(-dm*8.0)  * 0.038;
+  col += vec3(0.90,0.92,0.97) * exp(-dm*30.0) * 0.075;
+  float disc = 1.0 - smoothstep(0.0082, 0.0108, dm);
+  float limb = sqrt(max(1.0 - pow(dm/0.0108, 2.0), 0.0));
+  col = mix(col, vec3(0.95,0.95,0.92)*(0.62+0.38*limb)*1.5, disc);
+
+  /* --- cloud, far to near ------------------------------------------ */
+  float drF = uT*uMotion*0.00155;
+  float drN = uT*uMotion*0.00410;
+
+  /* Far: a thin veil crossing under the moon, so something passes in
+     front of the light and the frame gains a back plane. */
+  float dF = cloudAt(p, drF, 0.185, 0.078, 0.565, 7.0, 5);
+  float tF = transmit(p, drF, 0.185, 0.078, 0.565, 7.0);
+
+  /* Near: the heavy band low in the frame. */
+  float dN = cloudAt(p, drN, -0.235, 0.125, 0.545, 4.6, 5);
+  float tN = transmit(p, drN, -0.235, 0.125, 0.545, 4.6);
+
+  vec3 moonCol = vec3(0.86,0.89,0.97);
+  float nearM = exp(-length(p-MOON)*2.7);
+
+  /* Lit by the sky from every direction, and by the moon through
+     whatever cloud lies between. The sky term is what keeps a shaded
+     cloud from going to black, which no real one does. */
+  vec3 ambF = skyAt(p) * 0.50;
+  vec3 ambN = skyAt(p) * 0.33;
+  vec3 cloudF = ambF*0.46 + moonCol * tF * (0.085 + 0.62*nearM);
+  vec3 cloudN = ambN*0.40 + moonCol * tN * (0.050 + 0.30*nearM);
+
+  col = mix(col, cloudF, clamp(dF*0.92, 0.0, 1.0));
+  col = mix(col, cloudN, clamp(dN, 0.0, 1.0));
+
+  /* --- grade ------------------------------------------------------- */
+  float vig = 1.0 - 0.30*pow(length(p*vec2(0.90,1.0))*1.42, 2.3);
+  col *= clamp(vig, 0.52, 1.0);
+  col = aces(col*1.52);
+  col = pow(col, vec3(1.0/2.2));
+  col += (h21(frag*1.73 + fract(uT*0.41)) - 0.5) * 0.020;
+  gl_FragColor = vec4(col,1.0);
+}
+`;
+
+function sh(src,t){ const s=gl.createShader(t); gl.shaderSource(s,src); gl.compileShader(s);
+  if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; }
+const prog = gl.createProgram();
+gl.attachShader(prog, sh(VERT, gl.VERTEX_SHADER));
+gl.attachShader(prog, sh(FRAG, gl.FRAGMENT_SHADER));
+gl.bindAttribLocation(prog,0,'a');
+gl.linkProgram(prog);
+if(!gl.getProgramParameter(prog,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+const buf=gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+const uRes=gl.getUniformLocation(prog,'uRes'), uT=gl.getUniformLocation(prog,'uT'),
+      uM=gl.getUniformLocation(prog,'uMotion');
+
+const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+let motion = reduced.matches ? 0 : 1;
+reduced.addEventListener('change', e => { motion = e.matches ? 0 : 1; });
+
+let W=0,H=0;
+function resize(){
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  W = Math.max(2, Math.round(canvas.clientWidth*dpr));
+  H = Math.max(2, Math.round(canvas.clientHeight*dpr));
+  canvas.width=W; canvas.height=H; gl.viewport(0,0,W,H);
+}
+window.addEventListener('resize', resize); resize();
+
+function draw(t){
+  gl.uniform2f(uRes,W,H); gl.uniform1f(uT,t); gl.uniform1f(uM,motion);
+  gl.drawArrays(gl.TRIANGLES,0,3);
+}
+
+let t0=performance.now(), hidden=false;
+document.addEventListener('visibilitychange',()=>{ hidden=document.hidden;
+  if(!hidden){ t0=performance.now()-last*1000; requestAnimationFrame(loop); } });
+let last=0;
+function loop(now){
+  if(hidden) return;
+  last=(now-t0)/1000;
+  draw(last);
+  requestAnimationFrame(loop);
+}
+if(!CAPTURE) requestAnimationFrame(loop); else draw(0);
+
+window.__night = { render(t){ draw(t); }, ready:true };
+</script>
+</body>
+</html>
