@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SleepSphere Living Sky</title>
+<meta name="description" content="A real-time atmospheric scattering engine: one continuous sky from dawn to night, with drifting cloud and independently twinkling stars.">
+<style>
+  :root {
+    --display: ui-serif, "New York", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --text: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, system-ui, sans-serif;
+    --ink:#f6f2ea; --ink-soft:#c3bdb2; --ink-quiet:#8e887c; --accent:#d3b57e;
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; margin:0; background:#05070d; overscroll-behavior:none; }
+  body { font-family:var(--text); color:var(--ink); -webkit-font-smoothing:antialiased; }
+
+  #sky { position:fixed; inset:0; width:100%; height:100%; display:block; z-index:0; }
+
+  /* The sky stays unobstructed: no cards, no panels. Type sits directly on
+     it, and the only scrim is a soft gradient at the very foot of the
+     frame doing nothing but holding a contrast floor. */
+  .ui { position:fixed; inset:0; z-index:2; display:grid;
+        grid-template-rows:auto auto 1fr auto; pointer-events:none;
+        padding:max(18px, env(safe-area-inset-top)) 20px calc(14px + env(safe-area-inset-bottom)); }
+  /* Two soft gradients, not panels. The sky reads through both; all
+     they do is guarantee a contrast floor for type at the one hour the
+     zenith goes pale, which is noon, when the sun's aureole is in the
+     top of the frame. */
+  .head-scrim { position:fixed; left:0; right:0; top:0; height:30%; z-index:1;
+                pointer-events:none;
+                background:linear-gradient(to bottom, rgba(4,6,11,.46), rgba(4,6,11,.16) 52%, rgba(4,6,11,0)); }
+  .foot-scrim { position:fixed; left:0; right:0; bottom:0; height:30%; z-index:1;
+                pointer-events:none;
+                background:linear-gradient(to top, rgba(4,6,11,.58), rgba(4,6,11,.18) 48%, rgba(4,6,11,0)); }
+
+  .top { display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+  .clock { font-variant-numeric:tabular-nums; font-size:13.5px; color:var(--ink-soft); letter-spacing:.01em; }
+  .part { font-size:10px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); }
+
+  .say { align-self:start; margin-top:34px; max-width:16ch; }
+  /* A soft shadow rather than a card: the sky stays unobstructed and
+     the type holds against a noon sky as well as a midnight one. */
+  .say h1, .say p, .top { text-shadow:0 1px 16px rgba(4,6,11,.55), 0 1px 3px rgba(4,6,11,.4); }
+  .say h1 { margin:0; font-family:var(--display); font-weight:400; font-size:clamp(30px,8.4vw,38px);
+            line-height:1.1; letter-spacing:-.015em; text-wrap:balance; }
+  .say p { margin:9px 0 0; color:rgba(246,242,234,.84); font-size:15px; line-height:1.5; max-width:30ch; }
+
+  .panel { pointer-events:auto; display:grid; gap:10px; }
+  .scrub { display:flex; align-items:center; gap:12px; }
+  input[type=range] {
+    -webkit-appearance:none; appearance:none; flex:1; height:28px; background:none; margin:0;
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    height:2px; border-radius:2px; background:rgba(246,242,234,.26);
+  }
+  input[type=range]::-moz-range-track { height:2px; border-radius:2px; background:rgba(246,242,234,.26); }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance:none; width:16px; height:16px; margin-top:-7px; border-radius:50%;
+    background:var(--ink); border:0; box-shadow:0 1px 6px rgba(0,0,0,.5);
+  }
+  input[type=range]::-moz-range-thumb {
+    width:16px; height:16px; border-radius:50%; background:var(--ink); border:0;
+  }
+  input[type=range]:focus-visible { outline:2px solid var(--accent); outline-offset:4px; border-radius:6px; }
+
+  .btns { display:flex; flex-wrap:wrap; gap:7px; }
+  button {
+    pointer-events:auto; min-height:34px; padding:0 13px; border-radius:999px;
+    border:1px solid rgba(246,242,234,.2); background:rgba(6,9,16,.4);
+    color:var(--ink-soft); font:inherit; font-size:12.5px; cursor:pointer;
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  }
+  button[aria-pressed="true"] { color:#15120c; background:var(--ink); border-color:transparent; }
+  button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .hint { color:var(--ink-quiet); font-size:11.5px; line-height:1.45; margin:0; }
+
+  .fallback { position:fixed; inset:0; z-index:3; display:none; place-items:center; padding:28px;
+              text-align:center; background:linear-gradient(#0a1020,#1b2238 60%,#38304a); }
+  .fallback p { max-width:30ch; color:var(--ink-soft); font-size:14px; line-height:1.6; }
+
+  @media (min-width:760px) {
+    .ui { padding:30px 36px calc(20px + env(safe-area-inset-bottom)); }
+    .say h1 { font-size:clamp(42px,4.6vw,56px); max-width:15ch; }
+    .say p { font-size:17px; }
+    .panel { width:min(620px,100%); }
+  }
+</style>
+</head>
+<body>
+<canvas id="sky" aria-label="Live sky"></canvas>
+<div class="head-scrim"></div>
+<div class="foot-scrim"></div>
+
+<div class="ui">
+  <div class="top">
+    <span class="clock" id="clock">—</span>
+    <span class="part" id="part">—</span>
+  </div>
+
+  <div class="say">
+    <h1 id="say-h">Wind down at 10:00.</h1>
+    <p id="say-p">Asleep by 10:45, up at 6:45.</p>
+  </div>
+
+  <div></div>
+
+  <div class="panel">
+    <div class="scrub">
+      <input id="t" type="range" min="0" max="1440" step="1" value="1230"
+             aria-label="Time of day, in minutes">
+    </div>
+    <div class="btns">
+      <button id="play" aria-pressed="true">Pause time</button>
+      <button id="speed">1 h / s</button>
+      <button id="motion" aria-pressed="true">Motion on</button>
+      <button id="quality">Quality: auto</button>
+      <span class="hint" id="fps" style="align-self:center"></span>
+    </div>
+    <p class="hint">One engine. The sky, the cloud and the stars are computed every
+      frame from the sun's real position — nothing is a picture, and nothing is
+      swapped between times of day.</p>
+  </div>
+</div>
+
+<div class="fallback" id="fallback">
+  <p>This device can't open WebGL, so the live sky can't run here. The engine
+     needs it; the app would fall back to a static gradient in this case.</p>
+</div>
+
+<script>
+/* =====================================================================
+   SLEEPSPHERE — THE LIVING SKY
+
+   One environment, computed. There is no picture anywhere in this file
+   and nothing is swapped between times of day: the sky is a single
+   atmospheric scattering model, and dawn, noon, golden hour and night
+   are the same equations with the sun in a different place.
+
+   Three layers, each rendered differently because each changes at a
+   different rate:
+
+     1. ATMOSPHERE   expensive, smooth, slow. Rendered at a third
+                     resolution into a texture — a gradient has no
+                     detail to lose, and this is where the cost is.
+     2. CLOUD        medium. Full resolution, fBm advected by wind,
+                     lit from the sun's direction, two decks at
+                     different altitudes so they part with real
+                     perspective toward the horizon.
+     3. STARS        cheap, and the only thing that must be pixel
+                     crisp. Procedural, three depths, each star with
+                     its own magnitude, colour and twinkle.
+
+   Written against the constraint that it has to run on a phone: one
+   full-screen fragment pass at device resolution, one at a third, no
+   post stack, no video, no particles, nothing allocated per frame.
+   ===================================================================== */
+
+const canvas = document.getElementById('sky');
+const CAPTURE = new URLSearchParams(location.search).has('capture');
+const GLOPTS = { antialias:false, alpha:false, depth:false,
+                 powerPreference:'high-performance', preserveDrawingBuffer:CAPTURE };
+const gl = canvas.getContext('webgl2', GLOPTS) || canvas.getContext('webgl', GLOPTS);
+
+if (!gl) { document.getElementById('fallback').style.display = 'grid'; }
+
+/* ---------------------------------------------------------------------
+   SHADERS
+   ------------------------------------------------------------------ */
+const VERT = `
+attribute vec2 aPos;
+void main() { gl_Position = vec4(aPos, 0.0, 1.0); }`;
+
+/* Shared preamble: the camera, and the atmosphere. */
+const COMMON = `
+precision highp float;
+uniform vec2  uRes;
+uniform vec3  uSun;      // unit, world
+uniform vec3  uMoon;     // unit, world
+uniform float uMoonLit;  // 0..1, how much of the moon is lit
+uniform float uTime;     // seconds of animation
+uniform float uMotion;   // 1 moving, 0 frozen
+
+/* The camera looks a little above the horizon, so the frame is sky and
+   the horizon's own glow enters at the very foot of it. No ground is
+   drawn: a silhouette would be decoration, and the brief is a sky. */
+vec3 rayDir(vec2 frag) {
+  vec2 p = (frag / uRes) * 2.0 - 1.0;
+  float aspect = uRes.x / uRes.y;
+  p.x *= aspect;
+  /* Pitched so the horizon lands about four fifths of the way down:
+     three quarters sky, and enough of the band just above the horizon
+     for twilight to actually happen in. Looking straight out compressed
+     dawn into a sliver at the very bottom edge. */
+  vec3 fwd   = normalize(vec3(0.0, 0.38, -1.0));
+  vec3 right = normalize(cross(fwd, vec3(0.0, 1.0, 0.0)));
+  vec3 up    = cross(right, fwd);
+  return normalize(fwd + right * p.x * 0.62 + up * p.y * 0.62);
+}
+
+/* Earth and atmosphere, in metres. */
+const float R_EARTH = 6371000.0;
+const float R_ATMOS = 6471000.0;
+const float H_RAY   = 8000.0;
+const float H_MIE   = 1200.0;
+const vec3  BETA_RAY = vec3(5.47e-6, 1.28e-5, 3.12e-5);
+const float BETA_MIE = 9.0e-6;
+
+float raySphere(vec3 ro, vec3 rd, float r) {   // far root
+  float b = dot(ro, rd);
+  float c = dot(ro, ro) - r * r;
+  float d = b * b - c;
+  if (d < 0.0) return -1.0;
+  return -b + sqrt(d);
+}
+float rayGround(vec3 ro, vec3 rd, float r) {   // near root, if in front
+  float b = dot(ro, rd);
+  float c = dot(ro, ro) - r * r;
+  float d = b * b - c;
+  if (d < 0.0) return -1.0;
+  return -b - sqrt(d);
+}
+
+/* Single-scattering atmosphere.
+
+   The one liberty taken with the physics is the twilight term. A strict
+   single-scatter model goes black the moment the sun crosses the
+   horizon, because every light ray is then blocked by the earth — which
+   is why so many shader skies snap from day to night. Real twilight is
+   lit by rays that graze the atmosphere above the observer and scatter
+   down, so the earth shadow is applied as a soft falloff over a few
+   degrees rather than a hard test. That is what makes blue hour exist
+   here, and it is why dusk takes a quarter of an hour to arrive instead
+   of one frame. */
+vec3 scatter(vec3 rd, vec3 lightDir, float intensity, int steps, int lsteps) {
+  vec3 ro = vec3(0.0, R_EARTH + 2.0, 0.0);
+  float far = raySphere(ro, rd, R_ATMOS);
+  if (far < 0.0) return vec3(0.0);
+  /* Looking below the horizon integrates only as far as the ground. No
+     ground is drawn — what you see is the air in front of it, which is
+     the haze a real horizon has. */
+  float gnd = rayGround(ro, rd, R_EARTH);
+  if (gnd > 0.0) far = min(far, gnd);
+
+  float mu = dot(rd, lightDir);
+  float phaseR = 3.0 / (16.0 * 3.14159265) * (1.0 + mu * mu);
+  float g = 0.76, g2 = g * g;
+  float phaseM = 3.0 / (8.0 * 3.14159265) * ((1.0 - g2) * (1.0 + mu * mu)) /
+                 ((2.0 + g2) * pow(1.0 + g2 - 2.0 * g * mu, 1.5));
+
+  float segment = far / float(steps);
+  vec3 sumR = vec3(0.0), sumM = vec3(0.0);
+  float odR = 0.0, odM = 0.0;
+
+  for (int i = 0; i < 24; i++) {
+    if (i >= steps) break;
+    vec3 sp = ro + rd * (segment * (float(i) + 0.5));
+    float h = length(sp) - R_EARTH;
+    float hr = exp(-h / H_RAY) * segment;
+    float hm = exp(-h / H_MIE) * segment;
+    odR += hr; odM += hm;
+
+    /* How far the sun is below this sample's own horizon.
+
+       The falloff is deliberately wide. A strict test lets only air
+       above about forty kilometres see a sun three degrees down, and
+       there is almost no air up there — so twilight came out black.
+       What actually lights a twilit sky is multiple scattering, which
+       a single-scatter model cannot produce; widening this window to
+       roughly sixteen degrees stands in for it, and costs nothing. */
+    float cosL = dot(normalize(sp), lightDir);
+    float shadow = smoothstep(-0.28, 0.02, cosL);
+    if (shadow > 0.0015) {
+      float lfar = raySphere(sp, lightDir, R_ATMOS);
+      float lseg = lfar / float(lsteps);
+      float lodR = 0.0, lodM = 0.0;
+      for (int j = 0; j < 12; j++) {
+        if (j >= lsteps) break;
+        vec3 lp = sp + lightDir * (lseg * (float(j) + 0.5));
+        float lh = length(lp) - R_EARTH;
+        lodR += exp(-lh / H_RAY) * lseg;
+        lodM += exp(-lh / H_MIE) * lseg;
+      }
+      vec3 tau = BETA_RAY * (odR + lodR) + BETA_MIE * 1.1 * (odM + lodM);
+      vec3 att = exp(-tau) * shadow;
+      sumR += att * hr;
+      sumM += att * hm;
+    }
+  }
+  return intensity * (sumR * BETA_RAY * phaseR + sumM * BETA_MIE * phaseM);
+}
+`;
+
+/* ---- Pass 1: the atmosphere, at a third resolution ---------------- */
+const FRAG_SKY = COMMON + `
+void main() {
+  vec3 rd = rayDir(gl_FragCoord.xy);
+
+  vec3 col = scatter(rd, uSun, 21.0, 14, 6);
+
+  /* Moonlight is the same physics at about a four-hundred-thousandth of
+     the intensity, which is why a moonlit night is blue rather than
+     grey. Only paid for once the sun is down. */
+  if (uSun.y < 0.07) {
+    float w = smoothstep(0.07, -0.05, uSun.y);
+    /* Moonlight is physically about a four-hundred-thousandth of
+       sunlight, which on a screen is black. This is the exposure a long
+       photographic exposure gives it — bright enough to see, and still
+       the same Rayleigh scattering, which is why a moonlit sky is blue
+       rather than grey. */
+    col += scatter(rd, uMoon, 0.30 * uMoonLit, 8, 4) * w;
+
+    /* Airglow and the integrated light of the sky itself: without it a
+       clear night reads as pure black, which no real night is. */
+    float horizon = pow(1.0 - clamp(rd.y, 0.0, 1.0), 3.0);
+    col += w * (vec3(0.0021, 0.0031, 0.0058) + vec3(0.0031, 0.0026, 0.0020) * horizon);
+  }
+
+  /* Stored through a Reinhard curve so an 8-bit target can hold the
+     sun's range; the composite pass undoes it exactly. */
+  gl_FragColor = vec4(col / (1.0 + col), 1.0);
+}`;
+
+/* ---- Pass 2: cloud, stars, discs, grade --------------------------- */
+const FRAG_MAIN = COMMON + `
+uniform sampler2D uSky;
+uniform float uPx;       // angular size of one pixel, radians
+uniform float uExposure;
+
+/* ---- hashes -------------------------------------------------------- */
+float h11(float p) { return fract(sin(p * 127.1) * 43758.5453123); }
+float h21(vec2 p)  { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
+vec3  h33(vec3 p) {
+  p = vec3(dot(p, vec3(127.1, 311.7, 74.7)),
+           dot(p, vec3(269.5, 183.3, 246.1)),
+           dot(p, vec3(113.5, 271.9, 124.6)));
+  return fract(sin(p) * 43758.5453123);
+}
+
+float vnoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  float a = h21(i), b = h21(i + vec2(1,0)), c = h21(i + vec2(0,1)), d = h21(i + vec2(1,1));
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+float fbm(vec2 p, int oct) {
+  float v = 0.0, a = 0.5;
+  for (int i = 0; i < 5; i++) {
+    if (i >= oct) break;
+    v += a * vnoise(p); p = p * 2.03 + 11.7; a *= 0.5;
+  }
+  return v;
+}
+
+/* ---- cloud ---------------------------------------------------------
+   A deck is a plane at a fixed altitude. Projecting the view ray onto
+   it is what gives the perspective: cloud overhead is large and sparse,
+   cloud toward the horizon compresses and crowds, exactly as it does
+   when you look at a real sky. Beyond a few hundred kilometres it is
+   dissolved into the air, which is the horizon's haze.
+
+   Returns the body in .x and a cheaper sample toward the sun in .y, so
+   a deck costs eight noise evaluations rather than twenty. Shading it
+   by calling the whole thing twice was forty per pixel.
+-------------------------------------------------------------------- */
+vec2 deck(vec3 rd, vec3 toSun, float altitude, float scale, vec2 wind, float cover, float sharp) {
+  if (rd.y < 0.012) return vec2(0.0);
+  float t = altitude / rd.y;
+  float tm = uTime * uMotion;
+  /* A slow wander in the sampling coordinate, so the shapes evolve
+     rather than merely slide past. One fbm, not two. */
+  vec2 morph = vec2(sin(tm * 0.0131), cos(tm * 0.0107)) * 1.6;
+  vec2 p = rd.xz * t * scale + wind + morph;
+
+  float n = fbm(p, 5);
+  float fade = exp(-t * 2.4e-6);
+  float edge = smoothstep(0.012, 0.085, rd.y);
+  float body = smoothstep(cover, cover + sharp, n) * fade * edge;
+
+  vec3 lrd = normalize(rd + toSun * 0.06);
+  float lt = altitude / max(lrd.y, 0.012);
+  vec2 lp = lrd.xz * lt * scale + wind + morph;
+  float ln = fbm(lp, 3) + 0.06;
+  float lit = smoothstep(cover, cover + sharp, ln) * fade * edge;
+
+  return vec2(body, lit);
+}
+
+/* ---- stars ---------------------------------------------------------
+   Three independent layers at different cell densities, so no lattice
+   can emerge from any one of them; a star is drawn by its INTENSITY
+   against a radius of about a pixel, not by a disc, which is what keeps
+   them stars rather than circles.
+
+   The twinkle is per star — its own rate, its own phase, its own depth
+   of modulation — and it strengthens toward the horizon, because that
+   is where the line of sight passes through the most air and real
+   scintillation is strongest.
+-------------------------------------------------------------------- */
+float starLayer(vec3 rd, float density, float prob, float gain) {
+  vec3 p  = rd * density;
+  vec3 ip = floor(p);
+  vec3 fp = fract(p) - 0.5;
+  vec3 r  = h33(ip);
+  if (r.x > prob) return 0.0;
+
+  vec3 r2 = h33(ip + 19.3);
+  vec2 off = (r2.xy - 0.5) * 0.52;
+  float d = length(fp.xy - off);
+
+  /* One pixel, in this layer's cell units. */
+  float px = uPx * density;
+  float mag = 0.22 + 0.78 * r2.z * r2.z;              // apparent magnitude, skewed faint
+  float radius = px * (0.52 + mag * 0.85);
+  float core = 1.0 - smoothstep(0.0, radius, d);
+  float bloom = exp(-d / (radius * 2.6)) * 0.28;      // the eye's own flare
+
+  float amp  = 0.07 + 0.22 * r.y;
+  float rate = 0.35 + 2.1 * r.z;
+  float horizonBoost = mix(1.0, 2.1, 1.0 - clamp(rd.y, 0.0, 1.0));
+  float tw = 1.0 + amp * horizonBoost * sin(uTime * uMotion * rate + r.x * 43.0)
+                 * (0.6 + 0.4 * sin(uTime * uMotion * rate * 0.37 + r.y * 17.0));
+
+  return (core + bloom) * mag * mag * gain * max(tw, 0.25);
+}
+
+vec3 stars(vec3 rd) {
+  /* Thinned: a real sky has a few dozen stars you notice and a wash of
+     ones you do not. The first pass had every cell occupied and read as
+     dust. Three densities, each sparser and fainter than the last. */
+  float s = starLayer(rd, 120.0, 0.022, 1.25)
+          + starLayer(rd, 290.0, 0.013, 0.42)
+          + starLayer(rd, 640.0, 0.008, 0.17);
+  /* A restrained spread of colour temperature. Real star fields are
+     mostly white with a few warm and a few blue; anything more reads
+     as confetti. */
+  vec3 tint = mix(vec3(1.0, 0.93, 0.84), vec3(0.84, 0.90, 1.0),
+                  h11(floor(rd.x * 97.0) + floor(rd.y * 131.0) * 13.0));
+  return s * mix(vec3(1.0), tint, 0.55);
+}
+
+/* ---- ACES, approximated ------------------------------------------ */
+vec3 aces(vec3 x) {
+  return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0);
+}
+
+void main() {
+  vec2 frag = gl_FragCoord.xy;
+  vec3 rd = rayDir(frag);
+
+  /* The atmosphere, decoded from the low-resolution pass. A gradient
+     has nothing to lose to bilinear upsampling, and this is where all
+     the arithmetic went. */
+  vec3 enc = texture2D(uSky, frag / uRes).rgb;
+  vec3 col = enc / max(1.0 - enc, vec3(1e-4));
+
+  /* Stars arrive when the sun is between about 5 and 15 degrees down,
+     which is when they arrive. The old threshold put them in the sky
+     at sunset, over a lit horizon. */
+  float night = smoothstep(-0.085, -0.26, uSun.y);
+
+  /* --- stars, behind the cloud ------------------------------------ */
+  if (night > 0.001) {
+    /* The sky turns. Slowly — a degree every four minutes — but it is
+       the difference between a night sky and a wallpaper. */
+    float a = uTime * uMotion * 0.0009;
+    float ca = cos(a), sa = sin(a);
+    vec3 srd = vec3(rd.x * ca - rd.z * sa, rd.y, rd.x * sa + rd.z * ca);
+    /* And a bright sky washes them out whatever the hour: the eye
+       cannot see a sixth-magnitude star against lit air, so neither
+       can this. */
+    float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
+    col += stars(srd) * night * 0.95 / (1.0 + lum * 55.0);
+  }
+
+  /* --- cloud ------------------------------------------------------- */
+  float drift = uTime * uMotion;
+  vec3 toSun = normalize(uSun + vec3(0.0, 1e-4, 0.0));
+  vec2 low  = deck(rd, toSun, 2300.0, 0.00047, vec2(drift * 0.0062, drift * 0.0021), 0.50, 0.30);
+  vec2 high = deck(rd, toSun, 7600.0, 0.00019, vec2(drift * 0.0115, drift * 0.0043), 0.56, 0.36);
+
+  float sunUp = smoothstep(-0.14, 0.06, uSun.y);
+  float mu = dot(rd, toSun);
+  float forward = pow(max(mu, 0.0), 7.0);
+
+  /* Cloud colour comes from the sky it sits in, so it is warm at dawn,
+     white at noon and blue-grey at night without a single hard-coded
+     colour — and the bright rim appears only where the sun is behind
+     the cloud, which is when it happens in the air. */
+  vec3 ambient = col * 1.26 + vec3(0.005);
+  vec3 sunlit  = mix(ambient, ambient + vec3(1.05, 0.88, 0.66) * (0.45 + 1.8 * forward), sunUp);
+
+  /* Where the light sample is thinner than the body, light is getting
+     through: that edge is the silver lining. */
+  float lowBody  = clamp((low.x  - low.y  * 0.78) * 3.1, 0.0, 1.0);
+  float highBody = clamp((high.x - high.y * 0.78) * 3.5, 0.0, 1.0);
+
+  /* The shaded side of a cloud is never black — it is lit by the whole
+     rest of the sky. Half the ambient is about right and it keeps dawn
+     cloud from reading as smoke. */
+  vec3 lowCol  = mix(ambient * 0.62, sunlit, lowBody);
+  vec3 highCol = mix(ambient * 0.82, sunlit, highBody);
+
+  col = mix(col, highCol, clamp(high.x * 0.60, 0.0, 1.0));
+  col = mix(col, lowCol,  clamp(low.x  * 0.88, 0.0, 1.0));
+  float cloudMask = clamp(low.x * 0.88 + high.x * 0.35, 0.0, 1.0);
+
+  /* --- the discs ---------------------------------------------------
+     No painted halo on either. The glow around the sun is the Mie
+     phase function in the atmosphere pass doing what it does in air;
+     all that is drawn here is the body. */
+  float cosSun = dot(rd, uSun);
+  float sunR = 0.00465;
+  float sunDisc = smoothstep(cos(sunR * 1.9), cos(sunR * 0.82), cosSun);
+  float aboveH = smoothstep(-0.025, 0.012, uSun.y);
+  col += vec3(1.0, 0.94, 0.86) * sunDisc * 9.0 * aboveH * (1.0 - cloudMask);
+
+  float cosMoon = dot(rd, uMoon);
+  float moonR = 0.00475;
+  float moonDisc = smoothstep(cos(moonR * 1.5), cos(moonR * 0.9), cosMoon);
+  if (moonDisc > 0.0) {
+    /* A phase, and limb darkening: a flat white circle is the thing
+       that reads as a sticker. */
+    vec3 mUp = normalize(cross(uMoon, vec3(0.0, 1.0, 0.0)));
+    float across = dot(normalize(rd - uMoon * cosMoon), mUp);
+    float term = smoothstep(-0.12, 0.12, across - (1.0 - 2.0 * uMoonLit));
+    float limb = sqrt(max(1.0 - pow(acos(clamp(cosMoon, -1.0, 1.0)) / moonR, 2.0), 0.0));
+    col += vec3(0.95, 0.93, 0.87) * moonDisc * term * (0.35 + 0.65 * limb) * 1.5 * night;
+  }
+
+  /* --- grade -------------------------------------------------------- */
+  col = aces(col * uExposure);
+  col = pow(col, vec3(1.0 / 2.2));
+  /* Ordered-ish dither. A sky is one long ramp and 8 bits is not enough
+     for it; without this the whole frame bands in visible steps. */
+  float dith = h21(frag + fract(uTime)) - 0.5;
+  col += dith / 255.0;
+
+  gl_FragColor = vec4(col, 1.0);
+}`;
+
+/* ---------------------------------------------------------------------
+   GL plumbing
+   ------------------------------------------------------------------ */
+let progSky, progMain, skyTex, skyFBO, quad;
+let U = {};
+
+function compile(src, type) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    console.error(gl.getShaderInfoLog(s));
+    throw new Error('shader');
+  }
+  return s;
+}
+function link(fs) {
+  const p = gl.createProgram();
+  gl.attachShader(p, compile(VERT, gl.VERTEX_SHADER));
+  gl.attachShader(p, compile(fs, gl.FRAGMENT_SHADER));
+  gl.bindAttribLocation(p, 0, 'aPos');
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+    console.error(gl.getProgramInfoLog(p));
+    throw new Error('link');
+  }
+  return p;
+}
+function uniforms(p, names) {
+  const o = {};
+  for (const n of names) o[n] = gl.getUniformLocation(p, n);
+  return o;
+}
+
+const COMMON_U = ['uRes','uSun','uMoon','uMoonLit','uTime','uMotion'];
+
+if (gl) {
+  progSky  = link(FRAG_SKY);
+  progMain = link(FRAG_MAIN);
+  U.sky  = uniforms(progSky, COMMON_U);
+  U.main = uniforms(progMain, COMMON_U.concat(['uSky','uPx','uExposure']));
+
+  quad = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+  skyTex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, skyTex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  skyFBO = gl.createFramebuffer();
+}
+
+/* ---------------------------------------------------------------------
+   Where the sun actually is.
+
+   Real spherical astronomy, at the latitude the app is built around, so
+   the length of the day, the angle the sun climbs at and how long
+   twilight lasts are all a consequence rather than a choice. In the app
+   these come from the same clock the prayer engine already uses.
+   ------------------------------------------------------------------ */
+const LAT = 25.2 * Math.PI / 180;     // Dubai
+const DEC = -15.0 * Math.PI / 180;    // early November
+
+function bodyDir(hours, dec, lat) {
+  const H = (hours - 12) * 15 * Math.PI / 180;
+  const sinAlt = Math.sin(lat) * Math.sin(dec) + Math.cos(lat) * Math.cos(dec) * Math.cos(H);
+  const alt = Math.asin(Math.max(-1, Math.min(1, sinAlt)));
+  let cosAz = (Math.sin(dec) - Math.sin(alt) * Math.sin(lat)) / (Math.cos(alt) * Math.cos(lat) + 1e-9);
+  cosAz = Math.max(-1, Math.min(1, cosAz));
+  let az = Math.acos(cosAz);
+  if (Math.sin(H) > 0) az = 2 * Math.PI - az;        // azimuth from north, eastward
+  const ca = Math.cos(alt);
+  return [ca * Math.sin(az), Math.sin(alt), ca * Math.cos(az)];
+}
+
+/* ---------------------------------------------------------------------
+   Time, motion, quality
+   ------------------------------------------------------------------ */
+const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+let minutes = 1230;          // 20:30
+let playing = true;
+let speedIdx = 1;
+const SPEEDS = [
+  { label: 'real time', perSec: 1 / 60 },
+  { label: '1 h / s',   perSec: 60 },
+  { label: '4 h / s',   perSec: 240 }
+];
+let motion = !reduced.matches;
+let qualityMode = 'auto';    // auto | high | low
+let scale = 1.0;             // composite render scale
+let skyDiv = 3;              // atmosphere pass divisor
+
+const el = {
+  t: document.getElementById('t'),
+  play: document.getElementById('play'),
+  speed: document.getElementById('speed'),
+  motion: document.getElementById('motion'),
+  quality: document.getElementById('quality'),
+  clock: document.getElementById('clock'),
+  part: document.getElementById('part'),
+  fps: document.getElementById('fps'),
+  sayH: document.getElementById('say-h'),
+  sayP: document.getElementById('say-p')
+};
+
+function syncButtons() {
+  el.play.textContent = playing ? 'Pause time' : 'Play time';
+  el.play.setAttribute('aria-pressed', String(playing));
+  el.speed.textContent = SPEEDS[speedIdx].label;
+  el.motion.textContent = motion ? 'Motion on' : 'Motion off';
+  el.motion.setAttribute('aria-pressed', String(motion));
+  el.quality.textContent = 'Quality: ' + qualityMode;
+}
+
+el.t.addEventListener('input', () => { minutes = +el.t.value; playing = false; syncButtons(); });
+el.play.addEventListener('click', () => { playing = !playing; syncButtons(); });
+el.speed.addEventListener('click', () => { speedIdx = (speedIdx + 1) % SPEEDS.length; syncButtons(); });
+el.motion.addEventListener('click', () => { motion = !motion; syncButtons(); });
+el.quality.addEventListener('click', () => {
+  qualityMode = qualityMode === 'auto' ? 'high' : qualityMode === 'high' ? 'low' : 'auto';
+  applyQuality(); resize(); syncButtons();
+});
+/* A change of system preference mid-session is a real preference. */
+reduced.addEventListener('change', e => { motion = !e.matches; syncButtons(); });
+
+function applyQuality() {
+  if (qualityMode === 'high') { scale = 1.0; skyDiv = 2; }
+  else if (qualityMode === 'low') { scale = 0.7; skyDiv = 4; }
+  else { scale = 1.0; skyDiv = 3; }
+}
+applyQuality();
+
+/* Daypart and the sample line, so the type is judged against the sky it
+   would really sit on. The app's own resolvePhase() owns this. */
+function daypart(m) {
+  const d = bodyDir(m / 60, DEC, LAT);
+  const elev = Math.asin(d[1]) * 180 / Math.PI;
+  const rising = (m / 60) < 12;
+  if (elev < -15) return ['Night',       'Time to sleep.',          'Put the phone down after this.'];
+  if (elev < -5)  return rising
+    ? ['Dawn',        'How did you sleep?',      'Three questions, about twenty seconds.']
+    : ['Dusk',        'Light is going.',         'Asleep by 10:45, up at 6:45.'];
+  if (elev < 4)   return rising
+    ? ['Sunrise',     'How did you sleep?',      'Three questions, about twenty seconds.']
+    : ['Sunset',      'Winding toward evening.', 'Wind-down at 10:00.'];
+  if (elev < 14)  return rising
+    ? ['Morning',     'A clear morning.',        'Light early keeps tonight on time.']
+    : ['Golden hour', 'Winding toward evening.', 'Wind-down at 10:00.'];
+  return rising
+    ? ['Morning',     'A clear morning.',        'Light early keeps tonight on time.']
+    : ['Afternoon',   'What is tomorrow for?',   'Tonight gets built around it.'];
+}
+
+function hhmm(m) {
+  const h = Math.floor(m / 60) % 24, mm = Math.floor(m % 60);
+  const ap = h < 12 ? 'am' : 'pm';
+  const h12 = ((h + 11) % 12) + 1;
+  return `${h12}:${String(mm).padStart(2, '0')} ${ap}`;
+}
+
+/* ---------------------------------------------------------------------
+   Sizing
+   ------------------------------------------------------------------ */
+let W = 0, H = 0, SW = 0, SH = 0, dpr = 1;
+function resize() {
+  if (!gl) return;
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = Math.max(2, Math.round(canvas.clientWidth  * dpr * scale));
+  H = Math.max(2, Math.round(canvas.clientHeight * dpr * scale));
+  canvas.width = W; canvas.height = H;
+  SW = Math.max(2, Math.round(W / skyDiv));
+  SH = Math.max(2, Math.round(H / skyDiv));
+  gl.bindTexture(gl.TEXTURE_2D, skyTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, SW, SH, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, skyFBO);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, skyTex, 0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+}
+window.addEventListener('resize', resize);
+if (gl) resize();
+
+/* ---------------------------------------------------------------------
+   The loop
+   ------------------------------------------------------------------ */
+let anim = 0, last = performance.now(), frames = 0, fpsT = performance.now(), hidden = false;
+
+document.addEventListener('visibilitychange', () => {
+  hidden = document.hidden;
+  if (!hidden) { last = performance.now(); requestAnimationFrame(frame); }
+});
+
+function drawOnce(animSeconds, mins) {
+  const sun  = bodyDir(mins / 60, DEC, LAT);
+  /* The moon is up when the sun is not, and on a southerly declination
+     so that it crosses this view rather than culminating overhead and
+     out of shot — which is what a body on the ecliptic does at 25°N. */
+  const moon = bodyDir(((mins / 60) + 16.0) % 24, -22.0 * Math.PI / 180, LAT);
+  const moonLit = 0.62;
+  const m = motion ? 1 : 0;
+
+  // --- atmosphere, low resolution
+  gl.bindFramebuffer(gl.FRAMEBUFFER, skyFBO);
+  gl.viewport(0, 0, SW, SH);
+  gl.useProgram(progSky);
+  gl.uniform2f(U.sky.uRes, SW, SH);
+  gl.uniform3f(U.sky.uSun, sun[0], sun[1], sun[2]);
+  gl.uniform3f(U.sky.uMoon, moon[0], moon[1], moon[2]);
+  gl.uniform1f(U.sky.uMoonLit, moonLit);
+  gl.uniform1f(U.sky.uTime, animSeconds);
+  gl.uniform1f(U.sky.uMotion, m);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  // --- composite, full resolution
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, W, H);
+  gl.useProgram(progMain);
+  gl.uniform2f(U.main.uRes, W, H);
+  gl.uniform3f(U.main.uSun, sun[0], sun[1], sun[2]);
+  gl.uniform3f(U.main.uMoon, moon[0], moon[1], moon[2]);
+  gl.uniform1f(U.main.uMoonLit, moonLit);
+  gl.uniform1f(U.main.uTime, animSeconds);
+  gl.uniform1f(U.main.uMotion, m);
+  gl.uniform1f(U.main.uPx, 2.0 * 0.62 / H);
+  gl.uniform1f(U.main.uExposure, 1.0);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, skyTex);
+  gl.uniform1i(U.main.uSky, 0);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+
+function paintUI() {
+  const [part, h, p] = daypart(minutes);
+  el.clock.textContent = hhmm(minutes);
+  el.part.textContent = part;
+  if (el.sayH.textContent !== h) { el.sayH.textContent = h; el.sayP.textContent = p; }
+  el.t.value = String(Math.round(minutes));
+}
+
+function frame(now) {
+  if (!gl || hidden) return;
+  const dt = Math.min((now - last) / 1000, 0.25);
+  last = now;
+
+  if (playing) {
+    minutes = (minutes + SPEEDS[speedIdx].perSec * dt) % 1440;
+  }
+  if (motion) anim += dt;
+
+  drawOnce(anim, minutes);
+  paintUI();
+
+  frames++;
+  if (now - fpsT > 700) {
+    const fps = frames * 1000 / (now - fpsT);
+    el.fps.textContent = fps.toFixed(0) + ' fps';
+    frames = 0; fpsT = now;
+    /* Auto quality: one step down, once, and never back up — hunting
+       between two resolutions is worse than the lower one. */
+    if (qualityMode === 'auto' && fps < 34 && skyDiv < 4) {
+      skyDiv = 4; scale = 0.78; resize();
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+if (gl) { syncButtons(); paintUI(); if (!CAPTURE) requestAnimationFrame(frame); else drawOnce(0, minutes); }
+
+/* A deterministic hook, so a recording can step the engine frame by
+   frame instead of racing the clock. Nothing in the app calls this. */
+window.__sky = {
+  render(animSeconds, mins) { minutes = mins; playing = false; drawOnce(animSeconds, mins); paintUI(); },
+  set motion(v) { motion = v; },
+  ready: Boolean(gl)
+};
+</script>
+</body>
+</html>
