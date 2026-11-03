@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SleepSphere — visual direction</title>
+<!--
+  A VISUAL DIRECTION, NOT THE APP.
+
+  Nothing here reads, writes or calculates anything. Every time and
+  duration on these frames is typed in as a plausible example so the
+  composition can be judged; the real screen takes all of them from
+  phaseAnchors(), tonightsPlan() and the morning record, exactly as it
+  does today. This file exists to be looked at and argued with before a
+  line of index.html changes.
+
+  The proposal in one sentence: the identity stops being a sphere on a
+  gradient and becomes the sky itself — one continuous environment whose
+  light moves through the day, with a horizon to compose against, so no
+  screen is a headline floating in a void.
+
+  Open with ?t=dawn | day | dusk | night.
+-->
+<style>
+  /* ==================================================================
+     ONE ENVIRONMENT, FOUR HOURS.
+
+     Every daypart is the same seven values — zenith, upper, mid, haze,
+     horizon, and two ridges of land — with the hue rotating warm, cool,
+     warm, dark. That is what makes the day read as one place rather
+     than four themes: nothing appears or disappears between dayparts,
+     the same seven values simply move.
+
+     The app already interpolates a day→night number continuously
+     (--stars) and a light position (--sun-at). These are the same idea
+     with more layers, so the transition stays a tween, not a switch.
+     ================================================================== */
+  :root {
+    --font-display: ui-serif, "New York", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, system-ui, sans-serif;
+    --horizon: 63%;          /* where land meets sky, in every frame */
+    --r-pill: 999px;
+    --gold: #d9bd88;
+  }
+
+  /* ---- Dawn ---------------------------------------------------- */
+  [data-t="dawn"] {
+    --sky-1:#1b2440; --sky-2:#39496b; --sky-3:#726a84;
+    --sky-4:#b2866f; --sky-5:#dda87e;
+    --land-far:#3f4460; --land-near:#1f2234;
+    --ink:#f7f1e7; --ink-soft:#ddd2c4; --ink-quiet:#b3a899;
+    --accent:#f0bd8a; --lux:#ffdcae;
+    --sun-x:20%; --sun-y:61%; --sun-size:26px; --sun-halo:30vmax; --sun-bloom:.45;
+    --stars:.22;
+  }
+  /* ---- Day. Bright, saturated and warm near the ground — never the
+     stark white it replaces. There are no white cards in this
+     direction; the only surfaces are sky and land. ---------------- */
+  [data-t="day"] {
+    --sky-1:#28507f; --sky-2:#53749e; --sky-3:#8fa4b2;
+    --sky-4:#b9b8a7; --sky-5:#cdc1a4;
+    --land-far:#6d7c73; --land-near:#3c4942;
+    --ink:#fcf8f1; --ink-soft:#e6e1d6; --ink-quiet:#c3bfb2;
+    --accent:#f4e3bc; --lux:#fff6da;
+    --sun-x:70%; --sun-y:14%; --sun-size:20px; --sun-halo:38vmax; --sun-bloom:.4;
+    --stars:0;
+  }
+  /* ---- Dusk ---------------------------------------------------- */
+  [data-t="dusk"] {
+    --sky-1:#101830; --sky-2:#272c4d; --sky-3:#5e4159;
+    --sky-4:#a05f4a; --sky-5:#d68e5b;
+    --land-far:#232743; --land-near:#101322;
+    --ink:#f6efe3; --ink-soft:#d3c8b8; --ink-quiet:#9f9484;
+    --accent:#e8b27e; --lux:#ffd6a6;
+    --sun-x:79%; --sun-y:62%; --sun-size:22px; --sun-halo:26vmax; --sun-bloom:.38;
+    --stars:.45;
+  }
+  /* ---- Night. The navy and the restrained gold, kept. ----------- */
+  [data-t="night"] {
+    --sky-1:#03060d; --sky-2:#080e1c; --sky-3:#0f162c;
+    --sky-4:#151d36; --sky-5:#1c2643;
+    --land-far:#0c1225; --land-near:#05080f;
+    --ink:#ece8de; --ink-soft:#b7b2a6; --ink-quiet:#877f72;
+    --accent:#d9bd88; --lux:#f2e7cd;
+    --sun-x:76%; --sun-y:29%; --sun-size:18px; --sun-halo:14vmax; --sun-bloom:.24;
+    --stars:1;
+  }
+
+  * { box-sizing:border-box; }
+  html, body { height:100%; }
+  body {
+    margin:0; font-family:var(--font-body); color:var(--ink);
+    background:var(--sky-1); -webkit-font-smoothing:antialiased;
+  }
+  .frame { position:relative; min-height:100svh; overflow:hidden; isolation:isolate; }
+
+  /* ---- 1. The sky ---------------------------------------------- */
+  /* Aerial perspective is BAKED IN, not layered on. A separate haze
+     element reaches its most opaque value at its own bottom edge and
+     then simply stops, which drew a hard line straight across the sky
+     at the horizon — visible through the sun in the first pass. A wide,
+     soft radial seated on the horizon has no edge to show. */
+  .sky {
+    position:absolute; inset:0; z-index:0;
+    background:
+      radial-gradient(150% 34% at 50% var(--horizon),
+        color-mix(in srgb, var(--sky-5) 72%, transparent), transparent 72%),
+      /* Every stop is a FRACTION OF THE HORIZON, not a fixed percentage.
+         With fixed stops, lowering the horizon for the tablet (63% to
+         54%) put the --sky-4 stop at 56% AFTER the final stop at 54%;
+         CSS clamps an out-of-order stop to the one before it, so the
+         last two collapsed to zero length and drew a hard line straight
+         across the sky. Expressed this way the ramp keeps its shape at
+         any horizon, which is what a variable horizon needs. */
+      linear-gradient(to bottom,
+        var(--sky-1) 0%,
+        var(--sky-2) calc(var(--horizon) * .43),
+        var(--sky-3) calc(var(--horizon) * .73),
+        var(--sky-4) calc(var(--horizon) * .89),
+        var(--sky-5) var(--horizon));
+  }
+
+  /* ---- 2. The light. This is what the sphere becomes: small, and in
+     a different place at every hour, so it says where you are in the
+     day instead of decorating the middle of the screen. ----------- */
+  .halo, .light, .bloom {
+    position:absolute; left:var(--sun-x); top:var(--sun-y);
+    transform:translate(-50%,-50%); pointer-events:none;
+  }
+  .halo {
+    z-index:1; width:var(--sun-halo); height:var(--sun-halo);
+    background:radial-gradient(circle, var(--lux) 0%, transparent 60%);
+    opacity:var(--sun-bloom);
+  }
+  /* A second, tighter bloom: one radial alone reads as a sticker with a
+     glow behind it. Two, at very different radii, read as light. */
+  .bloom {
+    z-index:2; width:calc(var(--sun-size) * 7); height:calc(var(--sun-size) * 7);
+    background:radial-gradient(circle, color-mix(in srgb, var(--lux) 70%, transparent) 0%, transparent 58%);
+  }
+  .light {
+    z-index:3; width:var(--sun-size); height:var(--sun-size); border-radius:50%;
+    background:radial-gradient(circle at 42% 38%, #fffdf6, var(--lux) 62%,
+                               color-mix(in srgb, var(--lux) 70%, transparent) 100%);
+    filter:blur(.4px);
+  }
+  /* The moon is lit from one side rather than being a flat disc. */
+  [data-t="night"] .light {
+    background:radial-gradient(circle at 34% 32%, #fffdf6, var(--lux) 46%, #a79f8c 100%);
+    filter:none;
+  }
+
+  /* ---- 3. Cloud banding. Three very soft horizontal masses, no
+     silhouettes: what gives a flat gradient depth is uneven density,
+     not shapes you can name. ------------------------------------- */
+  .clouds { position:absolute; inset:0 0 37% 0; z-index:1; pointer-events:none; opacity:.5; }
+  .clouds::before, .clouds::after {
+    content:""; position:absolute; left:-18%; right:-18%; border-radius:50%;
+    background:radial-gradient(ellipse at center,
+      color-mix(in srgb, var(--sky-4) 58%, transparent), transparent 70%);
+    filter:blur(30px);
+  }
+  .clouds::before { top:36%; height:15%; }
+  .clouds::after  { top:55%; height:10%; opacity:.75; }
+  [data-t="night"] .clouds { opacity:.26; }
+
+  /* ---- 5. Stars. A canvas, and it needs an explicit size: an
+     absolutely positioned REPLACED element does not stretch to its
+     insets — it keeps its intrinsic 300x150 — which is how the first
+     pass ended up with a 900px star field on a 393px phone, drawn
+     three times too large. ---------------------------------------- */
+  .stars {
+    position:absolute; inset:0; width:100%; height:100%;
+    z-index:2; opacity:var(--stars); pointer-events:none;
+  }
+
+  /* ---- 6. The land. Two ridges, the far one hazier than the near —
+     that difference alone is what makes it read as distance, and it is
+     why this is a place rather than a gradient. ------------------- */
+  .land { position:absolute; left:0; right:0; top:calc(var(--horizon) - 1px); bottom:0; z-index:3; }
+  .land svg { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .ridge-far  { fill:var(--land-far); }
+  .ridge-near { fill:var(--land-near); }
+  /* The ground darkens toward the bottom, which is both what ground
+     does and what gives the controls a field to be read against. */
+  .land::after {
+    content:""; position:absolute; inset:0;
+    background:linear-gradient(to bottom,
+      transparent 6%,
+      color-mix(in srgb, var(--land-near) 72%, transparent) 42%,
+      color-mix(in srgb, var(--land-near) 96%, transparent) 78%);
+  }
+
+  /* ---- 7. Grain. A gradient this large bands visibly on a phone; a
+     little noise is the standard fix, and it also stops the sky
+     looking like a CSS gradient. --------------------------------- */
+  .grain { position:absolute; inset:0; z-index:8; pointer-events:none;
+           opacity:.045; mix-blend-mode:overlay; }
+
+  /* ==================================================================
+     COMPOSED AGAINST THE HORIZON.
+
+     Three bands: the date and the hour at the top, the line of the hour
+     in the deep part of the sky directly beneath it, and everything you
+     can act on standing on the ground.
+
+     The open middle is deliberate and is the opposite of the empty
+     space it replaces: it is sky, with a sun in it, bounded above by
+     the headline and below by the horizon. A gradient with nothing in
+     it reads as unfinished; a sky does not. It also puts every word on
+     the deepest part of the sky, which is the one place where the same
+     near-white type is readable at all four hours.
+     ================================================================== */
+  .content {
+    position:relative; z-index:5; min-height:100svh;
+    display:grid; grid-template-rows:auto auto 1fr auto; gap:0;
+    padding:max(18px, env(safe-area-inset-top)) 22px calc(24px + env(safe-area-inset-bottom));
+  }
+  .head { display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+  .head .day { color:var(--ink-soft); font-size:13.5px; }
+  .head .part { color:var(--accent); font-size:10.5px; font-weight:750;
+                letter-spacing:.18em; text-transform:uppercase; }
+
+  .say { margin:44px 0 0; }
+  .say h1 {
+    margin:0; font-family:var(--font-display); font-weight:400;
+    font-size:clamp(31px, 8.6vw, 41px); line-height:1.08; letter-spacing:-.016em;
+    max-width:15ch; text-wrap:balance;
+  }
+  .say p { margin:11px 0 0; max-width:30ch; color:var(--ink-soft);
+           font-size:15px; line-height:1.5; }
+
+  .ground { display:grid; gap:16px; align-content:end; }
+
+  .act {
+    display:flex; align-items:center; justify-content:center;
+    min-height:54px; padding:0 26px; border:0; border-radius:var(--r-pill);
+    background:linear-gradient(140deg, var(--lux), var(--accent));
+    color:#17140d; font-family:var(--font-body); font-size:16px; font-weight:650;
+    cursor:pointer; box-shadow:0 10px 32px color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+  .act-quiet { min-height:44px; border:0; background:none; color:var(--ink-soft);
+               font:inherit; font-size:14px; cursor:pointer; text-align:left; }
+  .act-row { display:flex; flex-wrap:wrap; gap:10px 22px; align-items:center; }
+  /* At bedtime a chart is chrome. Two times and a duration is the whole
+     of what is useful, and it keeps the last screen of the day quiet. */
+  .line { margin:0 0 2px; color:var(--ink-soft); font-size:15px; letter-spacing:.01em; }
+  .line b { color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums; }
+  .act-row .act { flex:1 1 14rem; }
+
+  /* ==================================================================
+     THE REST RIBBON — planned against recorded.
+
+     Three weights, and the weight IS the claim:
+
+       usual    a soft wash with no edge    where your nights tend to fall
+       planned  a lit span with two ends    what you decided
+       slept    one solid bar, notched      what actually happened
+
+     The dashed outline is gone. A dashed box reads as a placeholder —
+     as something missing — which is the opposite of what a saved plan
+     is; and it gave planned and recorded the same silhouette, so the
+     one comparison this app exists to make was carried entirely by
+     line style. Now they differ in fill, in weight and in row.
+     ================================================================== */
+  .ribbon { display:grid; gap:8px; }
+  .band {
+    position:relative; height:66px; border-radius:14px; overflow:hidden;
+    border:1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+    /* The strip is itself a small sky: dusk at the left, the deep of
+       the night in the middle, first light at the right. */
+    /* Fixed, not daypart-tinted: this strip is a picture OF the night,
+       so it stays the night whatever hour you look at it. Dusk at the
+       left, the deep of it in the middle, first light at the right. */
+    background:linear-gradient(to right,
+      #2a3050 0%, #141b33 20%, #04070e 52%, #121a31 82%, #2d3250 100%);
+  }
+  .band i { position:absolute; display:block; }
+
+  .r-usual {
+    top:26%; height:40%; border-radius:var(--r-pill); filter:blur(6px);
+    background:linear-gradient(to right, transparent,
+      color-mix(in srgb, var(--gold) 30%, transparent) 16%,
+      color-mix(in srgb, var(--gold) 30%, transparent) 84%, transparent);
+  }
+  /* Planned is the span; slept sits INSIDE it.
+
+     Two separate bars, one above the other, were two facts on one
+     chart. Nested, they are a single sentence: this is the night you
+     set aside, and this is the part of it you actually slept. The
+     shortfall is the unfilled tint at each end, which is the one
+     comparison this app exists to make, read without a number.
+
+     And because the span carries a real tint and a real glow, the
+     evening — where there is no record yet — shows a lit night waiting
+     to be filled, not the empty dashed box this replaces. */
+  .r-planned {
+    top:22%; height:46%; border-radius:10px;
+    background:color-mix(in srgb, var(--gold) 19%, transparent);
+    box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--gold) 58%, transparent),
+               0 0 28px color-mix(in srgb, var(--gold) 17%, transparent);
+  }
+  /* The two ends are the decision, so they are marked below the span,
+     pointing at the two times, rather than framing it like a box. */
+  .r-planned::before, .r-planned::after {
+    content:""; position:absolute; top:100%; height:8px; width:1.5px;
+    background:color-mix(in srgb, var(--gold) 80%, transparent);
+  }
+  .r-planned::before { left:-.75px; }
+  .r-planned::after  { right:-.75px; }
+
+  /* What actually happened: solid, the brightest thing on the strip. */
+  .r-slept {
+    top:30%; height:30%; border-radius:6px;
+    background:linear-gradient(to bottom, var(--gold), color-mix(in srgb, var(--gold) 82%, #8a6a30));
+    box-shadow:0 0 18px color-mix(in srgb, var(--gold) 40%, transparent);
+  }
+  /* Awake in the night is a gap in the bar, not a number in a table. */
+  .r-gap { top:30%; height:30%; background:#070b16; border-radius:1px; }
+
+  .r-now { top:0; bottom:0; width:1px; background:color-mix(in srgb, var(--ink) 50%, transparent); }
+  .r-now::after {
+    content:"NOW"; position:absolute; bottom:5px; left:5px;
+    font-size:8px; font-weight:800; letter-spacing:.1em; color:var(--ink-soft);
+  }
+
+  .r-marks { position:relative; height:30px; }
+  .r-marks span { position:absolute; transform:translateX(-50%); text-align:center; white-space:nowrap; }
+  .r-marks span:first-child { transform:translateX(-18%); }
+  .r-marks span:last-child  { transform:translateX(-82%); }
+  .r-marks b { display:block; font-family:var(--font-display); font-weight:400;
+               font-size:13px; font-variant-numeric:tabular-nums; color:var(--ink); }
+  .r-marks em { display:block; font-style:normal; font-size:8.5px; font-weight:800;
+                letter-spacing:.11em; text-transform:uppercase; color:var(--ink-quiet); }
+
+  .r-keys { display:flex; flex-wrap:wrap; gap:6px 18px; }
+  .r-key { display:inline-flex; align-items:center; gap:7px; color:var(--ink-soft); font-size:12.5px; }
+  .r-key::before { content:""; width:17px; height:9px; border-radius:3px; }
+  .r-key.usual::before   { background:color-mix(in srgb, var(--gold) 30%, transparent); filter:blur(2px); }
+  .r-key.planned::before { background:color-mix(in srgb, var(--gold) 15%, transparent);
+                           box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--gold) 50%, transparent); }
+  .r-key.slept::before   { height:6px; background:var(--gold); }
+  .r-key b { color:var(--ink); font-weight:650; font-variant-numeric:tabular-nums; }
+
+  /* ==================================================================
+     THE DAY'S ONE QUESTION.
+
+     Six full-width rows with a radio on each is a questionnaire. The
+     same six as a close-set grid of small tiles is a mode picker, which
+     is what it actually is — and the one already chosen is simply lit,
+     so the common case is "see it, leave it" rather than "answer it".
+     ================================================================== */
+  .modes { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .mode {
+    display:flex; align-items:center; gap:9px; padding:12px 13px; cursor:pointer;
+    border:1px solid color-mix(in srgb, var(--ink) 14%, transparent);
+    border-radius:14px; text-align:left; font:inherit;
+    background:color-mix(in srgb, #04070e 34%, transparent);
+    color:var(--ink-soft);
+  }
+  .mode .g { font-size:13px; line-height:1; color:var(--accent); opacity:.7; }
+  .mode b { font-size:13.5px; font-weight:600; color:var(--ink); letter-spacing:-.005em; }
+  .mode[aria-pressed="true"] {
+    border-color:color-mix(in srgb, var(--accent) 78%, transparent);
+    background:color-mix(in srgb, var(--accent) 17%, transparent);
+    box-shadow:0 0 18px color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+  .mode[aria-pressed="true"] .g { opacity:1; }
+
+  /* ==================================================================
+     TABLET. The same composition, not a second one: the horizon stays
+     where it is, the land keeps its ridges, and the content takes a
+     column rather than stretching to 1024px of line length.
+     ================================================================== */
+  @media (min-width:760px) {
+    /* The horizon comes up: on a tall tablet a 61% sky is most of the
+       frame, and the composition needs more ground under the content
+       than it needs more gradient above it. */
+    :root { --horizon:54%; }
+    .content { padding:40px 56px 52px; }
+    .inner { width:min(840px, 100%); margin-inline:auto; }
+    .say { margin-top:46px; }
+    .say h1 { font-size:clamp(46px, 5.2vw, 62px); max-width:17ch; }
+    .say p { font-size:18px; margin-top:14px; }
+    .line { font-size:17px; }
+    .band { height:104px; }
+    .modes { grid-template-columns:repeat(3, 1fr); gap:11px; }
+    .mode { padding:15px 16px; }
+    .act-row .act { flex:0 0 auto; min-width:17rem; }
+    /* Clear of the words. */
+    [data-t="night"] { --sun-x:80%; --sun-y:25%; }
+    [data-t="day"]   { --sun-x:76%; --sun-y:12%; }
+  }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="sky"></div>
+  <div class="halo"></div>
+  <div class="clouds"></div>
+  <canvas class="stars" id="stars"></canvas>
+  <div class="bloom"></div>
+  <div class="light"></div>
+
+  <div class="land">
+    <svg viewBox="0 0 400 150" preserveAspectRatio="none" aria-hidden="true">
+      <!-- Far ridge: hazier, lower contrast, further away. -->
+      <path class="ridge-far" d="M0 40 C 58 20, 104 46, 158 34 C 212 23, 256 52, 312 36 C 352 26, 378 38, 400 32 L400 150 L0 150 Z"/>
+      <!-- Near ridge: darker, and it is the ground the content stands on. -->
+      <path class="ridge-near" d="M0 82 C 46 66, 92 90, 150 80 C 214 69, 258 94, 318 82 C 358 74, 380 86, 400 80 L400 150 L0 150 Z"/>
+    </svg>
+  </div>
+
+  <svg class="grain" aria-hidden="true">
+    <filter id="g"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="3"/></filter>
+    <rect width="100%" height="100%" filter="url(#g)"/>
+  </svg>
+
+  <div class="content" id="content"></div>
+</div>
+
+<script>
+/* Content per daypart. Every number is an example, typed here so the
+   composition can be judged; the real screen computes all of them. */
+const T = new URLSearchParams(location.search).get('t') || 'dusk';
+document.documentElement.dataset.t = T;
+
+const marks = list => `<div class="r-marks">${list.map(m =>
+  `<span style="left:${m.x}%"><b>${m.t}</b><em>${m.l}</em></span>`).join('')}</div>`;
+
+/* The strip runs 4pm → noon, as the app's arc already does, so an
+   evening plan, a whole night, a Fajr interruption and a lie-in all fit
+   without wrapping. */
+const COPY = {
+  dawn: {
+    part:'Dawn', say:'How did you sleep?',
+    sub:'Three questions, about twenty seconds.',
+    ground:`
+      <div class="ribbon">
+        <div class="band">
+          <i class="r-planned" style="left:29.69%; width:50.0%"></i>
+          <i class="r-slept"   style="left:31.25%; width:44.81%"></i>
+          <i class="r-gap"     style="left:47.5%; width:1.6%"></i>
+          <i class="r-gap"     style="left:61.87%; width:1.1%"></i>
+        </div>
+        ${marks([{x:29.69,t:'10:45 PM',l:'Settle'},{x:79.69,t:'6:45 AM',l:'Wake'}])}
+        <div class="r-keys">
+          <span class="r-key planned">Planned <b>8h</b></span>
+          <span class="r-key slept">Slept <b>7h 10m</b></span>
+        </div>
+      </div>
+      <button class="act">Record this morning</button>`
+  },
+  day: {
+    part:'Today', say:'What is tomorrow for?',
+    sub:'Tonight gets built around it.',
+    ground:`
+      <div class="modes">
+        <button class="mode" aria-pressed="false"><span class="g">◈</span><b>Heavy learning</b></button>
+        <button class="mode" aria-pressed="true"><span class="g">◉</span><b>Hifz or revision</b></button>
+        <button class="mode" aria-pressed="false"><span class="g">✦</span><b>Exam day</b></button>
+        <button class="mode" aria-pressed="false"><span class="g">○</span><b>Normal day</b></button>
+        <button class="mode" aria-pressed="false"><span class="g">✈</span><b>Travel</b></button>
+        <button class="mode" aria-pressed="false"><span class="g">☾</span><b>Recovery</b></button>
+      </div>
+      <button class="act-quiet">Tonight: wind down 10:00, up 6:45</button>`
+  },
+  dusk: {
+    part:'This evening', say:'Wind down at 10:00.',
+    sub:'Asleep by 10:45, up at 6:45.',
+    ground:`
+      <div class="ribbon">
+        <div class="band">
+          <i class="r-planned" style="left:25.0%; width:54.69%"></i>
+          <i class="r-now" style="left:19.81%"></i>
+        </div>
+        ${marks([{x:25.0,t:'10:00 PM',l:'Wind down'},{x:79.69,t:'6:45 AM',l:'Wake'}])}
+      </div>
+      <div class="act-row">
+        <button class="act">Start wind-down</button>
+        <button class="act-quiet">Straight to bed</button>
+      </div>`
+  },
+  night: {
+    part:'Tonight', say:'Time to sleep.',
+    sub:'Put the phone down after this.',
+    ground:`
+      <p class="line">10:45 PM &ndash; 6:45 AM &middot; <b>8h</b></p>
+      <button class="act">Goodnight</button>`
+  }
+};
+
+const c = COPY[T];
+document.getElementById('content').innerHTML = `
+  <div class="head inner">
+    <span class="day">Tuesday 3 November</span>
+    <span class="part">${c.part}</span>
+  </div>
+  <div class="say inner"><h1>${c.say}</h1><p>${c.sub}</p></div>
+  <div></div>
+  <div class="ground inner">${c.ground}</div>`;
+
+/* Stars: scattered, never a lattice — a repeating grid of dots is the
+   one thing guaranteed to read as dots. Same rule the app already uses,
+   plus the real one: they thin out and dim toward the horizon. */
+(() => {
+  const cv = document.getElementById('stars');
+  const root = getComputedStyle(document.documentElement);
+  if (!cv || Number(root.getPropertyValue('--stars')) <= 0) return;
+  const dpr = Math.min(3, window.devicePixelRatio || 1);
+  const r = cv.getBoundingClientRect();
+  cv.width = Math.round(r.width * dpr);
+  cv.height = Math.round(r.height * dpr);
+  const x = cv.getContext('2d');
+  x.scale(dpr, dpr);
+  /* Read the horizon rather than repeating it: it differs by breakpoint,
+     and a second copy of a layout constant is a second thing to forget. */
+  const horizon = r.height *
+    (parseFloat(root.getPropertyValue('--horizon')) || 63) / 100;
+  let seed = 20261103;
+  const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+  for (let i = 0; i < 260; i++) {
+    const px = rnd() * r.width;
+    /* Weighted upward: the sky is emptiest just above the horizon. */
+    const py = Math.pow(rnd(), 1.5) * horizon;
+    const rad = rnd() * 0.7 + 0.3;
+    const fade = 1 - (py / horizon) * 0.85;
+    const a = (0.3 + rnd() * 0.55) * fade;
+    if (a <= 0.03) continue;
+    x.beginPath();
+    x.arc(px, py, rad, 0, 6.2832);
+    x.fillStyle = `rgba(255,250,236,${a.toFixed(3)})`;
+    x.fill();
+  }
+})();
+</script>
+</body>
+</html>
