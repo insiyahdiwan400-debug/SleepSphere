@@ -1516,7 +1516,35 @@
       --sky-top:#dcd7cb; --sky-mid:#d3cec1; --sky-low:#c7c1b3;
       --sun-halo:rgba(255,238,196,.5); --glow-1:rgba(214,196,160,.4);
       --glow-2:rgba(186,190,204,.3); --stars:0;
+
+      /* The moment's three type tokens, which had no light values at all.
+         They stayed at the near-white of the night set, and the whole
+         moment card — eyebrow, greeting, question and sub — rendered at
+         about 1.2:1 on the stone ground: present, and unreadable. The
+         contrast check that should have caught this was measuring against
+         a hardcoded dark fallback, because <html> carries the light
+         ground and the probe stopped short of it; test/today.js reads the
+         real ground now.
+
+         These are the ink the rest of light mode already uses, so the
+         moment matches the screens around it rather than being a second
+         opinion about what light mode is. */
+      --text:var(--ink);
+      --text-soft:#3f3a30;
+      --text-quiet:var(--muted);
     }
+    /* The daypart accent is chosen to glow against a night sky; on the
+       stone ground the same hue is a pale wash, and --accent-deep is only
+       two thirds of the way there (3.18:1 at DAY). Each phase keeps its
+       hue and takes an ink tint of it, measured against #dadad5: 5.58,
+       5.84, 4.99 and 6.08. --accent-deep stays as it is, because the rim
+       and the shadow it also draws have nothing to read against them. */
+    :root[data-mode="light"] { --accent-ink:#45507f; }
+    :root[data-mode="light"][data-phase="WAKE"]    { --accent-ink:#7d4228; }
+    :root[data-mode="light"][data-phase="DAY"]     { --accent-ink:#3b4a8f; }
+    :root[data-mode="light"][data-phase="EVENING"] { --accent-ink:#6f5525; }
+    :root[data-mode="light"][data-phase="SLEEP"]   { --accent-ink:#3f4a78; }
+    :root[data-mode="light"] .moment-eyebrow { color:var(--accent-ink); }
     :root[data-mode="light"] .night-console,
     :root[data-mode="light"] .bio-stage, :root[data-mode="light"] .twin-visual,
     :root[data-mode="light"] .hero, :root[data-mode="light"] .gap-banner,

@@ -70,14 +70,25 @@ const DAYPARTS = [
     const lum = c => .2126*srgb(c[0]) + .7152*srgb(c[1]) + .0722*srgb(c[2]);
     const parse = s => (s.match(/[\\d.]+/g) || []).map(Number);
     const ratio = (a,b) => { const l=[lum(a),lum(b)].sort((x,y)=>y-x); return (l[0]+.05)/(l[1]+.05); };
+    /* Walk all the way to <html> INCLUSIVE, and fall back to what <html>
+       actually resolves to rather than to a constant.
+
+       The old version stopped one element short and fell back to a
+       hardcoded midnight navy. <html> is exactly where the page ground
+       lives — the body only carries the atmosphere, in gradients with
+       alpha — so in light mode every one of these measurements was taken
+       against a dark ground the screen does not have, and four readings
+       of roughly 1.2:1 were reported as 9, 11, 17 and 6. */
     const groundAt = el => {
       let n = el;
-      while (n && n !== document.documentElement) {
+      while (n) {
         const bg = parse(getComputedStyle(n).backgroundColor);
         if (bg.length >= 3 && (bg[3] === undefined || bg[3] > .92)) return bg.slice(0,3);
+        if (n === document.documentElement) break;
         n = n.parentElement;
       }
-      return [10,12,30];   // the page ground behind the atmosphere
+      const root = parse(getComputedStyle(document.documentElement).backgroundColor);
+      return root.length >= 3 ? root.slice(0,3) : [10,12,30];
     };
     const out = {};
     ['momentEyebrow','momentGreeting','momentAsk','momentSub'].forEach(id => {
@@ -309,15 +320,23 @@ const DAYPARTS = [
         /^Good (morning|afternoon|evening)\.$/.test(bare), bare);
   await nameless.ctx.close();
 
-  /* ---- Light mode has to stay readable too. */
-  const light = await open({ iso:DAYPARTS[1].iso, settings:{ mode:'light' } });
-  const lightContrast = await light.p.evaluate(CONTRAST);
-  Object.entries(lightContrast).forEach(([id, value]) => {
-    const floor = id === 'momentAsk' ? 3 : 4.5;
-    check(`Light mode · ${id} is readable`, value >= floor, `${value}:1`);
-  });
-  check('Light mode · no console errors', light.errs.length === 0, light.errs.join(' | '));
-  await light.ctx.close();
+  /* ---- Light mode has to stay readable too, at every hour.
+
+     This used to measure one daypart. The eyebrow takes its colour from
+     the daypart accent, so one daypart was a quarter of the question —
+     and the four accents are four different hues against the same stone
+     ground. All four are measured now. */
+  for (const part of DAYPARTS) {
+    const light = await open({ iso:part.iso, plan:PLAN, settings:{ mode:'light' } });
+    const lightContrast = await light.p.evaluate(CONTRAST);
+    Object.entries(lightContrast).forEach(([id, value]) => {
+      const floor = id === 'momentAsk' ? 3 : 4.5;
+      check(`Light mode · ${part.name} · ${id} is readable`, value >= floor, `${value}:1`);
+    });
+    check(`Light mode · ${part.name} · no console errors`,
+          light.errs.length === 0, light.errs.join(' | '));
+    await light.ctx.close();
+  }
 
   await b.close();
   console.log(fails === 0 ? '\nALL CHECKS PASSED' : `\n${fails} FAILED`);
