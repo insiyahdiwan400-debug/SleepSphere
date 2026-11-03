@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SleepSphere — photographic treatments</title>
+<!--
+  THREE TREATMENTS, NOT THE APP.
+
+  Nothing here reads, writes or calculates anything. The sleep figures on
+  these frames are EXAMPLE VALUES, typed in so the chart can be judged,
+  and they are labelled as such. The real screen takes every one of them
+  from phaseAnchors(), tonightsPlan() and the morning record, and the
+  recorded row is never drawn at all unless a real record exists — the
+  "not recorded yet" state in ?rec=0 is what the app shows until then.
+
+  Imagery is photographic and licensed. See README.md for the three
+  sources, their authors and their licences; attribution ships with the
+  app, not just with this file.
+
+  ?v=a|b|c   treatment     ?t=dawn|day|night   hour     ?rec=0  no record yet
+-->
+<style>
+/* ===================================================================
+   ONE DESIGN SYSTEM, THREE TREATMENTS.
+
+   The treatments differ in how the photograph is used — filling the
+   frame, held in an aperture, or banded above the data. They do not
+   differ in type, spacing, colour or the chart: those are one system,
+   so that choosing a treatment is choosing a composition rather than
+   choosing a different product.
+   =================================================================== */
+:root {
+  /* Type ------------------------------------------------------------ */
+  --display: ui-serif, "New York", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --text: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, system-ui, sans-serif;
+
+  /* Space. Six steps, and nothing between them. ---------------------- */
+  --s1:4px; --s2:8px; --s3:12px; --s4:18px; --s5:28px; --s6:40px;
+
+  /* Ink. One set, on every treatment and at every hour, because every
+     treatment seats its type on a dark ground. ----------------------- */
+  --ink:#f4f1ea;
+  --ink-soft:#b8b2a7;
+  --ink-quiet:#8a8478;
+  --ink-faint:#5c584f;
+
+  /* One accent, restrained: the brass the app already uses. ---------- */
+  --accent:#c9a86a;
+  --accent-lift:#e3cb9a;
+
+  --hair:rgba(244,241,234,.14);
+  --r:18px;
+}
+
+/* The ground each treatment seats itself on, sampled from its own
+   photograph so the frame and the furniture belong to one image. */
+[data-t="dawn"]  { --ground:#17131b; --ground-2:#241c22; }
+[data-t="day"]   { --ground:#12161c; --ground-2:#1d242c; }
+[data-t="night"] { --ground:#06070c; --ground-2:#0d1018; }
+
+* { box-sizing:border-box; }
+html, body { height:100%; margin:0; }
+body {
+  font-family:var(--text); color:var(--ink); background:var(--ground);
+  -webkit-font-smoothing:antialiased;
+}
+.frame { position:relative; min-height:100svh; overflow:hidden; background:var(--ground); }
+
+/* ---- The photograph ------------------------------------------------ */
+.shot { position:absolute; inset:0; }
+.shot img { width:100%; height:100%; object-fit:cover; display:block; }
+
+/* Scrims. Type never sits on an ungraded photograph: it sits on a scrim
+   whose job is a contrast floor, and which is shaped so the picture is
+   still a picture. */
+.scrim-top, .scrim-bottom { position:absolute; left:0; right:0; pointer-events:none; }
+.scrim-top { top:0; height:26%;
+  background:linear-gradient(to bottom, rgba(6,7,12,.62), rgba(6,7,12,0)); }
+.scrim-bottom { bottom:0; height:72%;
+  background:linear-gradient(to top,
+    var(--ground) 0%, color-mix(in srgb, var(--ground) 97%, transparent) 30%,
+    color-mix(in srgb, var(--ground) 72%, transparent) 52%,
+    color-mix(in srgb, var(--ground) 32%, transparent) 76%, rgba(6,7,12,0) 100%); }
+
+/* ---- Furniture ----------------------------------------------------- */
+.layer { position:relative; z-index:3; min-height:100svh; display:grid;
+  padding:max(20px, env(safe-area-inset-top)) var(--s4) calc(var(--s5) + env(safe-area-inset-bottom)); }
+
+.meta { display:flex; align-items:baseline; justify-content:space-between; gap:var(--s3); }
+.meta .date { color:var(--ink-soft); font-size:13px; letter-spacing:.005em; }
+.cap { font-size:10px; font-weight:700; letter-spacing:.17em; text-transform:uppercase; }
+.meta .cap { color:var(--accent); }
+
+h1 { margin:0; font-family:var(--display); font-weight:400;
+     font-size:34px; line-height:1.1; letter-spacing:-.015em;
+     max-width:15ch; text-wrap:balance; }
+.sub { margin:var(--s2) 0 0; color:var(--ink-soft); font-size:15px; line-height:1.5; max-width:30ch; }
+
+.cta {
+  display:flex; align-items:center; justify-content:center; width:100%;
+  min-height:52px; padding:0 var(--s5); border:0; border-radius:999px;
+  background:var(--ink); color:#15130e;
+  font-family:var(--text); font-size:15.5px; font-weight:650; letter-spacing:.005em;
+  cursor:pointer;
+}
+.cta.ghost { background:none; color:var(--ink); box-shadow:inset 0 0 0 1px var(--hair); }
+
+/* Discoverability. SleepSphere is not a sleep timer, so the rest of it
+   is one tap away from the first screen at every hour — in the weight
+   of a route, not of a demand. */
+.ways { display:flex; flex-wrap:wrap; gap:var(--s2) var(--s4); padding-top:var(--s1); }
+.way { border:0; background:none; padding:6px 0; cursor:pointer;
+       color:var(--ink-quiet); font:inherit; font-size:12.5px; letter-spacing:.005em; }
+.way:hover { color:var(--ink); }
+
+/* ===================================================================
+   THE NIGHT, AS A CHART.
+
+   Restrained strokes, one scale, precise alignment:
+
+     axis       one hairline, ticks only on the hours that are read
+     planned    a 1px measurement rule with end caps — an intention has
+                no volume, so it is drawn as a span, not a block
+     recorded   a solid 5px bar on the same scale directly beneath it,
+                broken where the night was broken
+
+   The two rows share an x-scale and sit 10px apart, so the shortfall at
+   each end is a length you can see rather than a shade you have to
+   interpret. Nothing glows.
+
+   Interruptions are the gaps themselves, marked with a tick beneath and
+   stated in words in the caption, so they do not depend on noticing an
+   absence — and each segment carries its own label for a screen reader.
+   =================================================================== */
+.chart { display:grid; gap:var(--s3); }
+/* The axis sits 18px off the bottom of the plot so its hour labels have
+   somewhere to be. They were landing on the legend underneath. */
+.plot { position:relative; height:76px; }
+
+.axis { position:absolute; left:0; right:0; bottom:18px; height:1px; background:var(--hair); }
+.tick { position:absolute; bottom:18px; width:1px; height:4px; background:var(--hair); }
+.tick span {
+  position:absolute; bottom:-16px; left:50%; transform:translateX(-50%);
+  color:var(--ink-faint); font-size:9.5px; letter-spacing:.06em; white-space:nowrap;
+}
+.chart-cap { color:var(--ink-quiet); }
+
+/* Planned: a span, with ends. */
+.planned { position:absolute; top:10px; height:1px; background:var(--accent); }
+.planned::before, .planned::after {
+  content:""; position:absolute; top:-4px; height:9px; width:1px; background:var(--accent);
+}
+.planned::before { left:0; }
+.planned::after { right:0; }
+
+/* Recorded: solid, and only ever drawn from a real record. */
+.recorded { position:absolute; top:24px; height:5px; background:var(--ink); border-radius:1px; }
+.recorded.seg-first { border-radius:2px 1px 1px 2px; }
+.recorded.seg-last  { border-radius:1px 2px 2px 1px; }
+
+/* An interruption is marked, not merely absent. */
+.breakmark { position:absolute; top:24px; height:5px; width:1px; background:var(--ink-faint); }
+.breakmark::after {
+  content:""; position:absolute; left:-1.5px; top:7px; width:4px; height:4px;
+  border-radius:50%; border:1px solid var(--ink-quiet);
+}
+
+.rows { display:grid; gap:3px; }
+.row { display:flex; align-items:baseline; gap:var(--s2); }
+.row .cap { color:var(--ink-quiet); min-width:78px; }
+.row .val { font-size:14px; font-variant-numeric:tabular-nums; letter-spacing:.005em; }
+.row .val.dim { color:var(--ink-quiet); font-style:normal; }
+.row .note { color:var(--ink-quiet); font-size:12.5px; }
+.swatch { display:inline-block; width:14px; margin-right:var(--s1); vertical-align:middle; }
+.swatch.p { height:1px; background:var(--accent); box-shadow:0 0 0 0 transparent; }
+.swatch.r { height:5px; background:var(--ink); border-radius:1px; }
+
+/* ===================================================================
+   A — FULL FRAME. The photograph is the page; everything sits on a
+   scrim at the foot of it.
+   =================================================================== */
+[data-v="a"] .layer { grid-template-rows:auto 1fr auto; }
+[data-v="a"] .stack { display:grid; gap:var(--s4); align-content:end; }
+
+/* ===================================================================
+   B — APERTURE. The photograph is an object on the page: framed, inset,
+   with the furniture in a calm margin around it. The margin is the
+   point — it is what makes the picture read as chosen rather than as
+   wallpaper.
+   =================================================================== */
+[data-v="b"] .shot {
+  inset:68px var(--s4) auto var(--s4); height:35svh;
+  border-radius:var(--r); overflow:hidden;
+  box-shadow:0 0 0 1px rgba(244,241,234,.08), 0 24px 60px rgba(0,0,0,.5);
+}
+[data-v="b"] .scrim-top { display:none; }
+[data-v="b"] .scrim-bottom {
+  top:calc(68px + 35svh - 66px); bottom:auto; height:66px;
+  left:var(--s4); right:var(--s4); border-radius:0 0 var(--r) var(--r);
+  background:linear-gradient(to top, rgba(6,7,12,.55), rgba(6,7,12,0));
+}
+/* The aperture's own height reserved as a row, so nothing can land on
+   the picture's bottom edge — which is exactly what happened when this
+   was a 1fr spacer. */
+[data-v="b"] .layer { grid-template-rows:auto calc(35svh + 50px) auto 1fr auto; }
+[data-v="b"] .stack { display:grid; gap:var(--s4); }
+[data-v="b"] .tail { display:grid; gap:var(--s4); align-content:end; }
+
+/* ===================================================================
+   C — BAND. A cinematic strip of sky, one hairline, and a precise field
+   beneath it where the night is read.
+   =================================================================== */
+[data-v="c"] .shot { inset:0 0 auto 0; height:44svh; }
+[data-v="c"] .scrim-top { height:30%; }
+[data-v="c"] .scrim-bottom { top:calc(44svh - 190px); bottom:auto; height:190px;
+  background:linear-gradient(to top, var(--ground) 2%,
+    color-mix(in srgb, var(--ground) 55%, transparent) 55%, rgba(6,7,12,0)); }
+[data-v="c"] .rule { position:absolute; left:0; right:0; top:44svh; height:1px;
+  background:var(--hair); z-index:4; }
+/* Anchored to the band rather than measured down from the top: the
+   headline has to finish above the rule at any viewport height. */
+[data-v="c"] .say-c { position:absolute; z-index:4; left:var(--s4); right:var(--s4);
+  bottom:calc(100svh - 44svh + var(--s4)); }
+[data-v="c"] .layer { grid-template-rows:auto calc(44svh - 46px) auto 1fr auto; }
+[data-v="c"] .stack { display:grid; gap:var(--s4); padding-top:var(--s5); }
+[data-v="c"] .tail { display:grid; gap:var(--s4); align-content:end; }
+[data-v="c"] .plot { height:84px; }
+[data-v="c"] h1 { font-size:31px; }
+
+/* ---- Tablet -------------------------------------------------------- */
+@media (min-width:760px) {
+  .layer { padding:var(--s6) var(--s6) calc(var(--s6) + env(safe-area-inset-bottom)); }
+  .col { width:min(640px,100%); }
+  h1 { font-size:46px; max-width:16ch; }
+  .sub { font-size:17px; }
+  .cta { width:auto; min-width:19rem; }
+  [data-v="b"] .shot { inset:100px var(--s6) auto var(--s6); height:38svh; }
+  [data-v="b"] .scrim-bottom { top:calc(100px + 38svh - 84px); height:84px;
+                               left:var(--s6); right:var(--s6); }
+  [data-v="b"] .layer { grid-template-rows:auto calc(38svh + 52px) auto 1fr auto; }
+  [data-v="c"] .shot { height:46svh; }
+  [data-v="c"] .rule { top:46svh; }
+  [data-v="c"] .say-c { left:var(--s6); right:var(--s6);
+                        bottom:calc(100svh - 46svh + var(--s5)); }
+  [data-v="c"] .layer { grid-template-rows:auto calc(46svh - 60px) auto 1fr auto; }
+}
+</style>
+</head>
+<body>
+<div class="frame" id="frame"></div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const V = q.get('v') || 'a';
+const T = q.get('t') || 'night';
+const REC = q.get('rec') !== '0';
+document.documentElement.dataset.v = V;
+document.documentElement.dataset.t = T;
+
+const SHOT = {
+  dawn:  { src:'../assets/dawn-',  pos:'50% 42%' },
+  day:   { src:'../assets/day-',   pos:'50% 46%' },
+  night: { src:'../assets/night-', pos:'50% 38%' }
+};
+
+/* ---- The chart's geometry -------------------------------------------
+   One window, 6pm to 10am, the same one ARC_START / ARC_SPAN already
+   use: an evening plan, a whole night, a Fajr interruption and a lie-in
+   all fit in it without wrapping. */
+const START = 18, SPAN = 16;
+const at = h => ((h - START) / SPAN) * 100;
+
+/* EXAMPLE VALUES. Typed in so the chart can be judged. The app computes
+   every one of these, and draws no recorded row at all until a real
+   morning record exists. */
+const PLAN = { settle: 22.75, wake: 30.75, label: '8h 00m' };
+const REC_SEGS = [[23.03, 25.58], [25.87, 28.17], [28.3, 30.23]];
+const REC_LABEL = '7h 12m';
+const BREAKS = [[25.58, 25.87], [28.17, 28.3]];
+
+const TICKS = [[18,'6pm'],[21,'9pm'],[24,'12'],[27,'3am'],[30,'6am'],[33,'9am']];
+
+/* Which night the chart is about depends on the hour, and so does
+   whether there is anything recorded to draw.
+
+   At dawn the useful thing is last night, planned against recorded.
+   Later in the day and in the evening the useful thing is the night
+   ahead — which has not happened, so it has a planned span and no
+   recorded row at all. Drawing a recorded bar for a night nobody has
+   slept yet would be an invention, and the rule is that a sleep figure
+   appears only where a real record backs it. */
+function chart(part) {
+  const past = part === 'dawn';
+  const ticks = TICKS.map(([h, l]) =>
+    `<i class="tick" style="left:${at(h)}%"><span>${l}</span></i>`).join('');
+
+  const planned = `<i class="planned" style="left:${at(PLAN.settle)}%;width:${at(PLAN.wake) - at(PLAN.settle)}%"
+      role="img" aria-label="Planned ${PLAN.label}, 10:45 pm to 6:45 am"></i>`;
+
+  const plannedRow = `
+      <div class="row"><span class="cap">Planned</span>
+        <span class="val"><i class="swatch p"></i>${PLAN.label}</span>
+        <span class="note">10:45 pm – 6:45 am</span></div>`;
+
+  let recorded = '', marks = '', rows;
+  if (past && REC) {
+    recorded = REC_SEGS.map(([a, b], i) =>
+      `<i class="recorded ${i === 0 ? 'seg-first' : ''} ${i === REC_SEGS.length - 1 ? 'seg-last' : ''}"
+          style="left:${at(a)}%;width:${at(b) - at(a)}%"></i>`).join('');
+    marks = BREAKS.map(([a, b]) =>
+      `<i class="breakmark" style="left:${at((a + b) / 2)}%"
+          role="img" aria-label="Awake ${Math.round((b - a) * 60)} minutes"></i>`).join('');
+    rows = plannedRow + `
+      <div class="row"><span class="cap">Recorded</span>
+        <span class="val"><i class="swatch r"></i>${REC_LABEL}</span>
+        <span class="note">2 interruptions, 25 min awake</span></div>`;
+  } else if (past) {
+    /* No record, no bar and no number. An app that draws a plausible
+       night it was never told about is worse than one that says it does
+       not know. */
+    rows = plannedRow + `
+      <div class="row"><span class="cap">Recorded</span>
+        <span class="val dim">Not recorded yet</span></div>`;
+  } else {
+    rows = plannedRow;
+  }
+
+  const title = past ? 'Last night' : 'Tonight';
+  return `<div class="chart">
+    <p class="cap chart-cap">${title}</p>
+    <div class="plot" role="group" aria-label="${title}, planned against recorded">
+      ${planned}${recorded}${marks}
+      <i class="axis"></i>${ticks}
+    </div>
+    <div class="rows">${rows}</div>
+  </div>`;
+}
+
+const COPY = {
+  dawn:  { cap:'Dawn',         h:'How did you sleep?',  s:'Three questions, about twenty seconds.', cta:'Record this morning' },
+  day:   { cap:'Today',        h:'What is tomorrow for?', s:'Tonight gets built around it.',        cta:'Choose tomorrow' },
+  night: { cap:'This evening', h:'Wind down at 10:00.', s:'Asleep by 10:45, up at 6:45.',           cta:'Start wind-down' }
+};
+
+const WAYS = ['My Rhythm', 'Smart Assist', 'My Rest', 'Sabat', 'Explore']
+  .map(w => `<button class="way">${w}</button>`).join('');
+
+const c = COPY[T];
+const shot = SHOT[T];
+const wide = V === 'c';
+const img = `<div class="shot"><img src="${shot.src}${wide ? 'wide' : 'portrait'}.webp"
+   alt="" style="object-position:${shot.pos}"></div>`;
+
+const meta = `<div class="meta col">
+  <span class="date">Tuesday 3 November</span><span class="cap">${c.cap}</span></div>`;
+const say = `<h1>${c.h}</h1><p class="sub">${c.s}</p>`;
+const tail = `<button class="cta">${c.cta}</button><div class="ways">${WAYS}</div>`;
+
+const LAYOUT = {
+  /* Everything on the scrim at the foot of the picture. */
+  a: `${img}<i class="scrim-top"></i><i class="scrim-bottom"></i>
+      <div class="layer">
+        ${meta}
+        <div></div>
+        <div class="stack col"><div>${say}</div>${chart(T)}${tail}</div>
+      </div>`,
+  /* Header, then the aperture's own height, then the furniture below it. */
+  b: `${img}<i class="scrim-bottom"></i>
+      <div class="layer">
+        ${meta}
+        <div></div>
+        <div class="stack col"><div>${say}</div>${chart(T)}</div>
+        <div></div>
+        <div class="tail col">${tail}</div>
+      </div>`,
+  /* The words belong to the band; the night belongs to the field. */
+  c: `${img}<i class="scrim-top"></i><i class="scrim-bottom"></i><i class="rule"></i>
+      <div class="say-c col">${say}</div>
+      <div class="layer">
+        ${meta}
+        <div></div>
+        <div class="stack col">${chart(T)}</div>
+        <div></div>
+        <div class="tail col">${tail}</div>
+      </div>`
+};
+
+document.getElementById('frame').innerHTML = LAYOUT[V];
+</script>
+</body>
+</html>
