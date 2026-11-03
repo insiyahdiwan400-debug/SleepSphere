@@ -17,7 +17,10 @@
  */
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 
-const BASE = 'http://localhost:8099/index.html';
+/* Two front doors now. The product is what a new device opens into;
+   the study is opt-in and keeps its own, unchanged. */
+const BASE = 'http://localhost:8099/index.html?study=1';
+const PRODUCT = 'http://localhost:8099/index.html';
 
 let pass = 0, fail = 0;
 const check = (label, ok, detail) => {
@@ -30,7 +33,7 @@ const clockAt = h => `(()=>{const R=Date;const f=new R(2026,9,17,${h},30,0);
  static now(){return f.getTime();}} window.Date=D;})()`;
 
 /* No seeding. A genuinely cold open. */
-async function coldOpen(browser, w, h, hour) {
+async function coldOpen(browser, w, h, hour, url) {
   const ctx = await browser.newContext({
     viewport: { width: w, height: h }, deviceScaleFactor: 2,
     isMobile: w < 900, hasTouch: true
@@ -40,7 +43,7 @@ async function coldOpen(browser, w, h, hour) {
   const p = await ctx.newPage();
   p.on('pageerror', e => errs.push(String(e)));
   p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
-  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await p.goto(url || BASE, { waitUntil: 'networkidle' });
   await p.waitForTimeout(2200);
   return { ctx, p, errs };
 }
@@ -49,6 +52,76 @@ async function coldOpen(browser, w, h, hour) {
   const browser = await chromium.launch({
     executablePath: '/opt/pw-browsers/chromium', args: ['--no-sandbox']
   });
+
+  /* ================================================================
+     0. What a new device actually opens into.
+
+        The field study is over. Someone opening SleepSphere for the
+        first time is not a participant: they are not asked to consent
+        to research, not issued a code, and not told they are testing
+        anything. They are asked the two things the app genuinely needs
+        — can this device remember, and when does your day start — and
+        then they are in.
+
+        The study's own flow is not gone and is not weakened; it is
+        opt-in, and every section below this one still tests it.
+     ================================================================ */
+  for (const [name, w, h] of [['iPhone', 390, 844], ['iPad', 834, 1112]]) {
+    const { ctx, p, errs } = await coldOpen(browser, w, h, 21, PRODUCT);
+
+    const seen = await p.evaluate(() => {
+      const fw = document.getElementById('fieldwork');
+      const panel = [...document.querySelectorAll('#fieldwork .fw-panel')]
+        .find(x => !x.hidden);
+      return {
+        opens: Boolean(fw && fw.classList.contains('active')),
+        panel: panel ? panel.dataset.fw : null,
+        heading: panel ? (panel.querySelector('h2') || {}).textContent : '',
+        steps: [...document.querySelectorAll('#fieldwork .fw-rail i')]
+          .filter(b => !b.hidden).length,
+        text: fw ? fw.innerText : '',
+        consent: Boolean(document.getElementById('fwConsent') &&
+                         document.getElementById('fwConsent').offsetParent),
+        code: Boolean(document.getElementById('fwId') &&
+                      document.getElementById('fwId').offsetParent)
+      };
+    });
+    check('0 · ' + name + ': it opens on a question about the device, not a consent form',
+      seen.opens && seen.panel === '4', seen.panel + ': ' + (seen.heading || '').trim());
+    check('0 · ' + name + ': three steps, not six', seen.steps === 3, String(seen.steps));
+    check('0 · ' + name + ': nothing asks for consent to research', seen.consent === false);
+    check('0 · ' + name + ': and nothing asks for a participant code', seen.code === false);
+    check('0 · ' + name + ': the word study is never said',
+      !/\bstudy\b|\bresearch\b|\bparticipant\b|\bprototype\b/i.test(seen.text),
+      (seen.text || '').replace(/\s+/g, ' ').slice(0, 70));
+
+    /* And it lets you in. Removing the code step without this is a door
+       that never opens: finishFieldwork used to demand a code and bounce
+       anyone without one back to a panel this build does not show. */
+    const entered = await p.evaluate(async () => {
+      for (let i = 0; i < 6; i++) {
+        const panel = [...document.querySelectorAll('#fieldwork .fw-panel')]
+          .find(x => !x.hidden);
+        if (!panel) break;
+        const go = panel.querySelector('[data-fw-next], #fwStorageNext, #fwSchedNext, #fwDone');
+        if (!go || go.disabled) break;
+        go.click();
+        await new Promise(r => setTimeout(r, 900));
+        if (!document.getElementById('fieldwork').classList.contains('active')) break;
+      }
+      const raw = JSON.parse(localStorage.getItem('sleepsphere_state_v2') || '{}');
+      return {
+        inApp: !document.getElementById('fieldwork').classList.contains('active'),
+        enrolled: Boolean((raw.study || {}).participantId),
+        onboarded: Boolean((raw.study || {}).onboarded)
+      };
+    });
+    check('0 · ' + name + ': three taps and you are in the app', entered.inApp === true);
+    check('0 · ' + name + ': onboarded, but not enrolled in anything',
+      entered.onboarded === true && entered.enrolled === false);
+    check('0 · ' + name + ': nothing was thrown', errs.length === 0, errs.join(' | '));
+    await ctx.close();
+  }
 
   /* ================================================================
      1. There is a way into the app without joining the study.

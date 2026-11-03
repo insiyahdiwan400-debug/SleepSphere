@@ -33,7 +33,7 @@
   <link rel="apple-touch-startup-image" href="./splash/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
   <link rel="apple-touch-startup-image" href="./splash/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
   <link rel="apple-touch-startup-image" href="./splash/splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
-  <title>SleepSphere Prototype — Bio Harmony</title>
+  <title>SleepSphere</title>
   <link rel="preload" href="./fonts/amiri-naskh-v2.woff2" as="font" type="font/woff2" crossorigin />
   <style>
     /* ---- The Arabic face.
@@ -211,6 +211,11 @@
        page sideways. The button shrinks and ellipsises instead of pushing. */
     .top-actions { display: flex; align-items: center; gap: 9px; min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
     .top-actions .share-button { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* Everything the field study needs, hidden when this build is not
+       running one. The markup stays; only the experience changes. */
+    :root[data-study="off"] [data-study-only] { display: none !important; }
+    :root[data-study="on"] [data-product-only] { display: none !important; }
+
     .privacy-pill { border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; color: var(--muted); background: rgba(255,255,255,.64); font-size: 12px; white-space: nowrap; }
     .icon-button { width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 13px; background: var(--card); color: var(--ink); }
 
@@ -2819,7 +2824,7 @@
     <div class="workspace">
       <header class="topbar">
         <div class="page-heading"><div class="eyebrow" id="pageEyebrow">The Sabat Loop</div><h1 id="pageTitle">Rest is more than hours.</h1><p class="subtitle" id="pageSubtitle">Notice the gap. Test one change. Learn what restoration means for you.</p></div>
-        <div class="top-actions"><span class="privacy-pill">V5 • TEST PROTOTYPE</span><button class="share-button" type="button" data-share-prototype>Share prototype</button><button class="icon-button" id="dimToggle" aria-label="Toggle low-light mode" title="Low-light mode">◒</button></div>
+        <div class="top-actions"><button class="icon-button" id="dimToggle" aria-label="Toggle low-light mode" title="Low-light mode">◒</button></div>
       </header>
 
       <main>
@@ -3232,7 +3237,7 @@
             <article class="card span-12">
               <div class="card-label">What this cannot do</div>
               <h3>A plan is not a guarantee, and a short trip may not be worth shifting at all.</h3>
-              <p class="helper">Adjustment speed varies a lot between people. Night-shift work, medication, pregnancy and some health conditions change the picture entirely. If a trip matters medically, speak to a clinician rather than an early prototype.</p>
+              <p class="helper">Adjustment speed varies a lot between people. Night-shift work, medication, pregnancy and some health conditions change the picture entirely. If a trip matters medically, speak to a clinician rather than an app.</p>
             </article>
           </div>
         </section>
@@ -3559,7 +3564,7 @@
               <div class="card-label">What the gap means</div><h3>Enough time does not always feel restorative.</h3>
               <p class="helper">When estimated opportunity is relatively high but restoration remains low, SleepSphere names the mismatch instead of rewarding the hours and moving on.</p>
               <div class="callout teal" style="margin-top:13px">A gap is a question to investigate: continuity, timing, stress, environment, pain, caffeine, a sleep disorder or something else may matter. The app cannot decide the cause.</div>
-              <button class="btn ghost small" id="loadDemo" style="margin-top:13px">Load labelled demonstration data</button>
+              <button class="btn ghost small" id="loadDemo" style="margin-top:13px">Load example data</button>
             </article>
 
             <article class="card span-7">
@@ -3692,7 +3697,7 @@
             </article>
 
             <article class="card span-6">
-              <div class="card-label">Selected foundations</div><h3>Sources behind this prototype</h3>
+              <div class="card-label">Selected foundations</div><h3>Where this comes from</h3>
               <div class="history-list">
                 <div class="history-item"><strong>Carney et al. — Consensus Sleep Diary</strong><p class="helper">A standardized structure for prospective sleep self-monitoring. <a href="https://pubmed.ncbi.nlm.nih.gov/22294820/" target="_blank" rel="noopener">View the indexed paper</a></p></div>
                 <div class="history-item"><strong>Watson et al. and Paruthi et al. — Sleep-duration consensus recommendations</strong><p class="helper">Age-sensitive recommendations and the importance of regular adequate sleep.</p></div>
@@ -3724,7 +3729,7 @@
                 <button class="btn ghost" data-go="bio">Bio Harmony</button>
                 <button class="btn ghost" data-go="unload">Clear my mind</button>
                 <button class="btn ghost" data-go="travel">Travel</button>
-                <button class="btn ghost" data-go="test">Give feedback</button>
+                <button class="btn ghost" data-go="test" data-study-only>Give feedback</button>
                 <!-- The interface switcher lives on the tester screen, which
                      was reachable only through a button labelled "Give
                      feedback". Nobody guesses that Flight is behind that, and
@@ -3793,7 +3798,7 @@
             <article class="card span-5 no-print">
               <div class="card-label">Privacy architecture</div><h3>Local-first by choice</h3>
               <div class="loop">
-                <div class="loop-step"><div class="loop-number">1</div><div><strong>No account</strong><small>The prototype opens without registration.</small></div></div>
+                <div class="loop-step"><div class="loop-number">1</div><div><strong>No account</strong><small>SleepSphere opens without an account.</small></div></div>
                 <div class="loop-step"><div class="loop-number">2</div><div><strong>No overnight microphone</strong><small>It does not record bedroom audio.</small></div></div>
                 <div class="loop-step"><div class="loop-number">3</div><div><strong>Explicit export</strong><small>Data leaves only when you download and share it.</small></div></div>
               </div>
@@ -3941,7 +3946,6 @@
       </div>
 
       <div class="fw-panel" data-fw="3" hidden>
-        <span class="welcome-badge">Step 3 of 5</span>
         <h2>Your participant code.</h2>
         <p>Enter the code you were given. It is how your records are identified in the
            study, and it is the only identifier SleepSphere keeps — no name, no email,
@@ -3957,7 +3961,9 @@
       </div>
 
       <div class="fw-panel" data-fw="4" hidden>
-        <span class="welcome-badge">Step 4 of 5</span>
+        <p class="fw-say" data-product-only style="margin:0 0 18px">
+          Two quick things, then you're in.
+        </p>
         <h2>Can this device remember?</h2>
         <p>SleepSphere keeps everything on the device itself, so it needs somewhere
            reliable to write. This checks that it has one.</p>
@@ -3969,7 +3975,7 @@
           <ol class="install-steps" style="margin-top:18px">
             <li><span>1</span><div>Tap the <strong>Share</strong> button at the bottom of Safari — the square with an arrow coming out of it.</div></li>
             <li><span>2</span><div>Scroll down and tap <strong>Add to Home Screen</strong>.</div></li>
-            <li><span>3</span><div>Open SleepSphere from the Home Screen icon, not from Safari, for the rest of the study.</div></li>
+            <li><span>3</span><div>Open SleepSphere from the Home Screen icon rather than from Safari, and it will keep what you save.</div></li>
           </ol>
         </div>
         <div class="button-row" style="margin-top:20px">
@@ -3979,7 +3985,6 @@
       </div>
 
       <div class="fw-panel" data-fw="5" hidden>
-        <span class="welcome-badge">Step 5 of 6</span>
         <h2>When does your day usually start?</h2>
         <p>Not an alarm, and not a target — just what normally happens. SleepSphere
            uses it to know which part of the day you are in before you have planned
@@ -4005,11 +4010,13 @@
       <div class="fw-panel" data-fw="6" hidden>
         <span class="welcome-badge">Ready</span>
         <h2>You’re set.</h2>
-        <div class="fw-day" id="fwDay">Day 1</div>
-        <p>Begins today. Open SleepSphere once in the evening and once in the morning —
+        <div class="fw-day" id="fwDay" data-study-only>Day 1</div>
+        <p data-study-only>Begins today. Open SleepSphere once in the evening and once in the morning —
            that is the whole commitment.</p>
-        <p style="margin-top:14px">Your code and study information live in <strong>My records</strong>
+        <p data-study-only style="margin-top:14px">Your code and study information live in <strong>My records</strong>
            if you ever need them.</p>
+        <p data-product-only>Open it in the evening and it will help you wind down.
+           Open it in the morning and it will ask one question.</p>
         <div class="button-row" style="margin-top:24px"><button class="btn primary" id="fwDone">Enter SleepSphere</button></div>
       </div>
     </div>
@@ -4578,6 +4585,36 @@
       } catch { /* Safari and older browsers simply do not offer this. */ }
       return { ok: true, mode: persisted ? 'persistent' : 'local', persisted };
     }
+
+    /* ==================================================================
+       THE FIELD STUDY IS OVER.
+
+       SleepSphere was built as a research instrument with a product on
+       top: a new person was asked for consent, issued a participant
+       code, shown a study-day counter and an export for their
+       researcher. All of that still works and is still tested — it is
+       simply not what the app is any more.
+
+       One flag decides which of the two someone is in. Nothing is
+       deleted, and a device is put back into the study the same way it
+       always could be: `?study=1` once, and it is remembered. `?study=0`
+       takes it out again.
+
+       inFieldwork() stays the authority on whether a PERSON is enrolled
+       — onboarded with a code. STUDY_MODE is the separate question of
+       whether this build offers enrolment at all.
+       ================================================================== */
+    const STUDY_MODE = (() => {
+      try {
+        const asked = new URLSearchParams(location.search).get('study');
+        if (asked !== null) {
+          if (asked === '0') localStorage.removeItem('ss_study');
+          else localStorage.setItem('ss_study', '1');
+        }
+        return localStorage.getItem('ss_study') === '1';
+      } catch (e) { return false; }
+    })();
+    document.documentElement.dataset.study = STUDY_MODE ? 'on' : 'off';
 
     const inFieldwork = () => Boolean(state.study?.onboarded && state.study?.participantId);
 
@@ -5791,7 +5828,7 @@
       const records = (usingDemo ? demoRecords() : real).slice(-14);
       renderTrend(records, usingDemo);
       renderPatterns(records, usingDemo);
-      $('#loadDemo').textContent = usingDemo ? 'Return to my records' : 'Load labelled demonstration data';
+      $('#loadDemo').textContent = usingDemo ? 'Return to my records' : 'Load example data';
       if (records.length < 3) {
         resetCompass();
         $('#compassDataNote').textContent = `${3-records.length} more morning record${3-records.length === 1 ? '' : 's'} needed to activate your compass.`;
@@ -8474,7 +8511,10 @@
       const panel = $('#studyPanel');
       if (!panel) return;
       const study = state.study || {};
-      if (!study.onboarded) { panel.hidden = true; return; }
+      /* Enrolled, not merely past the introduction. Someone who
+         skipped joining was still shown this, with an em-dash where
+         their participant code would be. */
+      if (!STUDY_MODE || !inFieldwork()) { panel.hidden = true; return; }
       panel.hidden = false;
       const day = currentStudyDay();
       const entries = realMornings().length;
@@ -11741,15 +11781,37 @@
     let fwStep = 1;
     let fwStorageState = null;
 
+    /* Which panels a new person actually walks through.
+
+       Outside the study that is two questions and a close: can this
+       device remember anything, when does your day usually start, and
+       you're set. The field study's own three — its introduction, its
+       consent, its participant code — are still here and still work;
+       they are simply not what someone meets when they open a sleep
+       app. */
+    const FW_SEQUENCE = STUDY_MODE ? [1, 2, 3, 4, 5, 6] : [4, 5, 6];
+    const fwIndex = step => Math.max(0, FW_SEQUENCE.indexOf(step));
+
     function showFw(step) {
+      /* A step that is not in this build's sequence (a handler jumping
+         straight to the code panel, say) lands on the next one that is. */
+      if (FW_SEQUENCE.indexOf(step) < 0) {
+        step = FW_SEQUENCE.find(n => n > step) || FW_SEQUENCE[FW_SEQUENCE.length - 1];
+      }
       fwStep = step;
       $$('#fieldwork .fw-panel').forEach(panel => { panel.hidden = Number(panel.dataset.fw) !== step; });
-      $$('#fieldwork .fw-rail i').forEach((bar, index) => bar.classList.toggle('on', index < step));
+      const reached = fwIndex(step) + 1;
+      $$('#fieldwork .fw-rail i').forEach((bar, index) => {
+        bar.hidden = index >= FW_SEQUENCE.length;
+        bar.classList.toggle('on', index < reached);
+      });
       $('#fieldwork .welcome-card').scrollTop = 0;
       if (step === 3) window.setTimeout(() => $('#fwId').focus(), 120);
       if (step === 4) checkFwStorage();
-      if (step === 6) $('#fwDay').textContent = 'Day 1';
+      if (step === 6 && STUDY_MODE) $('#fwDay').textContent = 'Day 1';
     }
+    const fwNext = () => showFw(FW_SEQUENCE[Math.min(FW_SEQUENCE.length - 1, fwIndex(fwStep) + 1)]);
+    const fwBack = () => showFw(FW_SEQUENCE[Math.max(0, fwIndex(fwStep) - 1)]);
 
     async function checkFwStorage() {
       const box = $('#fwStorage');
@@ -11787,7 +11849,7 @@
       title.textContent = fwStorageState.persisted ? 'Saving works, and is protected' : 'Saving works';
       text.textContent = fwStorageState.persisted
         ? 'This device has agreed to keep SleepSphere’s data rather than clearing it to free space.'
-        : 'Entries will be kept on this device. Avoid clearing site data during the study.';
+        : 'Entries will be kept on this device. They stay unless you clear this site’s data.';
     }
 
     function fwIdSay(message, tone) {
@@ -11797,6 +11859,16 @@
     }
 
     function finishFieldwork() {
+      /* Outside the study there is no code to ask for, and demanding one
+         would bounce someone to a panel this build does not show — which
+         is a door that never opens. Finish them the way the "I don't
+         have a code" path has always finished people. */
+      if (!STUDY_MODE) {
+        if (!state.settings.usualWake) state.settings.usualWake = $('#fwWake')?.value || '';
+        if (!state.settings.fajrHabit) state.settings.fajrHabit = fwHabit;
+        skipFieldwork();
+        return;
+      }
       const id = normaliseParticipantId($('#fwId').value);
       if (!id) { showFw(3); fwIdSay('A participant code is needed before the study can start.', 'bad'); return; }
       const now = new Date();
@@ -11828,8 +11900,8 @@
       if (!written) toast('Saved in memory only — this device is not writing to disk');
     }
 
-    $$('#fieldwork [data-fw-next]').forEach(button => button.addEventListener('click', () => showFw(fwStep + 1)));
-    $$('#fieldwork [data-fw-back]').forEach(button => button.addEventListener('click', () => showFw(fwStep - 1)));
+    $$('#fieldwork [data-fw-next]').forEach(button => button.addEventListener('click', fwNext));
+    $$('#fieldwork [data-fw-back]').forEach(button => button.addEventListener('click', fwBack));
     $('#fwConsent').addEventListener('change', event => {
       $('#fwConsentNext').disabled = !event.target.checked;
       if (event.target.checked) state.study.consentAt = new Date().toISOString();

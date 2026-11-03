@@ -77,7 +77,10 @@ const THROWS = `Object.defineProperty(window,'localStorage',{configurable:true,
       };
     }, date);
     if (blob) await p.addInitScript(seed(blob));
-    await p.goto('http://localhost:8099/index.html', { waitUntil:'networkidle' });
+    /* The field study is no longer what a new device opens into, so a
+       suite about enrolment has to ask for it. Everything it tests is
+       unchanged; only the door is. */
+    await p.goto('http://localhost:8099/index.html?study=1', { waitUntil:'networkidle' });
     await p.waitForTimeout(1200);
     await p.evaluate(() => document.getElementById('opening')?.remove());
     return { ctx, p, errs };
