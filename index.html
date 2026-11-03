@@ -2406,6 +2406,8 @@
     .week-rest.good { color:var(--gold-soft); }
     .week-rest.fair { color:var(--gold); }
     .week-rest.low { color:var(--muted); }
+    /* An unrated night. Dimmer than 'low', because it is not a judgement. */
+    .week-rest.none { color:var(--muted); opacity:.5; }
     .week-scale { display:flex; justify-content:space-between; margin:6px 26px 0 47px; color:var(--muted); font-size:9.5px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; }
     :root[data-mode="light"] .week-actual.good { fill:#8A6A30; }
     :root[data-mode="light"] .week-actual.fair { fill:#A08A5C; }
@@ -7799,7 +7801,13 @@
       // Restoration is the one judgement the app makes, so it is the only
       // thing carrying colour here: brass for a night that returned
       // something, dim for one that did not.
-      const tone = rest => rest >= 4 ? 'good' : rest >= 3 ? 'fair' : 'low';
+      /* A record with no restoration rating is not a bad night, it is an
+         unrated one. Scoring it 'low' would be inventing a judgement, and
+         printing the number unguarded put the literal word "undefined" on
+         the screen — which is what a seeded history did here. */
+      const tone = rest => !Number.isFinite(Number(rest)) ? 'none'
+        : rest >= 4 ? 'good' : rest >= 3 ? 'fair' : 'low';
+      const restLabel = rest => Number.isFinite(Number(rest)) ? String(rest) : '—';
 
       host.innerHTML = records.map((record, index) => {
         const from = arcPos(toMinutes(record.sleepTime || record.bedTime));
@@ -7820,7 +7828,7 @@
               <rect class="week-actual ${tone(record.rest)}" x="${from}%" y="26%" width="${width}%" height="48%" rx="5"/>
             </svg>
           </div>
-          <span class="week-rest ${tone(record.rest)}">${record.rest}</span>
+          <span class="week-rest ${tone(record.rest)}">${restLabel(record.rest)}</span>
         </div>`;
       }).join('') + `<div class="week-scale"><span>6pm</span><span>midnight</span><span>6am</span><span>10am</span></div>`;
 

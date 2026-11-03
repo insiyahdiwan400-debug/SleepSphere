@@ -141,7 +141,10 @@ const SEED = () => {
     const awake = r[4] * 10;
     return {
       id: 'demo-' + i, date: d, bedTime: r[0], sleepTime: r[1], wakeTime: r[2],
-      restoration: r[3], energy: r[3], focus: r[3],
+      /* The app's own field is `rest`. Writing `restoration` here left
+         every seeded night unrated, which the week strip then printed as
+         the word "undefined". */
+      rest: r[3], energy: r[3], focus: r[3],
       onsetMinutes: onset, awakeMinutes: awake,
       opportunityMinutes: opportunity,
       sleepMinutes: opportunity - onset - awake,
