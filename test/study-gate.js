@@ -87,13 +87,18 @@ const SEED = () => {
       stored:   localStorage.getItem('ss_study'),
       study:    JSON.parse(JSON.stringify(window.SS.state.study || {})),
       panel:    document.getElementById('studyPanel')?.hidden,
-      consent:  Boolean(document.querySelector('.fw-panel[data-fw="1"]')),
+      /* The consent panel's markup is never deleted — that is the point of
+         the split — so the question is whether it is SHOWN, not whether it
+         exists. */
+      consent:  document.querySelector('.fw-panel[data-fw="1"]')?.hidden === false,
+      steps:    [...document.querySelectorAll('#fieldwork .fw-rail i')].filter(b => !b.hidden).length,
       keys:     Object.keys(localStorage).sort()
     }));
 
     check('?study=1 turns the study layer on', seen.flag === 'on' && seen.stored === '1',
           `${seen.flag}/${seen.stored}`);
-    check('the enrolment screens are offered again', seen.consent === true);
+    check('the enrolment screens are offered again, consent first',
+          seen.consent === true && seen.steps === 6, `${seen.steps} steps`);
 
     /* The flag says what this BUILD offers. It must not say anything
        about who this PERSON is. */
@@ -240,15 +245,24 @@ const SEED = () => {
     await p.waitForTimeout(2200);
     const seen = await p.evaluate(() => ({
       flag: document.documentElement.dataset.study,
-      consent: Boolean(document.querySelector('.fw-panel[data-fw="1"]')),
+      /* Present in the markup, never shown: nothing was deleted to retire
+         the study, and nothing opens it without being asked. */
+      built: Boolean(document.querySelector('.fw-panel[data-fw="1"]')),
+      consent: document.querySelector('.fw-panel[data-fw="1"]')?.hidden === false,
+      steps: [...document.querySelectorAll('#fieldwork .fw-rail i')].filter(b => !b.hidden).length,
       text: (document.getElementById('fieldwork')?.innerText || '')
     }));
     check('the product door is not the study door', seen.flag === 'off');
     check('and says nothing about a study, research or participants',
           !/\bstudy\b|\bresearch\b|\bparticipant\b|\bprototype\b/i.test(seen.text),
           seen.text.slice(0, 90).replace(/\s+/g, ' '));
-    check('nor is the enrolment path even built',
-          seen.consent === false);
+    /* The research layer is retired, not demolished. Its screens are still
+       in the markup and still tested; the product simply never walks into
+       them, and the opening sequence is three steps rather than six. */
+    check('the consent screen is still in the build, and still never shown',
+          seen.built === true && seen.consent === false);
+    check('and the opening sequence is three steps, not six',
+          seen.steps === 3, `${seen.steps} steps`);
     await fresh.close();
   }
 

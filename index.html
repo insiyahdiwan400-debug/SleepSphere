@@ -851,13 +851,6 @@
     .nav:not(.expanded) .secondary-nav { display:none; }
     .share-button { min-height:40px; border:1px solid rgba(100,137,130,.24); border-radius:999px; padding:8px 14px; color:#506f69; background:rgba(136,170,163,.14); font-weight:850; white-space:nowrap; }
     .share-button:hover { background:rgba(136,170,163,.22); }
-    .guide-strip { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:18px; }
-    .guide-step { display:grid; grid-template-columns:28px 1fr; gap:9px; align-items:center; padding:11px; border:1px solid rgba(226,231,232,.13); border-radius:14px; background:rgba(255,255,255,.035); text-align:left; }
-    .guide-number { width:28px; height:28px; display:grid; place-items:center; border-radius:50%; color:#dce4e3; background:rgba(255,255,255,.08); font-weight:900; font-size:12px; }
-    .guide-step.complete { border-color:rgba(119,156,148,.5); background:rgba(136,170,163,.12); }
-    .guide-step.complete .guide-number { color:#27343a; background:#b8d0ca; }
-    .guide-step strong { display:block; color:#f0f2ef; font-size:13px; }
-    .guide-step span:last-child { display:block; color:#aeb9bb; font-size:12px; }
     .welcome-overlay { position:fixed; inset:0; z-index:50; display:none; place-items:center; padding:20px; background:rgba(32,40,48,.55); backdrop-filter:blur(16px); }
     .welcome-overlay.active { display:grid; }
     .welcome-card { width:min(620px,100%); max-height:min(760px,92vh); overflow:auto; padding:clamp(24px,5vw,42px); border:1px solid rgba(255,255,255,.7); border-radius:30px; background:linear-gradient(145deg,#fffdf9,#f4f1ed); box-shadow:0 30px 100px rgba(31,39,47,.25); }
@@ -901,7 +894,6 @@
       .top-actions .privacy-pill:nth-child(2) { display:none; }
       .top-actions .privacy-pill { display:none; }
       .share-button { padding:8px 11px; font-size:12px; }
-      .guide-strip { grid-template-columns:1fr; }
       .sabat-sphere { display:none; }
       .console-copy h2 { font-size:38px; }
       .console-metrics { margin-top:24px; }
@@ -1277,10 +1269,6 @@
     .console-metric { border-color:var(--line); background:rgba(16,18,24,.92); }
     .console-metric span { color:var(--muted); }
     .console-metric strong { color:var(--ink); }
-    .guide-step { border-color:var(--line); background:rgba(233,228,217,.035); }
-    .guide-step.complete { border-color:rgba(195,160,104,.34); background:rgba(195,160,104,.07); }
-    .guide-number { color:var(--night); background:var(--moon); }
-    .guide-step.complete .guide-number { background:var(--gold); }
 
     /* ---- The sphere: a brass arc, breathing slowly ---------------- */
     .sabat-sphere {
@@ -1428,7 +1416,6 @@
       .console-copy > p { font-size:14.5px; }
       .console-actions { margin-top:17px; }
       .console-actions .btn { width:100%; justify-content:center; }
-      .guide-strip { margin-top:16px; }
     }
 
     /* Arriving on a screen should feel like settling into it. */
@@ -1554,9 +1541,6 @@
     }
     :root[data-mode="light"] .bio-orbit,
     :root[data-mode="light"] .sabat-sphere { box-shadow:0 0 0 1px rgba(56,50,38,.08); }
-    :root[data-mode="light"] .guide-step.complete { background:rgba(138,106,48,.1); border-color:rgba(138,106,48,.3); }
-    :root[data-mode="light"] .guide-number { color:#f7f4ec; background:var(--ink); }
-    :root[data-mode="light"] .guide-step.complete .guide-number { background:var(--gold); }
     :root[data-mode="light"] .loop-number, :root[data-mode="light"] .welcome-step b { color:#f7f4ec; background:var(--ink); }
     :root[data-mode="light"] .toast { color:#f7f4ec; background:var(--ink); }
     :root[data-mode="light"] .qc-icon { color:var(--gold-soft); background:rgba(138,106,48,.1); }
@@ -1605,7 +1589,7 @@
     :root[data-mode="light"] .chip, :root[data-mode="light"] .scale button,
     :root[data-mode="light"] .mini-scale button, :root[data-mode="light"] .flow-note,
     :root[data-mode="light"] .flow-time, :root[data-mode="light"] .reveal-signal,
-    :root[data-mode="light"] .welcome-step, :root[data-mode="light"] .guide-step,
+    :root[data-mode="light"] .welcome-step,
     :root[data-mode="light"] .console-metric, :root[data-mode="light"] .intent-pill,
     :root[data-mode="light"] .twin-delta > div, :root[data-mode="light"] .flow-repeat {
       color:var(--ink); background:rgba(255,253,247,.6); border-color:var(--line);
@@ -2604,28 +2588,9 @@
     .flow-repeat strong { display:block; font-size:15.5px; }
     .flow-repeat span span, .flow-repeat > span > span { color:var(--muted); font-size:12.5px; }
 
-    /* The three steps are a progress strip, not three more cards. */
-    .guide-strip { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-    .guide-step {
-      display:grid; grid-template-columns:1fr; gap:2px; padding:10px 11px;
-      border-radius:13px; text-align:left;
-    }
-    .guide-step .guide-number {
-      width:20px; height:20px; margin-bottom:3px; font-size:10.5px;
-    }
-    /* These carried hardcoded near-white from an earlier palette, which
-       disappeared entirely against light mode. */
-    .guide-step strong { color:var(--ink); font-size:12.5px; line-height:1.2; }
-    .guide-step span:last-child { color:var(--muted); }
-    .guide-step span { font-size:11px; line-height:1.25; }
-
     @media (max-width:760px) {
       .console-copy h2 { font-size:33px; letter-spacing:-.024em; }
       .topbar h1 { font-size:27px; }
-      .guide-strip { grid-template-columns:repeat(3,1fr); gap:6px; }
-      .guide-step { padding:9px 8px; }
-      .guide-step strong { font-size:11.5px; }
-      .guide-step span { font-size:10px; }
     }
   </style>
   <!-- Simplified interface, prototype. Inert unless ?ui=calm or
@@ -7713,34 +7678,34 @@
         (resolvePhase().phase === 'EVENING' && tonightsPlan()) ? 'on' : 'off';
     }
 
-    /* The wind-down is an evening action, so it is an evening control.
+    /* The console's two buttons stay at every hour the console is on
+       screen, and deliberately.
 
-       Three primaries used to stand here at every hour of the day — a
-       check-in, a wind-down and a going-to-bed — under a sentence that
-       pointed at none of them. During the daytime the one thing worth
-       deciding is what tomorrow is for, and the moment card above asks
-       that; the night's own controls appear when the night is near. */
+       My first pass made them evening-only, on the reasoning that a
+       wind-down is an evening thing. It is, but "too tired — just go to
+       bed" is the route to the goodnight ritual for anyone whose night
+       starts in the afternoon, and taking it away in the daytime removed
+       the only way there from this screen. A route is not clutter. The
+       clutter was the third primary and the numbered strip beside them,
+       and those are gone.
+
+       What is left here is the one case where the same words appear
+       twice on one screen. */
     function renderActions() {
-      const evening = resolvePhase().phase === 'EVENING';
-      /* The effort chooser belongs to the wind-down button — Smart Assist
-         mounts it into this row — so it travels with it rather than
-         standing alone as a settings panel on the home screen. */
-      [$('#assistStart'), $('#lazyStart'), $('#assistEffort')].forEach(node => {
-        if (node) node.hidden = !evening;
-      });
-      /* An unplanned evening already offers Build my night as the moment's
-         one action, and the same words twice on one screen read as two
-         different things. The quiet route is for the hours when the moment
-         card is asking about something else. */
+      /* An unplanned evening offers Build my night as the moment card's
+         one action, and the same label twice reads as two destinations.
+         The quiet route is for the hours when the card above is asking
+         about something else. */
       const planLink = $('#consolePlan');
-      if (planLink) planLink.hidden = evening && !tonightsPlan();
+      if (planLink) {
+        planLink.hidden = resolvePhase().phase === 'EVENING' && !tonightsPlan();
+      }
     }
 
     /* The one line on the home screen is about tonight, not about the app.
        It moves through the day on its own, so opening SleepSphere always
        shows something live without asking for anything. */
     function renderHeroStatus() {
-      const phaseNow = resolvePhase().phase;
       /* "Build my night" and "Change tonight's plan" are the same route;
          which of the two it is depends on whether there is a night yet. */
       const planLink = $('#consolePlan');
@@ -7809,23 +7774,16 @@
 
       if (bio) {
         status.textContent = `Tonight reads ${bio.harmony}`;
-        sub.textContent = phaseNow === 'EVENING'
-          ? `${bioStatus(bio.harmony)[0]}. Start the wind-down whenever you are ready.`
-          : `${bioStatus(bio.harmony)[0]}. Build a night plan around it.`;
+        sub.textContent = `${bioStatus(bio.harmony)[0]}. Build a night plan around it.`;
         return;
       }
-      /* The last line has to agree with what is actually underneath it, and
-         renderActions decides that by the same test. It used to ask for the
-         check-in in the evening, where the button said wind-down, and in the
-         daytime, where the button was not there at all. */
+      /* The last line has to agree with the button underneath it. It used
+         to ask for the check-in, whose button on this screen was a step of
+         the numbered strip that is now gone; the check-in is still one tap
+         from Bio Harmony, but it is no longer what this card offers. What
+         this card offers, at every hour it is on screen, is the wind-down. */
       status.textContent = 'Ready when you are';
-      if (phaseNow === 'EVENING') {
-        sub.textContent = 'Start the wind-down and the sounds, the timer and the duʿāʾ follow it.';
-      } else {
-        sub.textContent = phaseAnchors().source === 'default'
-          ? 'Nothing is set for tonight yet.'
-          : 'Nothing is set for tonight yet. The dashed band is where your nights usually fall.';
-      }
+      sub.textContent = 'Start the wind-down whenever you like — the sounds, the timer and the duʿāʾ follow it.';
     }
 
     /* ------------------------------------------------------------------

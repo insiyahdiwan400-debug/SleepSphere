@@ -30,16 +30,17 @@ let fails=0; const check=(n,ok,x='')=>{console.log(`${ok?'PASS':'FAIL'}  ${n}${x
    document.querySelector('#data [data-go="plan"]').click(); }; });
  await p.goto('http://localhost:8099/index.html',{waitUntil:'networkidle'});
  await p.waitForTimeout(700);
- /* A genuinely fresh device now meets fieldwork onboarding first, so this
-    test walks through it rather than seeding around it — which also keeps one
-    suite exercising the real first-run path end to end. */
- await p.locator('[data-fw="1"] [data-fw-next]').click();
- await p.locator('#fwConsent').check();
- await p.locator('#fwConsentNext').click();
- await p.locator('#fwId').fill('P001');
- await p.locator('#fwIdNext').click(); await p.waitForTimeout(500);
+ /* A fresh device meets the opening sequence first, so this test walks
+    through it rather than seeding around it — which also keeps one suite
+    exercising the real first-run path end to end.
+
+    Three steps, not six. The consent notice and the participant code
+    belong to the field study, which is opt-in now and reached through
+    ?study=1; test/fieldwork.js still walks that path in full. What a new
+    person actually meets is the storage check, the schedule question and
+    the door. */
  await p.locator('#fwStorageNext').click();
- await p.locator('#fwSchedNext').click();   // schedule step, added in Phase 1A.1
+ await p.locator('#fwSchedNext').click();
  await p.locator('#fwDone').click(); await p.waitForTimeout(400);
  await p.evaluate(()=>goPlan());
  await p.waitForTimeout(500);
